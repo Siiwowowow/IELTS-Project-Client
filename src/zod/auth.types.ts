@@ -1,3 +1,4 @@
+//src/zod/auth.types.ts
 export interface ILoginResponse {
     token : string;
     accessToken : string;

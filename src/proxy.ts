@@ -1,3 +1,4 @@
+//src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getDefaultDashboardRoute, getRouteOwner, isAuthRoute, UserRole } from "./lib/authUtils";
 import { jwtUtils } from "./lib/jwtUtils";
