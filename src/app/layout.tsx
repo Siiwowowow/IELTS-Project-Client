@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MediStore",
-  description: "Trusted Pharmacy",
+  title: "BetterAuth",
+  description: "Secure Authentication Portal",
 };
 
 export default async function RootLayout({

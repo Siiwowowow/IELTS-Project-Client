@@ -10,15 +10,13 @@ import { toast } from "sonner";
 import { registerAction } from "@/app/(authRouteGroup)/(auth)/register/_action";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import { Camera, X, Eye, EyeOff, User, Mail, Lock, Store, Phone, MapPin, Building, ShoppingBag, Truck, Shield } from "lucide-react";
+import { Camera, X, Eye, EyeOff, User, Mail, Lock, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SocialLogin from "../shared/socialLogin/socialLogin";
 
 const RegisterForm = () => {
   const router = useRouter();
 
-  const [role, setRole] = useState<"CUSTOMER" | "SELLER">("CUSTOMER");
   const [serverError, setServerError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -32,21 +30,12 @@ const RegisterForm = () => {
       name: "",
       email: "",
       password: "",
-      shopName: "",
-      shopAddress: "",
       phoneNumber: "",
-      shippingAddress: "",
     },
 
     onSubmit: async ({ value }) => {
       setServerError(null);
       setIsLoading(true);
-
-      if (role === "SELLER" && !value.shopName) {
-        setServerError("Shop name is required");
-        setIsLoading(false);
-        return;
-      }
 
       if (!value.name || !value.email || !value.password) {
         setServerError("Name, email and password are required");
@@ -65,21 +54,14 @@ const RegisterForm = () => {
         formData.append("name", value.name);
         formData.append("email", value.email);
         formData.append("password", value.password);
-        formData.append("role", role);
+        formData.append("role", "CUSTOMER");
 
         if (imageFile) {
           formData.append("profilePhoto", imageFile);
         }
 
-        if (role === "SELLER") {
-          formData.append("shopName", value.shopName);
-          if (value.shopAddress) formData.append("shopAddress", value.shopAddress);
-          if (value.phoneNumber) formData.append("phoneNumber", value.phoneNumber);
-        }
-
-        if (role === "CUSTOMER") {
-          if (value.phoneNumber) formData.append("phoneNumber", value.phoneNumber);
-          if (value.shippingAddress) formData.append("shippingAddress", value.shippingAddress);
+        if (value.phoneNumber) {
+          formData.append("phoneNumber", value.phoneNumber);
         }
 
         const result = await registerAction(formData) as any;
@@ -124,101 +106,61 @@ const RegisterForm = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 bg-gradient-to-br from-brand-soft/30 via-white to-brand-soft/20">
-      <Card className="w-full max-w-lg mx-auto shadow-2xl border-0 rounded-2xl overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-brand-light to-brand" />
+    <div className="min-h-screen w-full flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 bg-gradient-to-br from-blue-50/30 via-white to-blue-50/20">
+      <Card className="w-full max-w-lg mx-auto shadow-2xl border-0 rounded-2xl overflow-hidden relative">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600" />
         
         <CardHeader className="text-center pt-8 pb-4">
-          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-brand to-brand-light rounded-2xl flex items-center justify-center shadow-lg mb-4">
-            {role === "SELLER" ? (
-              <Store className="w-7 h-7 text-blue-600" />
-            ) : (
-              <ShoppingBag className="w-7 h-7 text-blue-600" />
-            )}
+          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+            <User className="w-7 h-7 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {role === "SELLER" ? "Seller Registration" : "Create Account"}
+            Create Account
           </CardTitle>
           <CardDescription className="text-gray-500">
-            {role === "SELLER" 
-              ? "Join as a seller and start your business" 
-              : "Join MediStore for genuine medicines"}
+            Join BetterAuth and manage your secure account
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6 px-6 pb-8">
-          
-          {/* Role Toggle */}
-          <div className="bg-gray-100 rounded-xl p-1 flex gap-1">
-            <button
-              type="button"
-              onClick={() => setRole("CUSTOMER")}
-              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                role === "CUSTOMER"
-                  ? "bg-white text-brand shadow-sm"
-                  : "text-gray-500 hover:text-brand"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <User className="w-4 h-4" />
-                Customer
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("SELLER")}
-              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                role === "SELLER"
-                  ? "bg-white text-brand shadow-sm"
-                  : "text-gray-500 hover:text-brand"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Store className="w-4 h-4" />
-                Seller
-              </div>
-            </button>
-          </div>
-
-          {/* Avatar Upload */}
           {/* Avatar Upload Section */}
-<div className="flex justify-center">
-  <div className="relative">
-    <button
-      type="button"
-      onClick={() => fileInputRef.current?.click()}
-      className="relative w-24 h-24 rounded-full border-2 border-dashed border-brand/40 hover:border-brand transition-all duration-200 flex items-center justify-center overflow-hidden bg-brand-soft/30 hover:bg-brand-soft/50"
-    >
-      {imagePreview ? (
-        <img
-          src={imagePreview}
-          alt="Profile preview"
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <div className="flex flex-col items-center gap-1 text-brand">
-          <Camera className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Upload photo</span>
-        </div>
-      )}
-    </button>
-    {imagePreview && (
-      <button
-        onClick={removeImage}
-        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-md z-10"
-      >
-        <X size={12} />
-      </button>
-    )}
-  </div>
-  <input
-    ref={fileInputRef}
-    type="file"
-    accept="image/jpeg,image/jpg,image/png,image/webp"
-    className="hidden"
-    onChange={handleImageChange}
-  />
-</div>
+          <div className="flex justify-center">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="relative w-24 h-24 rounded-full border-2 border-dashed border-blue-600/40 hover:border-blue-600 transition-all duration-200 flex items-center justify-center overflow-hidden bg-blue-50/30 hover:bg-blue-50/50"
+              >
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-blue-600">
+                    <Camera className="w-6 h-6" />
+                    <span className="text-[10px] font-medium">Upload photo</span>
+                  </div>
+                )}
+              </button>
+              {imagePreview && (
+                <button
+                  onClick={removeImage}
+                  className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-md z-10"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageChange}
+            />
+          </div>
 
           {/* Form */}
           <form
@@ -253,7 +195,7 @@ const RegisterForm = () => {
               )}
             </form.Field>
 
-            {/* Password Field - Fixed Button Position */}
+            {/* Password Field */}
             <form.Field name="password">
               {(field) => (
                 <div className="space-y-1.5">
@@ -270,7 +212,7 @@ const RegisterForm = () => {
                       placeholder="Create a password"
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all outline-none"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-2 z-10">
                       <Button
@@ -307,61 +249,6 @@ const RegisterForm = () => {
               )}
             </form.Field>
 
-            {role === "SELLER" && (
-              <>
-                <form.Field name="shopName">
-                  {(field) => (
-                    <AppField
-                      field={field}
-                      label="Shop Name"
-                      placeholder="Your pharmacy/shop name"
-                      prepend={<Building className="w-4 h-4 text-gray-400" />}
-                      required
-                    />
-                  )}
-                </form.Field>
-                <form.Field name="shopAddress">
-                  {(field) => (
-                    <AppField
-                      field={field}
-                      label="Shop Address"
-                      placeholder="Shop address (optional)"
-                      prepend={<MapPin className="w-4 h-4 text-gray-400" />}
-                    />
-                  )}
-                </form.Field>
-              </>
-            )}
-
-            {role === "CUSTOMER" && (
-              <form.Field name="shippingAddress">
-                {(field) => (
-                  <AppField
-                    field={field}
-                    label="Shipping Address"
-                    placeholder="Your delivery address (optional)"
-                    prepend={<MapPin className="w-4 h-4 text-gray-400" />}
-                  />
-                )}
-              </form.Field>
-            )}
-
-            {/* Benefits */}
-            <div className="flex flex-wrap gap-4 justify-center pt-2">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Truck className="w-3.5 h-3.5 text-brand" />
-                Free Shipping
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Shield className="w-3.5 h-3.5 text-brand" />
-                Genuine Meds
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Phone className="w-3.5 h-3.5 text-brand" />
-                24/7 Support
-              </div>
-            </div>
-
             {serverError && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                 <p className="text-red-600 text-sm text-center">{serverError}</p>
@@ -373,7 +260,7 @@ const RegisterForm = () => {
               pendingLabel="Creating account..."
               className="w-full"
             >
-              {role === "SELLER" ? "Register as Seller" : "Create Account"}
+              Create Account
             </AppSubmitButton>
             <SocialLogin/>
           </form>
@@ -383,7 +270,7 @@ const RegisterForm = () => {
               Already have an account?{" "}
               <button
                 onClick={() => router.push("/login")}
-                className="text-brand font-semibold hover:text-brand-dark hover:underline transition-colors"
+                className="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-colors"
               >
                 Sign in
               </button>
