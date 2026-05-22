@@ -1,19 +1,22 @@
-// src/app/(commonLayout)/(auth)/reset-password/page.tsx
 import ResetPasswordForm from "@/components/Auth/ResetPasswordForm";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Reset Password",
-  description: "Create a new password",
+  title: "Reset Password | IELTS Prep",
+  description: "Create a new secure password",
 };
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <Suspense fallback={<div>Loading...</div>}>
-        <ResetPasswordForm />
-      </Suspense>
-    </div>
+    <Suspense
+      fallback={
+        <div className="auth-page fixed inset-0 z-[100] flex items-center justify-center bg-white">
+          <div className="size-8 animate-spin rounded-full border-2 border-[#DC2626] border-t-transparent" />
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

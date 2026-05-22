@@ -1,38 +1,37 @@
 "use client";
+
 import { loginAction } from "@/app/(authRouteGroup)/(auth)/login/_action";
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthAlert,
+  AuthButton,
+  AuthCard,
+  AuthCheckbox,
+  AuthInput,
+  AuthPasswordField,
+  AuthSocialButtons,
+} from "@/components/Auth/ui";
+import { UserRole } from "@/lib/authUtils";
+import { useUser } from "@/hooks/useUser";
 import { ILoginPayload, loginZodSchema } from "@/zod/auth.validation";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import AppField from "../shared/form/AppField";
-import AppSubmitButton from "../shared/form/AppSubmitButton";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/hooks/useUser";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import SocialLogin from "../shared/socialLogin/socialLogin";
-import { UserRole } from "@/lib/authUtils";
 
 interface LoginFormProps {
   redirectPath?: string;
-  defaultEmail?: string;      // 👈 যোগ করা হয়েছে (Register থেকে email pass করার জন্য)
+  defaultEmail?: string;
 }
+
+const REMEMBER_KEY = "ielts_remember_email";
 
 const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
   const { setUser } = useUser();
 
@@ -42,41 +41,58 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
 
   const form = useForm({
     defaultValues: {
-      email: defaultEmail,    // 👈 যোগ করা হয়েছে (URL থেকে email pre-fill হবে)
+      email: defaultEmail,
       password: "",
     },
-
     onSubmit: async ({ value }) => {
       setServerError(null);
       try {
-        const result = await mutateAsync(value) as any;
+        const result = (await mutateAsync(value)) as {
+          success: boolean;
+          message?: string;
+          user?: { role?: string };
+          redirectUrl?: string;
+        };
 
         if (!result.success) {
           setServerError(result.message || "Login failed");
           return;
         }
 
-        toast.success("Login successful!");
-        setUser(result.user);
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, value.email);
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
 
+        setLoginSuccess(true);
+        toast.success("Welcome back! Redirecting...");
+        setUser(result.user as Parameters<typeof setUser>[0]);
         router.refresh();
 
-        if (result.redirectUrl) {
-          router.push(result.redirectUrl);
-        } else {
-          // 👈 Fallback: Role based redirect
-          const userRole = result.user?.role as UserRole;
-          const roleBasedRedirect = getRoleBasedRedirect(userRole);
-          router.push(roleBasedRedirect);
-        }
-      } catch (error: any) {
-        console.log(`Login failed: ${error.message}`);
-        setServerError(`Login failed: ${error.message}`);
+        setTimeout(() => {
+          if (result.redirectUrl) {
+            router.push(result.redirectUrl);
+          } else {
+            const role = result.user?.role as UserRole;
+            router.push(getRoleBasedRedirect(role));
+          }
+        }, 800);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Login failed";
+        setServerError(message);
       }
     },
   });
 
-  // 👈 Fallback function for role based redirect
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY);
+    if (saved) {
+      setRememberMe(true);
+      if (!defaultEmail) form.setFieldValue("email", saved);
+    }
+  }, [defaultEmail, form]);
+
   const getRoleBasedRedirect = (role: UserRole): string => {
     switch (role) {
       case "SUPER_ADMIN":
@@ -85,41 +101,54 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
       case "SELLER":
         return "/seller/dashboard";
       case "CUSTOMER":
-        return "/dashboard";
+        return "/user/dashboard";
       default:
         return "/";
     }
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Welcome Back!</CardTitle>
-        <CardDescription>Please enter your credentials to log in.</CardDescription>
-      </CardHeader>
-
-      <CardContent>
+    <AuthSplitLayout
+      title="Welcome back"
+      subtitle="Sign in to continue your IELTS preparation journey."
+      footer={
+        <p>
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-[#DC2626] hover:underline"
+          >
+            Create free account
+          </Link>
+        </p>
+      }
+    >
+      <AuthCard>
         <form
-          method="POST"
-          action="#"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            e.stopPropagation();
             form.handleSubmit();
           }}
-          className="space-y-4"
+          className="space-y-5"
         >
           <form.Field
             name="email"
             validators={{ onChange: loginZodSchema.shape.email }}
           >
             {(field) => (
-              <AppField
-                field={field}
-                label="Email"
+              <AuthInput
+                label="Email address"
                 type="email"
-                placeholder="Enter your email"
+                autoComplete="email"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+                error={
+                  field.state.meta.isTouched && field.state.meta.errors[0]
+                    ? String(field.state.meta.errors[0])
+                    : null
+                }
               />
             )}
           </form.Field>
@@ -129,83 +158,58 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
             validators={{ onChange: loginZodSchema.shape.password }}
           >
             {(field) => (
-              <AppField
-                field={field}
+              <AuthPasswordField
                 label="Password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="cursor-pointer"
-                append={
-                  <Button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    variant="ghost"
-                    size="icon"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="size-4" aria-hidden="true" />
-                    ) : (
-                      <Eye className="size-4" aria-hidden="true" />
-                    )}
-                  </Button>
+                autoComplete="current-password"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+                error={
+                  field.state.meta.isTouched && field.state.meta.errors[0]
+                    ? String(field.state.meta.errors[0])
+                    : null
                 }
               />
             )}
           </form.Field>
 
-          <div className="text-right mt-2">
+          <div className="flex items-center justify-between gap-4">
+            <AuthCheckbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={setRememberMe}
+              label="Remember me"
+            />
             <Link
               href="/forgot-password"
-              className="text-sm text-primary hover:underline underline-offset-4"
+              className="text-sm font-medium text-[#DC2626] hover:underline"
             >
               Forgot password?
             </Link>
           </div>
 
-          {serverError && (
-            <Alert variant="destructive">
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          )}
+          {serverError && <AuthAlert variant="error">{serverError}</AuthAlert>}
 
-          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+          <form.Subscribe
+            selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+          >
             {([canSubmit, isSubmitting]) => (
-              <AppSubmitButton
-                isPending={isSubmitting || isPending}
-                pendingLabel="Logging In...."
+              <AuthButton
+                type="submit"
+                isLoading={isSubmitting || isPending}
+                loadingLabel="Signing in..."
+                success={loginSuccess}
                 disabled={!canSubmit}
               >
-                Log In
-              </AppSubmitButton>
+                Sign in
+              </AuthButton>
             )}
           </form.Subscribe>
+
+          <AuthSocialButtons mode="login" />
         </form>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <SocialLogin />
-      </CardContent>
-
-      <CardFooter className="justify-center border-t pt-4">
-        <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="text-primary font-medium hover:underline underline-offset-4"
-          >
-            Sign Up for an account
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+      </AuthCard>
+    </AuthSplitLayout>
   );
 };
 

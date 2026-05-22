@@ -6,6 +6,9 @@
 
 @theme {
   --font-poppins: "Poppins", sans-serif;
+  --color-ielts-red: #dc2626;
+  --color-ielts-red-dark: #b91c1c;
+  --color-ielts-red-light: #fef2f2;
   --color-shop_light_pink: #fcf0e4;
   --color-shop_dark_green: #063c28;
   --color-shop_btn_dark_green: #063d29;
@@ -69,8 +72,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #dc2626;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -149,6 +152,268 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 .scroll-smooth {
   scroll-behavior: smooth;
+}
+
+/* Navbar utilities */
+.nav-glass-dropdown {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 20px 40px -12px rgba(0, 0, 0, 0.12);
+}
+
+.dark .nav-glass-dropdown {
+  background: rgba(15, 15, 15, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes nav-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes nav-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Auth experience */
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes auth-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes auth-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-success-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes auth-mail-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-6px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(-3px) rotate(3deg);
+  }
+}
+
+.auth-float {
+  animation: auth-float 6s ease-in-out infinite;
+}
+
+.auth-float-delayed {
+  animation: auth-float 6s ease-in-out 1.5s infinite;
+}
+
+.auth-shake {
+  animation: auth-shake 0.4s ease-in-out;
+}
+
+.auth-fade-in {
+  animation: auth-fade-in 0.35s ease-out forwards;
+}
+
+.auth-success-pop {
+  animation: auth-success-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.auth-mail-icon {
+  animation: auth-mail-bounce 2s ease-in-out infinite;
+}
+
+.auth-page {
+  font-family: var(--font-auth), var(--font-sans), system-ui, sans-serif;
+}
+
+.auth-sticky-cta {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Homepage — premium IELTS landing */
+@keyframes hp-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes hp-float-slow {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes hp-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes hp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hp-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes hp-particle {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(10px, -20px) scale(1.1);
+    opacity: 0.6;
+  }
+}
+
+.hp-float {
+  animation: hp-float 5s ease-in-out infinite;
+}
+
+.hp-float-slow {
+  animation: hp-float-slow 7s ease-in-out infinite;
+}
+
+.hp-float-delay-1 {
+  animation: hp-float 5s ease-in-out 0.8s infinite;
+}
+
+.hp-float-delay-2 {
+  animation: hp-float-slow 6s ease-in-out 1.6s infinite;
+}
+
+.hp-glow-pulse {
+  animation: hp-glow-pulse 4s ease-in-out infinite;
+}
+
+.hp-fade-up {
+  animation: hp-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hp-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 32px rgba(0, 0, 0, 0.06);
+}
+
+.hp-glass-dark {
+  background: rgba(23, 23, 23, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hp-gradient-text {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #1e40af 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hp-section {
+  scroll-margin-top: 5rem;
+}
+
+.hp-in-view {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hp-in-view.hp-visible {
+  opacity: 1;
+  transform: translateY(0);
 }

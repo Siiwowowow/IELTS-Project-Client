@@ -1,44 +1,74 @@
-// components/shared/Navbar/DesktopNav.tsx
-
 "use client";
 
+import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
 import { LayoutDashboard } from "lucide-react";
 import Logo from "./Logo";
 import AuthButtons from "./AuthButtons";
 import UserAvatar from "./UserAvatar";
-import { getDashboardRoute } from "./utils";
-import type { NavLink} from "./types";
+import SearchBar from "./SearchBar";
+import NotificationsButton from "./NotificationsButton";
 import NavLinks from "./Navlinks ";
+import { getDashboardRoute } from "./utils";
+import { desktopNavItems } from "./navConfig";
+import type { NavItem } from "./types";
+import { Button } from "@/components/ui/button";
 
 interface Props {
-  publicLinks: NavLink[];
+  showSearch?: boolean;
+  notificationCount?: number;
 }
 
 export default function DesktopNav({
-  publicLinks,
+  showSearch = true,
+  notificationCount = 2,
 }: Props) {
   const { user } = useUser();
   const dashboardRoute = getDashboardRoute(user?.role);
 
-  const navLinks: NavLink[] = [
-    ...publicLinks,
-    ...(user
-      ? [{ label: "Dashboard", href: dashboardRoute, icon: LayoutDashboard }]
-      : []),
-  ];
+  const navItems: NavItem[] = desktopNavItems
+    .filter((item) => !item.requiresAuth || user)
+    .map((item) =>
+      item.label === "Dashboard"
+        ? { ...item, href: dashboardRoute }
+        : item
+    );
 
   return (
-    <div className="hidden md:block w-full">
-      <div className="flex items-center justify-between h-16 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
-          <Logo />
-          <NavLinks links={navLinks} orientation="horizontal" />
+    <div className="hidden lg:block w-full">
+      <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center gap-6 px-6 xl:px-8">
+        {/* Left: Logo */}
+        <Logo />
+
+        {/* Center: Navigation */}
+        <div className="flex flex-1 items-center justify-center">
+          <NavLinks items={navItems} orientation="horizontal" />
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Right: Search, actions */}
+        <div className="flex shrink-0 items-center gap-2 xl:gap-3">
+          {showSearch && (
+            <div className="hidden xl:block">
+              <SearchBar compact />
+            </div>
+          )}
+
+          <NotificationsButton count={notificationCount} />
+
           {user ? (
-            <UserAvatar />
+            <>
+              <UserAvatar />
+              <Button
+                size="sm"
+                className="hidden h-9 rounded-lg bg-ielts-red px-4 font-medium text-white shadow-sm hover:bg-ielts-red-dark sm:inline-flex"
+                asChild
+              >
+                <Link href={dashboardRoute}>
+                  <LayoutDashboard className="size-4" />
+                  Dashboard
+                </Link>
+              </Button>
+            </>
           ) : (
             <AuthButtons />
           )}

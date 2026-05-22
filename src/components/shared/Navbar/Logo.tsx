@@ -1,24 +1,30 @@
-import { Shield } from "lucide-react";
+import { BookOpenCheck } from "lucide-react";
 import Link from "next/link";
 
-export default function Logo() {
+export default function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="flex items-center gap-2 group">
-      <div className="relative">
-        <div className="absolute inset-0 bg-linear-to-r from-blue-600 to-blue-500 blur-sm opacity-30 group-hover:opacity-100 transition" />
-        <div className="relative w-9 h-9 bg-linear-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-          <Shield className="w-4 h-4 text-white" />
-        </div>
+    <Link
+      href="/"
+      className="group flex shrink-0 items-center gap-3 transition-opacity hover:opacity-90"
+    >
+      <div className="relative flex size-10 items-center justify-center overflow-hidden rounded-xl bg-ielts-red shadow-sm ring-1 ring-ielts-red/20 transition-shadow group-hover:shadow-md">
+        <BookOpenCheck
+          className="size-5 text-white"
+          strokeWidth={2}
+          aria-hidden
+        />
       </div>
 
-      <div>
-        <span className="text-xl font-bold bg-linear-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-          BetterAuth
-        </span>
-        <span className="block text-[10px] text-muted-foreground">
-          Secure Portal
-        </span>
-      </div>
+      {!compact && (
+        <div className="hidden sm:block leading-tight">
+          <span className="block text-[1.05rem] font-semibold tracking-tight text-neutral-900 dark:text-white">
+            IELTS<span className="text-ielts-red">CBT</span>
+          </span>
+          <span className="block text-[0.65rem] font-medium uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">
+            Exam Preparation
+          </span>
+        </div>
+      )}
     </Link>
   );
 }

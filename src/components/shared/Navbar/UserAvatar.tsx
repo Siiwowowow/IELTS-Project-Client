@@ -22,7 +22,11 @@ const getInitials = (name?: string, email?: string): string => {
   return "U";
 };
 
-export default function UserAvatar() {
+interface UserAvatarProps {
+  compact?: boolean;
+}
+
+export default function UserAvatar({ compact = false }: UserAvatarProps) {
   const { user, setUser, logout } = useUser();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -117,14 +121,16 @@ export default function UserAvatar() {
         className="focus:outline-none"
         aria-label="Open user menu"
       >
-        <Avatar size="lg" className="cursor-pointer hover:opacity-90 transition-opacity">
+        <Avatar
+          size={compact ? "default" : "lg"}
+          className="cursor-pointer transition-opacity hover:opacity-90"
+        >
           {uploading ? (
             <AvatarFallback>
-              <div className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
             </AvatarFallback>
           ) : (
             <>
-              {/* ✅ image থাকলেই render করুন — empty string দেবেন না */}
               {user?.image && (
                 <AvatarImage
                   src={user.image}
@@ -135,18 +141,20 @@ export default function UserAvatar() {
               <AvatarFallback>{initials}</AvatarFallback>
             </>
           )}
-          <AvatarBadge>
-            <Camera strokeWidth={2.5} />
-          </AvatarBadge>
+          {!compact && (
+            <AvatarBadge>
+              <Camera strokeWidth={2.5} />
+            </AvatarBadge>
+          )}
         </Avatar>
       </button>
 
       {/* ✅ Dropdown */}
       {open && (
-        <div className="absolute right-0 top-12 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="nav-glass-dropdown absolute right-0 top-12 z-50 w-64 overflow-hidden rounded-xl">
 
           {/* User info header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
             <Avatar>
               {/* ✅ image থাকলেই render করুন */}
               {user?.image && (
@@ -176,7 +184,7 @@ export default function UserAvatar() {
             <Link
               href="/profile"
               onClick={() => setOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/80"
             >
               <User className="w-4 h-4 flex-shrink-0" />
               My profile
@@ -184,7 +192,7 @@ export default function UserAvatar() {
           </div>
 
           {/* Photo options */}
-          <div className="border-t border-gray-100 dark:border-gray-800 py-1">
+          <div className="border-t border-neutral-100 py-1 dark:border-neutral-800">
             <button
               onClick={() => {
                 fileInputRef.current?.click();
@@ -209,7 +217,7 @@ export default function UserAvatar() {
           </div>
 
           {/* Logout */}
-          <div className="border-t border-gray-100 dark:border-gray-800 py-1">
+          <div className="border-t border-neutral-100 py-1 dark:border-neutral-800">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors text-left"

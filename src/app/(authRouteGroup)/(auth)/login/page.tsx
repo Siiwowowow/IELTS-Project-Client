@@ -1,20 +1,21 @@
 import LoginForm from "@/components/Auth/LoginForm";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign In | IELTS Prep",
+  description: "Sign in to your IELTS computer-based practice account",
+};
 
 interface LoginParams {
   searchParams: Promise<{ redirect?: string; email?: string }>;
 }
 
-const LoginPage = async ({ searchParams }: LoginParams) => {
+export default async function LoginPage({ searchParams }: LoginParams) {
   const params = await searchParams;
-  const redirectPath = params.redirect;
-  const defaultEmail = params.email || "";  // 👈 যোগ করা হয়েছে
-
   return (
-    <LoginForm 
-      redirectPath={redirectPath}
-      defaultEmail={defaultEmail}  // 👈 যোগ করা হয়েছে
+    <LoginForm
+      redirectPath={params.redirect}
+      defaultEmail={params.email || ""}
     />
   );
-};
-
-export default LoginPage;
+}

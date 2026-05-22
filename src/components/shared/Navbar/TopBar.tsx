@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export default function TopBar() {
   const [visible, setVisible] = useState(true);
@@ -9,22 +10,24 @@ export default function TopBar() {
   if (!visible) return null;
 
   return (
-    <div className="bg-gray-900 dark:bg-gray-950 text-white text-xs sm:text-sm py-2 px-4 flex items-center justify-center relative">
-      <p className="text-center">
-        🎉 Free shipping on orders over $50!{" "}
-        <a
-          href="/deals"
-          className="underline font-medium hover:text-gray-300 transition-colors ml-1"
+    <div className="relative flex items-center justify-center bg-ielts-red px-4 py-2 text-xs text-white sm:text-sm">
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center pr-10">
+        <Sparkles className="hidden size-3.5 sm:inline sm:mr-0.5" aria-hidden />
+        <span>New computer-delivered mock tests — start your free trial.</span>
+        <Link
+          href="/register"
+          className="font-semibold underline underline-offset-2 transition-colors hover:text-white/90"
         >
-          Shop deals
-        </a>
+          Get started
+        </Link>
       </p>
       <button
+        type="button"
         onClick={() => setVisible(false)}
         aria-label="Dismiss announcement"
-        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="size-3.5" />
       </button>
     </div>
   );

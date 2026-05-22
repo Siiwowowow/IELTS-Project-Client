@@ -3,11 +3,14 @@
 import { useState, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import type { SearchBarProps } from "./types";
 
 export default function SearchBar({
-  placeholder = "Search products...",
+  placeholder = "Search practice, mock tests…",
   onSearch,
+  compact = false,
+  className,
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -29,13 +32,20 @@ export default function SearchBar({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`flex items-center w-full max-w-xl bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 gap-2 transition-all border ${
+      className={cn(
+        "flex items-center gap-2 rounded-xl border bg-neutral-50/80 px-3 transition-all duration-200 dark:bg-neutral-900/50",
+        compact ? "h-9 max-w-[200px]" : "h-10 w-full max-w-[240px]",
         focused
-          ? "border-blue-500 bg-white dark:bg-gray-700 shadow-sm"
-          : "border-transparent"
-      }`}
+          ? "border-ielts-red/30 bg-white shadow-sm ring-2 ring-ielts-red/10 dark:bg-neutral-900"
+          : "border-neutral-200/80 hover:border-neutral-300 dark:border-neutral-800",
+        className
+      )}
     >
-      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+      <Search
+        className="size-4 shrink-0 text-neutral-400"
+        strokeWidth={1.75}
+        aria-hidden
+      />
       <input
         ref={inputRef}
         type="search"
@@ -44,17 +54,17 @@ export default function SearchBar({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder:text-gray-400 outline-none min-w-0"
-        aria-label="Search products"
+        className="min-w-0 flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
+        aria-label="Search platform"
       />
       {query && (
         <button
           type="button"
           onClick={handleClear}
           aria-label="Clear search"
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          className="rounded-md p-0.5 text-neutral-400 transition-colors hover:text-neutral-600"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="size-3.5" />
         </button>
       )}
     </form>

@@ -1,117 +1,38 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/modules/auth/VerifyEmailForm.tsx
 "use client";
 
-import AppSubmitButton from "@/components/shared/form/AppSubmitButton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  resendOtpAction,
+  verifyEmailAction,
+} from "@/app/(authRouteGroup)/(auth)/verify-email/_action";
+import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
+import {
+  AuthAlert,
+  AuthButton,
+  AuthCard,
+  AuthOtpInput,
+} from "@/components/Auth/ui";
 import { verifyEmailZodSchema } from "@/zod/auth.validation";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
+import { ArrowLeft, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import AppField from "../shared/form/AppField";
-
-// Define the functions inline since the imports might not be working
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-async function verifyEmailAction(payload: { email: string; otp: string }) {
-  try {
-    const validated = verifyEmailZodSchema.safeParse({ otp: payload.otp });
-    if (!validated.success) {
-      return {
-        success: false,
-        message: validated.error.issues[0].message,
-      };
-    }
-
-    const res = await fetch(`${BASE_API_URL}/auth/verify-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: payload.email,
-        otp: payload.otp,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      return {
-        success: false,
-        message: data.message || "Email verification failed",
-      };
-    }
-
-    return {
-      success: true,
-      message: "Email verified successfully",
-      data: data.data,
-    };
-  } catch (error: any) {
-    console.error("Email verification error:", error);
-    return {
-      success: false,
-      message: error.message || "An error occurred during email verification",
-    };
-  }
-}
-
-async function resendOtpAction(email: string) {
-  try {
-    const res = await fetch(`${BASE_API_URL}/auth/forget-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      return {
-        success: false,
-        message: data.message || "Failed to resend OTP",
-      };
-    }
-
-    return {
-      success: true,
-      message: "OTP sent successfully",
-    };
-  } catch (error: any) {
-    console.error("Resend OTP error:", error);
-    return {
-      success: false,
-      message: error.message || "An error occurred while resending OTP",
-    };
-  }
-}
+import { Button } from "@/components/ui/button";
 
 const VerifyEmailForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailFromUrl = searchParams.get("email") || "";
+
   const [serverError, setServerError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [verified, setVerified] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   useEffect(() => {
-    if (!emailFromUrl) {
-      router.push("/login");
-    }
+    if (!emailFromUrl) router.push("/login");
   }, [emailFromUrl, router]);
 
   const { mutateAsync: verifyEmail, isPending: isVerifying } = useMutation({
@@ -120,47 +41,61 @@ const VerifyEmailForm = () => {
   });
 
   const { mutateAsync: resendOtp, isPending: isResending } = useMutation({
-    mutationFn: (email: string) => resendOtpAction(email),
+    mutationFn: resendOtpAction,
   });
 
   const form = useForm({
-    defaultValues: {
-      otp: "",
-    },
-
+    defaultValues: { otp: "" },
     onSubmit: async ({ value }) => {
       setServerError(null);
+      const parsed = verifyEmailZodSchema.safeParse(value);
+      if (!parsed.success) {
+        setServerError(parsed.error.issues[0]?.message ?? "Invalid code");
+        return;
+      }
+
       try {
-        const result = await verifyEmail({
+        const result = (await verifyEmail({
           email: emailFromUrl,
           otp: value.otp,
-        }) as any;
+        })) as { success: boolean; message?: string };
 
         if (!result.success) {
-          const errorMessage = result.message || "Verification failed";
-          setServerError(errorMessage);
-          toast.error(errorMessage);
+          setServerError(result.message ?? "Verification failed");
+          toast.error(result.message);
           return;
         }
 
-        toast.success("Email verified successfully! You can now login.");
-        router.push("/login");
-      } catch (error: any) {
-        const errorMessage = `Verification failed: ${error.message}`;
-        setServerError(errorMessage);
-        toast.error(errorMessage);
+        setVerified(true);
+        toast.success("Email verified successfully!");
+      } catch (error: unknown) {
+        const msg =
+          error instanceof Error ? error.message : "Verification failed";
+        setServerError(msg);
+        toast.error(msg);
       }
     },
   });
 
+  useEffect(() => {
+    if (!verified) return;
+    if (redirectCountdown <= 0) {
+      router.push("/login");
+      return;
+    }
+    const t = setTimeout(() => setRedirectCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [verified, redirectCountdown, router]);
+
   const handleResendOtp = async () => {
     if (countdown > 0) return;
-
     try {
-      const result = await resendOtp(emailFromUrl) as any;
-      
+      const result = (await resendOtp(emailFromUrl)) as {
+        success: boolean;
+        message?: string;
+      };
       if (result.success) {
-        toast.success("A new verification code has been sent to your email.");
+        toast.success("A new code has been sent to your email.");
         setCountdown(60);
         const timer = setInterval(() => {
           setCountdown((prev) => {
@@ -172,100 +107,119 @@ const VerifyEmailForm = () => {
           });
         }, 1000);
       } else {
-        toast.error(result.message || "Failed to send OTP. Please try again.");
+        toast.error(result.message ?? "Failed to resend");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to resend OTP");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to resend OTP"
+      );
     }
   };
 
-  if (!emailFromUrl) {
-    return null;
+  if (!emailFromUrl) return null;
+
+  if (verified) {
+    return (
+      <AuthSplitLayout
+        title="Email verified!"
+        subtitle="Your account is ready. Start practicing for your target band."
+        compact
+      >
+        <AuthCard className="text-center">
+          <div className="auth-success-pop mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl bg-emerald-50">
+            <MailCheck className="size-10 text-emerald-600" />
+          </div>
+          <AuthAlert variant="success">
+            Welcome to IELTS Prep — your full practice suite is unlocked.
+          </AuthAlert>
+          <AuthButton className="mt-6" onClick={() => router.push("/login")}>
+            Continue to login
+          </AuthButton>
+          <p className="mt-4 text-xs text-neutral-400">
+            Redirecting in {redirectCountdown}s...
+          </p>
+        </AuthCard>
+      </AuthSplitLayout>
+    );
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
-        <CardDescription>
-          We&lsquo;ve sent a verification code to{" "}
-          <span className="font-medium">{emailFromUrl}</span>
-        </CardDescription>
-      </CardHeader>
+    <AuthSplitLayout
+      title="Verify your email"
+      subtitle={
+        <>
+          Enter the 6-digit code we sent to{" "}
+          <span className="font-medium text-neutral-800">{emailFromUrl}</span>
+        </>
+      }
+      compact
+    >
+      <AuthCard>
+        <div className="mb-6 flex justify-center">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-[#fef2f2]">
+            <MailCheck className="auth-mail-icon size-8 text-[#DC2626]" />
+          </div>
+        </div>
 
-      <CardContent>
         <form
-          method="POST"
-          action="#"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            e.stopPropagation();
             form.handleSubmit();
           }}
-          className="space-y-4"
+          className="space-y-5"
         >
-          <form.Field
-            name="otp"
-            validators={{ onChange: verifyEmailZodSchema.shape.otp }}
+          <AuthOtpInput
+            value={form.state.values.otp}
+            onChange={(v) => {
+              form.setFieldValue("otp", v);
+              if (serverError) setServerError(null);
+            }}
+          />
+
+          {serverError && <AuthAlert variant="error">{serverError}</AuthAlert>}
+
+          <form.Subscribe
+            selector={(s) => [s.canSubmit, s.isSubmitting] as const}
           >
-            {(field) => (
-              <AppField
-                field={field}
-                label="Verification Code"
-                type="text"
-                placeholder="Enter 6-digit code"
-                className="text-center text-2xl tracking-widest"
-              />
-            )}
-          </form.Field>
-
-          {serverError && (
-            <Alert variant={"destructive"}>
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          )}
-
-          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
             {([canSubmit, isSubmitting]) => (
-              <AppSubmitButton
-                isPending={isSubmitting || isVerifying}
-                pendingLabel="Verifying..."
-                disabled={!canSubmit}
+              <AuthButton
+                type="submit"
+                isLoading={isSubmitting || isVerifying}
+                loadingLabel="Verifying..."
+                disabled={!canSubmit || form.state.values.otp.length < 6}
               >
-                Verify Email
-              </AppSubmitButton>
+                Verify email
+              </AuthButton>
             )}
           </form.Subscribe>
-        </form>
 
-        <div className="mt-4 text-center">
-          <Button
-            variant="link"
-            onClick={handleResendOtp}
-            disabled={isResending || countdown > 0}
-            className="text-sm"
-          >
-            {isResending
-              ? "Sending..."
-              : countdown > 0
-              ? `Resend code in ${countdown}s`
-              : "Didn't receive the code? Resend"}
-          </Button>
-        </div>
-      </CardContent>
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              onClick={handleResendOtp}
+              disabled={isResending || countdown > 0}
+              className="text-sm text-[#DC2626]"
+            >
+              {isResending
+                ? "Sending..."
+                : countdown > 0
+                  ? `Resend code in ${countdown}s`
+                  : "Didn't receive the code? Resend"}
+            </Button>
+          </div>
 
-      <CardFooter className="justify-center border-t pt-4">
-        <p className="text-sm text-muted-foreground">
           <Link
             href="/login"
-            className="text-primary font-medium hover:underline underline-offset-4"
+            className="flex items-center justify-center gap-1 text-sm font-medium text-neutral-500 hover:text-[#DC2626]"
           >
-            Back to Login
+            <ArrowLeft className="size-4" />
+            Back to login
           </Link>
-        </p>
-      </CardFooter>
-    </Card>
+        </form>
+      </AuthCard>
+    </AuthSplitLayout>
   );
 };
 

@@ -1,66 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import Link from "next/link";
+import { Menu } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
+import { Button } from "@/components/ui/button";
 import Logo from "./Logo";
-import AuthButtons from "./AuthButtons";
 import UserAvatar from "./UserAvatar";
-import { getDashboardRoute } from "./utils";
-import type { NavLink } from "./types";
-import NavLinks from "./Navlinks ";
 
 interface Props {
-  publicLinks: NavLink[];
+  onMenuOpen: () => void;
+  drawerOpen?: boolean;
 }
 
-export default function MobileNav({
-  publicLinks,
-}: Props) {
+export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
   const { user } = useUser();
-  const [open, setOpen] = useState(false);
-  const dashboardRoute = getDashboardRoute(user?.role);
-
-  const allLinks: NavLink[] = [
-    ...publicLinks,
-    ...(user
-      ? [{ label: "Dashboard", href: dashboardRoute, icon: LayoutDashboard }]
-      : []),
-  ];
-
-  const close = () => setOpen(false);
 
   return (
-    <div className="md:hidden w-full bg-white dark:bg-gray-950">
-      {/* Mobile top bar */}
-      <div className="flex items-center justify-between h-16 px-4">
-        <Logo />
-        <div className="flex items-center gap-3">
-          {user && <UserAvatar />}
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-            aria-label="Toggle navigation menu"
-            aria-expanded={open}
+    <div className="flex h-16 w-full items-center justify-between gap-3 px-4 md:hidden">
+      <Logo compact />
+
+      <div className="flex items-center gap-2">
+        {user ? (
+          <UserAvatar compact />
+        ) : (
+          <Button
+            size="sm"
+            className="h-9 rounded-lg bg-ielts-red px-4 text-sm font-medium text-white shadow-sm hover:bg-ielts-red-dark"
+            asChild
           >
-            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
+            <Link href="/register">Sign up</Link>
+          </Button>
+        )}
+
+        <button
+          type="button"
+          onClick={onMenuOpen}
+          aria-label="Open navigation menu"
+          aria-expanded={drawerOpen}
+          aria-controls="nav-mobile-drawer"
+          className="flex size-10 items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 transition-colors hover:border-ielts-red/30 hover:bg-ielts-red-light hover:text-ielts-red dark:border-neutral-700"
+        >
+          <Menu className="size-5" strokeWidth={1.75} />
+        </button>
       </div>
-
-      {/* Slide-down drawer */}
-      {open && (
-        <div className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-4 space-y-4 shadow-inner">
-          <NavLinks links={allLinks} onLinkClick={close} orientation="vertical" />
-
-          {/* Auth */}
-          {!user && (
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-              <AuthButtons onLinkClick={close} orientation="vertical" />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

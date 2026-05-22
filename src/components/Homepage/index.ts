@@ -1,0 +1,13 @@
+export { Homepage } from "./Homepage";
+export { HeroSection } from "./sections/HeroSection";
+export { TrustStatsSection } from "./sections/TrustStatsSection";
+export { FeatureCarouselSection } from "./sections/FeatureCarouselSection";
+export { CBTExperienceSection } from "./sections/CBTExperienceSection";
+export { PracticeModulesSection } from "./sections/PracticeModulesSection";
+export { AnalyticsPreviewSection } from "./sections/AnalyticsPreviewSection";
+export { AIFeedbackSection } from "./sections/AIFeedbackSection";
+export { TestimonialsSection } from "./sections/TestimonialsSection";
+export { PricingSection } from "./sections/PricingSection";
+export { FAQSection } from "./sections/FAQSection";
+export { FinalCTASection } from "./sections/FinalCTASection";
+export { FooterSection } from "./sections/FooterSection";
