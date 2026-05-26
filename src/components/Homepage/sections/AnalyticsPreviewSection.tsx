@@ -80,9 +80,9 @@ export function AnalyticsPreviewSection() {
                   +1.5 overall
                 </span>
               </div>
-              <div className="h-[220px] w-full">
+              <div className="relative h-[220px] w-full">
                 <ClientOnly fallback={<ChartSkeleton className="h-full w-full" />}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 220 }}>
                     <AreaChart data={bandTrend}>
                       <defs>
                         <linearGradient id="bandGrad" x1="0" y1="0" x2="0" y2="1">
@@ -127,9 +127,9 @@ export function AnalyticsPreviewSection() {
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <GlassCard className="p-6">
               <h3 className="mb-4 font-semibold text-neutral-900">Weekly Study Hours</h3>
-              <div className="h-[180px]">
+              <div className="relative h-[180px] w-full">
                 <ClientOnly fallback={<ChartSkeleton className="h-full w-full" />}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 180 }}>
                     <BarChart data={weeklyStudy}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                       <XAxis dataKey="day" tick={{ fontSize: 11 }} />

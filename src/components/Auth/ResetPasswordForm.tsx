@@ -175,7 +175,7 @@ const ResetPasswordForm = () => {
           <AuthOtpInput
             value={form.state.values.otp}
             onChange={(v) => form.setFieldValue("otp", v)}
-            error={otpError}
+            error={!!otpError}
           />
 
           <form.Field

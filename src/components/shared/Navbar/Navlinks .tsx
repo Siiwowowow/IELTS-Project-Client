@@ -77,7 +77,7 @@ export default function NavLinks({
           const Icon = link.icon;
           return (
             <Link
-              key={link.href}
+              key={`link-${link.href}`}
               href={link.href}
               onClick={onLinkClick}
               aria-current={active ? "page" : undefined}
@@ -123,7 +123,7 @@ export default function NavLinks({
         const active = isActivePath(pathname, item.href);
         return (
           <NavUnderlineLink
-            key={item.href}
+            key={`item-${item.href}`}
             label={item.label}
             href={item.href}
             active={active}

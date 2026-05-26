@@ -58,16 +58,6 @@ export default function DesktopNav({
           {user ? (
             <>
               <UserAvatar />
-              <Button
-                size="sm"
-                className="hidden h-9 rounded-lg bg-ielts-red px-4 font-medium text-white shadow-sm hover:bg-ielts-red-dark sm:inline-flex"
-                asChild
-              >
-                <Link href={dashboardRoute}>
-                  <LayoutDashboard className="size-4" />
-                  Dashboard
-                </Link>
-              </Button>
             </>
           ) : (
             <AuthButtons />

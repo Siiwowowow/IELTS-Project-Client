@@ -1,6 +1,6 @@
 // src/lib/authUtils.ts
 
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SELLER" | "CUSTOMER";
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "STUDENT";
 
 export const authRoutes = [
   "/login",
@@ -19,21 +19,21 @@ export type RouteConfig = {
   pattern: RegExp[];
 };
 
-// Customer Routes
-export const customerRoutes: RouteConfig = {
-  exact: ["/dashboard", "/cart", "/checkout", "/orders", "/wishlist", "/profile"],
-  pattern: [/^\/orders\/.*/, /^\/profile\/.*/],
+// Student Routes
+export const studentRoutes: RouteConfig = {
+  exact: ["/student/dashboard", "/student/courses", "/student/profile"],
+  pattern: [/^\/student\/.*/],
 };
 
-// Seller Routes
-export const sellerRoutes: RouteConfig = {
-  exact: ["/seller/dashboard", "/seller/medicines", "/seller/orders", "/seller/profile"],
-  pattern: [/^\/seller\/.*/],
+// Teacher Routes
+export const teacherRoutes: RouteConfig = {
+  exact: ["/teacher/dashboard", "/teacher/courses"],
+  pattern: [/^\/teacher\/.*/],
 };
 
 // Admin Routes
 export const adminRoutes: RouteConfig = {
-  exact: ["/admin/dashboard", "/admin/users", "/admin/orders", "/admin/categories"],
+  exact: ["/admin/dashboard", "/admin/users", "/admin/settings", "/admin/courses"],
   pattern: [/^\/admin\/.*/],
 };
 
@@ -50,10 +50,10 @@ export const isRouteMatches = (pathname: string, routes: RouteConfig): boolean =
 
 export const getRouteOwner = (
   pathname: string
-): "ADMIN" | "SELLER" | "CUSTOMER" | "COMMON" | null => {
+): "ADMIN" | "TEACHER" | "STUDENT" | "COMMON" | null => {
   if (isRouteMatches(pathname, adminRoutes)) return "ADMIN";
-  if (isRouteMatches(pathname, sellerRoutes)) return "SELLER";
-  if (isRouteMatches(pathname, customerRoutes)) return "CUSTOMER";
+  if (isRouteMatches(pathname, teacherRoutes)) return "TEACHER";
+  if (isRouteMatches(pathname, studentRoutes)) return "STUDENT";
   if (isRouteMatches(pathname, commonProtectedRoutes)) return "COMMON";
   return null;
 };
@@ -64,10 +64,10 @@ export const getDefaultDashboardRoute = (role: UserRole): string => {
     case "SUPER_ADMIN":
     case "ADMIN":
       return "/admin/dashboard";
-    case "SELLER":
-      return "/seller/dashboard";
-    case "CUSTOMER":
-      return "/dashboard";
+    case "TEACHER":
+      return "/teacher/dashboard";
+    case "STUDENT":
+      return "/student/dashboard";
     default:
       return "/";
   }

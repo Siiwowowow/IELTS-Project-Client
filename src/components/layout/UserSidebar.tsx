@@ -8,6 +8,8 @@ import {
   IconShoppingBag,
   IconHeart,
   IconLogout,
+  IconBook2,
+  
 } from "@tabler/icons-react"
 
 import {
@@ -31,6 +33,11 @@ const userItems = [
     title: "Dashboard",
     url: "/user/dashboard",
     icon: IconLayoutDashboard,
+  },
+  {
+    title: "Reading Practice",
+    url: "/practice/reading",
+    icon: IconBook2,
   },
   {
     title: "My Profile",

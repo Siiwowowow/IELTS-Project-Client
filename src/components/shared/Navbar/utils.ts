@@ -5,10 +5,12 @@ export const getDashboardRoute = (role?: string): string => {
     case "SUPER_ADMIN":
     case "ADMIN":
       return "/admin/dashboard";
-    case "SELLER":
-      return "/seller/dashboard";
-    case "CUSTOMER":
-      return "/dashboard";
+    case "ADMIN":
+      return "/admin/dashboard";
+    case "TEACHER":
+      return "/teacher/dashboard";
+    case "STUDENT":
+      return "/student/dashboard";
     default:
       return "/";
   }

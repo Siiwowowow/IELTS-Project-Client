@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 type AuthOtpInputProps = {
   value: string;
   onChange: (value: string) => void;
-  error?: string | null;
+  error?: boolean;
   label?: string;
   className?: string;
 };

@@ -30,9 +30,12 @@ const VerifyEmailForm = () => {
   const [countdown, setCountdown] = useState(0);
   const [verified, setVerified] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [otpError, setOtpError] = useState(false);
 
   useEffect(() => {
-    if (!emailFromUrl) router.push("/login");
+    if (!emailFromUrl) {
+      router.push("/login");
+    }
   }, [emailFromUrl, router]);
 
   const { mutateAsync: verifyEmail, isPending: isVerifying } = useMutation({
@@ -48,9 +51,12 @@ const VerifyEmailForm = () => {
     defaultValues: { otp: "" },
     onSubmit: async ({ value }) => {
       setServerError(null);
+      setOtpError(false);
+      
       const parsed = verifyEmailZodSchema.safeParse(value);
       if (!parsed.success) {
         setServerError(parsed.error.issues[0]?.message ?? "Invalid code");
+        setOtpError(true);
         return;
       }
 
@@ -62,6 +68,7 @@ const VerifyEmailForm = () => {
 
         if (!result.success) {
           setServerError(result.message ?? "Verification failed");
+          setOtpError(true);
           toast.error(result.message);
           return;
         }
@@ -72,31 +79,41 @@ const VerifyEmailForm = () => {
         const msg =
           error instanceof Error ? error.message : "Verification failed";
         setServerError(msg);
+        setOtpError(true);
         toast.error(msg);
       }
     },
   });
 
+  // Handle redirect after verification
   useEffect(() => {
     if (!verified) return;
+    
     if (redirectCountdown <= 0) {
       router.push("/login");
       return;
     }
-    const t = setTimeout(() => setRedirectCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    
+    const timer = setTimeout(() => setRedirectCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [verified, redirectCountdown, router]);
 
   const handleResendOtp = async () => {
     if (countdown > 0) return;
+    
     try {
       const result = (await resendOtp(emailFromUrl)) as {
         success: boolean;
         message?: string;
       };
+      
       if (result.success) {
         toast.success("A new code has been sent to your email.");
         setCountdown(60);
+        setOtpError(false);
+        setServerError(null);
+        form.setFieldValue("otp", ""); // Clear OTP field
+        
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
@@ -107,7 +124,7 @@ const VerifyEmailForm = () => {
           });
         }, 1000);
       } else {
-        toast.error(result.message ?? "Failed to resend");
+        toast.error(result.message ?? "Failed to resend code");
       }
     } catch (error: unknown) {
       toast.error(
@@ -116,8 +133,20 @@ const VerifyEmailForm = () => {
     }
   };
 
-  if (!emailFromUrl) return null;
+  // Show loading state
+  if (!emailFromUrl) {
+    return (
+      <AuthSplitLayout title="Loading..." subtitle="Please wait" compact>
+        <AuthCard>
+          <div className="flex justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
+          </div>
+        </AuthCard>
+      </AuthSplitLayout>
+    );
+  }
 
+  // Show success state after verification
   if (verified) {
     return (
       <AuthSplitLayout
@@ -169,15 +198,25 @@ const VerifyEmailForm = () => {
           }}
           className="space-y-5"
         >
-          <AuthOtpInput
-            value={form.state.values.otp}
-            onChange={(v) => {
-              form.setFieldValue("otp", v);
-              if (serverError) setServerError(null);
-            }}
-          />
+          <form.Field name="otp">
+            {(field) => (
+              <AuthOtpInput
+                value={field.state.value}
+                onChange={(v) => {
+                  field.handleChange(v);
+                  if (serverError) {
+                    setServerError(null);
+                    setOtpError(false);
+                  }
+                }}
+                error={otpError}
+              />
+            )}
+          </form.Field>
 
-          {serverError && <AuthAlert variant="error">{serverError}</AuthAlert>}
+          {serverError && (
+            <AuthAlert variant="error">{serverError}</AuthAlert>
+          )}
 
           <form.Subscribe
             selector={(s) => [s.canSubmit, s.isSubmitting] as const}
@@ -187,7 +226,7 @@ const VerifyEmailForm = () => {
                 type="submit"
                 isLoading={isSubmitting || isVerifying}
                 loadingLabel="Verifying..."
-                disabled={!canSubmit || form.state.values.otp.length < 6}
+                disabled={!canSubmit || form.getFieldValue("otp").length < 6}
               >
                 Verify email
               </AuthButton>
@@ -200,19 +239,19 @@ const VerifyEmailForm = () => {
               variant="link"
               onClick={handleResendOtp}
               disabled={isResending || countdown > 0}
-              className="text-sm text-[#DC2626]"
+              className="text-sm text-[#DC2626] hover:text-[#b91c1c]"
             >
               {isResending
                 ? "Sending..."
                 : countdown > 0
-                  ? `Resend code in ${countdown}s`
-                  : "Didn't receive the code? Resend"}
+                ? `Resend code in ${countdown}s`
+                : "Didn't receive the code? Resend"}
             </Button>
           </div>
 
           <Link
             href="/login"
-            className="flex items-center justify-center gap-1 text-sm font-medium text-neutral-500 hover:text-[#DC2626]"
+            className="flex items-center justify-center gap-1 text-sm font-medium text-neutral-500 transition-colors hover:text-[#DC2626]"
           >
             <ArrowLeft className="size-4" />
             Back to login

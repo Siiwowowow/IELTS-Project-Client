@@ -15,8 +15,11 @@ export function AuthMainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = AUTH_PREFIXES.some((p) => pathname?.startsWith(p));
   const isHomePage = pathname === "/";
+  
+  // Hide global navbar/footer during active exams to simulate the real computer-based IELTS environment
+  const isExamSimulatorPage = pathname?.startsWith("/practice/reading/") && !pathname?.includes("/review/");
 
-  if (isAuthPage) {
+  if (isAuthPage || isExamSimulatorPage) {
     return <>{children}</>;
   }
 

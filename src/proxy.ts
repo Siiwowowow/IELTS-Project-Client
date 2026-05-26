@@ -147,14 +147,19 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    if (routeOwner === "SELLER") {
-      if (userRole !== "SELLER") {
+    if (routeOwner === "ADMIN") {
+      if (userRole !== "ADMIN") {
+        return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+      }
+    }
+    if (routeOwner === "TEACHER") {
+      if (userRole !== "TEACHER") {
         return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
       }
     }
 
-    if (routeOwner === "CUSTOMER") {
-      if (userRole !== "CUSTOMER") {
+    if (routeOwner === "STUDENT") {
+      if (userRole !== "STUDENT") {
         return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
       }
     }

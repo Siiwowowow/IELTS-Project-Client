@@ -11,7 +11,7 @@ import {
   AuthPasswordField,
   AuthSocialButtons,
 } from "@/components/Auth/ui";
-import { UserRole } from "@/lib/authUtils";
+import { UserRole, getDefaultDashboardRoute } from "@/lib/authUtils";
 import { useUser } from "@/hooks/useUser";
 import { ILoginPayload, loginZodSchema } from "@/zod/auth.validation";
 import { useForm } from "@tanstack/react-form";
@@ -75,7 +75,7 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
             router.push(result.redirectUrl);
           } else {
             const role = result.user?.role as UserRole;
-            router.push(getRoleBasedRedirect(role));
+            router.push(getDefaultDashboardRoute(role));
           }
         }, 800);
       } catch (error: unknown) {
@@ -92,20 +92,6 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
       if (!defaultEmail) form.setFieldValue("email", saved);
     }
   }, [defaultEmail, form]);
-
-  const getRoleBasedRedirect = (role: UserRole): string => {
-    switch (role) {
-      case "SUPER_ADMIN":
-      case "ADMIN":
-        return "/admin/dashboard";
-      case "SELLER":
-        return "/seller/dashboard";
-      case "CUSTOMER":
-        return "/user/dashboard";
-      default:
-        return "/";
-    }
-  };
 
   return (
     <AuthSplitLayout
