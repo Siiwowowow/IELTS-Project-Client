@@ -12,11 +12,11 @@ export function AuthBrandPanel() {
   return (
     <div className="relative flex h-full min-h-[280px] flex-col justify-between overflow-hidden p-8 lg:p-12">
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]"
+        className="pointer-events-none absolute inset-0 bg-linear-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#DC2626]/40 via-transparent to-[#DC2626]/10"
+        className="pointer-events-none absolute inset-0 bg-linear-to-t from-[#DC2626]/40 via-transparent to-[#DC2626]/10"
         aria-hidden
       />
       <div
@@ -63,7 +63,7 @@ export function AuthBrandPanel() {
                 <span className="font-mono font-medium text-[#DC2626]">12:34</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-                <div className="h-full w-[40%] rounded-full bg-gradient-to-r from-[#DC2626] to-[#ef4444]" />
+                <div className="h-full w-[40%] rounded-full bg-linear-to-r from-[#DC2626] to-[#ef4444]" />
               </div>
               <p className="text-sm font-medium text-neutral-800">
                 Complete the notes below. Write{" "}
@@ -81,7 +81,7 @@ export function AuthBrandPanel() {
                     key={label}
                     className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
                       active
-                        ? "border-[#DC2626]/30 bg-[#fef2f2] text-[#DC2626]"
+                        ? "border-[#DC2626]/30 bg-ielts-red-light text-[#DC2626]"
                         : "border-neutral-100 bg-neutral-50 text-neutral-400"
                     }`}
                   >

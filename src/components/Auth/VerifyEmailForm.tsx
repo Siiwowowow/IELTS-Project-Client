@@ -185,7 +185,7 @@ const VerifyEmailForm = () => {
     >
       <AuthCard>
         <div className="mb-6 flex justify-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-[#fef2f2]">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-ielts-red-light">
             <MailCheck className="auth-mail-icon size-8 text-[#DC2626]" />
           </div>
         </div>
@@ -239,7 +239,7 @@ const VerifyEmailForm = () => {
               variant="link"
               onClick={handleResendOtp}
               disabled={isResending || countdown > 0}
-              className="text-sm text-[#DC2626] hover:text-[#b91c1c]"
+              className="text-sm text-[#DC2626] hover:text-ielts-red-dark"
             >
               {isResending
                 ? "Sending..."

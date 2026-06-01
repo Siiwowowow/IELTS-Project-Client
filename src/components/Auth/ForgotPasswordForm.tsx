@@ -77,7 +77,7 @@ const ForgotPasswordForm = () => {
         compact
       >
         <AuthCard className="text-center">
-          <div className="auth-success-pop mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl bg-[#fef2f2]">
+          <div className="auth-success-pop mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl bg-ielts-red-light">
             <Mail className="auth-mail-icon size-10 text-[#DC2626]" />
           </div>
           <p className="text-sm text-neutral-600">

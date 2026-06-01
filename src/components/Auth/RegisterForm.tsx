@@ -293,7 +293,7 @@ const RegisterForm = () => {
                           className={cn(
                             "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all",
                             field.state.value === value
-                              ? "border-[#DC2626] bg-[#fef2f2] ring-2 ring-[#DC2626]/10"
+                              ? "border-[#DC2626] bg-ielts-red-light ring-2 ring-[#DC2626]/10"
                               : "border-neutral-200 hover:border-neutral-300"
                           )}
                         >
