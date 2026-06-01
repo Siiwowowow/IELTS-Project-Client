@@ -28,7 +28,7 @@ export default function NotificationsButton({
         className
       )}
     >
-      <Bell className="size-[1.125rem]" strokeWidth={1.75} />
+      <Bell className="size-4.5" strokeWidth={1.75} />
       {hasUnread && (
         <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-red-600 ring-2 ring-red-600">
           {count > 9 ? "9+" : count}

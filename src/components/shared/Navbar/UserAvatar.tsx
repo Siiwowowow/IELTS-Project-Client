@@ -142,7 +142,7 @@ export default function UserAvatar({
           "
         >
           {/* Header */}
-          <div className="relative overflow-hidden border-b border-gray-100 bg-gradient-to-r from-red-50 via-white to-red-50 px-5 py-5">
+          <div className="relative overflow-hidden border-b border-gray-100 bg-linear-to-r from-red-50 via-white to-red-50 px-5 py-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.08),transparent)]" />
 
             <div className="relative flex items-center gap-4">
