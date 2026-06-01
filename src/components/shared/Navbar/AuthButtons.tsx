@@ -25,7 +25,7 @@ export default function AuthButtons({
       {showDashboard ? (
         <Button
           size="sm"
-          className="h-9 rounded-lg bg-ielts-red px-4 text-white shadow-sm hover:bg-ielts-red-dark font-medium"
+          className="h-9 rounded-lg bg-white px-4 text-red-600 shadow-sm hover:bg-red-50 font-bold"
           asChild
         >
           <Link href={dashboardHref} onClick={onLinkClick}>
@@ -37,7 +37,7 @@ export default function AuthButtons({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 rounded-lg px-4 font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="h-9 rounded-lg px-4 font-bold text-white hover:bg-white/10"
             asChild
           >
             <Link href="/login" onClick={onLinkClick}>
@@ -47,7 +47,7 @@ export default function AuthButtons({
 
           <Button
             size="sm"
-            className="h-9 rounded-lg bg-ielts-red px-4 font-medium text-white shadow-sm hover:bg-ielts-red-dark"
+            className="h-9 rounded-lg bg-white px-4 font-bold text-red-600 shadow-sm hover:bg-red-50"
             asChild
           >
             <Link href="/register" onClick={onLinkClick}>

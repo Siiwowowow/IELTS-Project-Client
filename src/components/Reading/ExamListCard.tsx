@@ -6,71 +6,72 @@ import {
   IconClock,
   IconArrowRight,
   IconFileText,
+  IconLock,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import { useUser } from "@/hooks/useUser";
 
 interface Props {
   exam: IExam;
 }
 
 export function ExamListCard({ exam }: Props) {
+  const { user } = useUser();
   const passageCount = exam._count?.passages ?? exam.passages?.length ?? 0;
+  
+  // If not logged in, clicking goes to login. 
+  // We can just set the href conditionally.
+  const href = user ? `/practice/reading/${exam.id}` : `/login`;
 
   return (
-    <Link href={`/practice/reading/${exam.id}`} className="block group">
-      <div className="relative bg-white border border-gray-200 rounded-2xl p-6 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/8 transition-all duration-300 overflow-hidden h-full">
+    <Link href={href} className="block group h-full">
+      <div className="relative bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-red-600 transition-all duration-300 overflow-hidden h-full flex flex-col justify-between group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        
+        {/* Subtle top accent */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-red-600 transform -translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
 
-        {/* Top gradient line on hover */}
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-red-400 to-orange-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-
-        {/* Background glow */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/[0.03] group-hover:to-red-50/40 transition-all duration-500 rounded-2xl" />
-
-        <div className="relative space-y-4">
+        <div className="space-y-5">
           {/* Header row */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
-                <IconBook size={22} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors leading-snug text-sm">
-                  {exam.title}
-                </h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <IconFileText size={12} className="text-gray-400" />
-                  <span className="text-xs text-gray-400">
-                    {passageCount} passage{passageCount !== 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-900 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+              <IconBook size={24} />
             </div>
-            <IconArrowRight
-              size={18}
-              className="shrink-0 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 mt-1"
-            />
+            
+            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-50 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
+              {!user ? <IconLock size={16} /> : <IconArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />}
+            </div>
           </div>
 
-          {/* Description */}
-          {exam.description && (
-            <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-              {exam.description}
-            </p>
+          <div>
+            <h3 className="text-lg font-black text-black leading-snug group-hover:text-red-600 transition-colors line-clamp-2">
+              {exam.title}
+            </h3>
+            {exam.description && (
+              <p className="mt-2 text-sm font-medium text-gray-500 line-clamp-2">
+                {exam.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+              <IconFileText size={14} />
+              <span>{passageCount} Part{passageCount !== 1 ? "s" : ""}</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+              <IconClock size={14} />
+              <span>{exam.duration} Min</span>
+            </span>
+          </div>
+          
+          {!user && (
+            <span className="text-[10px] font-bold uppercase tracking-widest text-red-600 bg-red-50 px-2 py-1 rounded-md">
+              Login to start
+            </span>
           )}
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            <span className="flex items-center gap-1.5 text-xs text-gray-500">
-              <IconClock size={13} className="text-primary/60" />
-              <span className="font-medium">{exam.duration} min</span>
-            </span>
-            <span className="text-xs text-gray-400">
-              {formatDistanceToNow(new Date(exam.createdAt), {
-                addSuffix: true,
-              })}
-            </span>
-          </div>
         </div>
       </div>
     </Link>

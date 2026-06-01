@@ -1,6 +1,6 @@
 "use client";
 
-import { registerAction } from "@/app/(authRouteGroup)/(auth)/register/_action";
+import { registerAction } from "@/app/(auth)/(auth)/register/_action";
 import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
   AuthAlert,

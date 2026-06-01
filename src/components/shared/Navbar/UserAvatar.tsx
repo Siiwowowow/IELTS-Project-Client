@@ -3,22 +3,31 @@
 import { useUser } from "@/hooks/useUser";
 import { useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { Camera, Trash2, LogOut, User } from "lucide-react";
+import {
+  LogOut,
+  User as UserIcon,
+  Settings,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import {
   Avatar,
   AvatarImage,
   AvatarFallback,
-  AvatarBadge,
 } from "@/components/ui/avatar";
-import { removeProfilePhotoService, updateMyProfileService } from "@/services/user.services";
 
 const getInitials = (name?: string, email?: string): string => {
   if (name) {
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   }
+
   if (email) return email[0].toUpperCase();
+
   return "U";
 };
 
@@ -26,16 +35,17 @@ interface UserAvatarProps {
   compact?: boolean;
 }
 
-export default function UserAvatar({ compact = false }: UserAvatarProps) {
-  const { user, setUser, logout } = useUser();
+export default function UserAvatar({
+  compact = false,
+}: UserAvatarProps) {
+  const { user, logout } = useUser();
+
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+
   const initials = getInitials(user?.name, user?.email);
 
-  // ✅ Outside click এ dropdown বন্ধ
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -45,185 +55,205 @@ export default function UserAvatar({ compact = false }: UserAvatarProps) {
         setOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
   }, []);
 
-  // ✅ Photo upload
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be less than 5MB");
-      return;
-    }
-
-    setUploading(true);
-    setOpen(false);
-    const toastId = toast.loading("Uploading photo...");
-
-    const formData = new FormData();
-    formData.append("profilePhoto", file);
-
-    const result = await updateMyProfileService(formData);
-
-    if (result.success) {
-      toast.success("Profile photo updated!", { id: toastId });
-      setUser({ ...user!, image: result.data?.image });
-      router.refresh();
-    } else {
-      toast.error(result.message || "Upload failed", { id: toastId });
-    }
-
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  // ✅ Photo remove
-  const handleRemovePhoto = async () => {
-    setOpen(false);
-    const toastId = toast.loading("Removing photo...");
-    const result = await removeProfilePhotoService();
-
-    if (result.success) {
-      toast.success("Photo removed!", { id: toastId });
-      setUser({ ...user!, image: undefined });
-      router.refresh();
-    } else {
-      toast.error(result.message || "Failed to remove photo", { id: toastId });
-    }
-  };
-
-  // ✅ Logout
   const handleLogout = async () => {
     setOpen(false);
-    toast.loading("Logging out...", { id: "logout" });
+
+    toast.loading("Logging out...", {
+      id: "logout",
+    });
+
     await logout();
-    toast.success("Logged out successfully!", { id: "logout" });
+
+    toast.success("Logged out successfully!", {
+      id: "logout",
+    });
   };
 
   return (
     <div ref={dropdownRef} className="relative">
-
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-
-      {/* ✅ Avatar button */}
+      {/* Avatar Trigger */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="focus:outline-none"
+        onClick={() => setOpen((prev) => !prev)}
         aria-label="Open user menu"
+        className="
+          rounded-full
+          ring-2
+          ring-transparent
+          transition-all
+          duration-300
+          hover:ring-red-200
+          hover:scale-105
+          focus:outline-none
+        "
       >
         <Avatar
           size={compact ? "default" : "lg"}
-          className="cursor-pointer transition-opacity hover:opacity-90"
+          className="
+            border-2
+            border-white
+            shadow-md
+            transition-all
+            duration-300
+            hover:shadow-lg
+          "
         >
-          {uploading ? (
-            <AvatarFallback>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            </AvatarFallback>
-          ) : (
-            <>
-              {user?.image && (
-                <AvatarImage
-                  src={user.image}
-                  alt={user?.name || "User"}
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              <AvatarFallback>{initials}</AvatarFallback>
-            </>
+          {user?.image && (
+            <AvatarImage
+              src={user.image}
+              alt={user?.name || "User"}
+              referrerPolicy="no-referrer"
+            />
           )}
-          {!compact && (
-            <AvatarBadge>
-              <Camera strokeWidth={2.5} />
-            </AvatarBadge>
-          )}
+
+          <AvatarFallback className="bg-red-50 text-red-600 font-bold">
+            {initials}
+          </AvatarFallback>
         </Avatar>
       </button>
 
-      {/* ✅ Dropdown */}
+      {/* Dropdown */}
       {open && (
-        <div className="nav-glass-dropdown absolute right-0 top-12 z-50 w-64 overflow-hidden rounded-xl">
+        <div
+          className="
+            absolute
+            right-0
+            top-14
+            z-50
+            w-72
+            overflow-hidden
+            rounded-2xl
+            border
+            border-white/20
+            bg-white/90
+            backdrop-blur-xl
+            shadow-[0_20px_60px_-15px_rgba(0,0,0,0.25)]
+            animate-in
+            fade-in-0
+            zoom-in-95
+            duration-200
+          "
+        >
+          {/* Header */}
+          <div className="relative overflow-hidden border-b border-gray-100 bg-gradient-to-r from-red-50 via-white to-red-50 px-5 py-5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.08),transparent)]" />
 
-          {/* User info header */}
-          <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
-            <Avatar>
-              {/* ✅ image থাকলেই render করুন */}
-              {user?.image && (
-                <AvatarImage
-                  src={user.image}
-                  alt={user?.name || "User"}
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              <AvatarFallback className="bg-gray-200 text-gray-700">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative flex items-center gap-4">
+              <Avatar className="h-14 w-14 border-2 border-red-100 shadow-md">
+                {user?.image && (
+                  <AvatarImage
+                    src={user.image}
+                    alt={user?.name || "User"}
+                    referrerPolicy="no-referrer"
+                  />
+                )}
 
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {user?.name || "User"}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user?.email}
-              </p>
+                <AvatarFallback className="bg-red-50 text-lg font-bold text-red-600">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-semibold text-gray-900">
+                  {user?.name || "IELTS Candidate"}
+                </h3>
+
+                <p className="mt-1 truncate text-xs text-gray-500">
+                  {user?.email}
+                </p>
+
+                <div className="mt-2 inline-flex items-center rounded-full bg-red-100 px-2 py-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-600">
+                   {user?.role}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ✅ Profile page link */}
-          <div className="py-1">
+          {/* Menu */}
+          <div className="p-2">
             <Link
               href="/profile"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/80"
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                px-3
+                py-3
+                text-sm
+                font-medium
+                text-gray-700
+                transition-all
+                hover:bg-red-50
+                hover:text-red-600
+              "
             >
-              <User className="w-4 h-4 flex-shrink-0" />
-              My profile
+              <UserIcon className="h-4 w-4" />
+
+              <span>My Profile</span>
+
+              <ChevronRight className="ml-auto h-4 w-4 opacity-50" />
+            </Link>
+
+            <Link
+              href="/settings"
+              onClick={() => setOpen(false)}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                px-3
+                py-3
+                text-sm
+                font-medium
+                text-gray-700
+                transition-all
+                hover:bg-red-50
+                hover:text-red-600
+              "
+            >
+              <Settings className="h-4 w-4" />
+
+              <span>Account Settings</span>
+
+              <ChevronRight className="ml-auto h-4 w-4 opacity-50" />
             </Link>
           </div>
 
-          {/* Photo options */}
-          <div className="border-t border-neutral-100 py-1 dark:border-neutral-800">
-            <button
-              onClick={() => {
-                fileInputRef.current?.click();
-                setOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-            >
-              <Camera className="w-4 h-4 flex-shrink-0" />
-              {user?.image ? "Change photo" : "Upload photo"}
-            </button>
-
-            {/* image থাকলেই Remove দেখাবে */}
-            {user?.image && (
-              <button
-                onClick={handleRemovePhoto}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-              >
-                <Trash2 className="w-4 h-4 flex-shrink-0" />
-                Remove photo
-              </button>
-            )}
-          </div>
-
           {/* Logout */}
-          <div className="border-t border-neutral-100 py-1 dark:border-neutral-800">
+          <div className="border-t border-gray-100 p-2">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors text-left"
+              className="
+                flex
+                w-full
+                items-center
+                gap-3
+                rounded-xl
+                px-3
+                py-3
+                text-left
+                text-sm
+                font-semibold
+                text-red-600
+                transition-all
+                hover:bg-red-50
+              "
             >
-              <LogOut className="w-4 h-4 flex-shrink-0" />
-              Logout
+              <LogOut className="h-4 w-4" />
+
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

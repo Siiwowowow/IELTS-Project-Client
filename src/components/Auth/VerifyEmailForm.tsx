@@ -3,7 +3,7 @@
 import {
   resendOtpAction,
   verifyEmailAction,
-} from "@/app/(authRouteGroup)/(auth)/verify-email/_action";
+} from "@/app/(auth)/(auth)/verify-email/_action";
 import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
   AuthAlert,

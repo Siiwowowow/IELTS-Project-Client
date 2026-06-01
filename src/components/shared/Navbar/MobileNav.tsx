@@ -25,7 +25,7 @@ export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
         ) : (
           <Button
             size="sm"
-            className="h-9 rounded-lg bg-ielts-red px-4 text-sm font-medium text-white shadow-sm hover:bg-ielts-red-dark"
+            className="h-9 rounded-lg bg-white px-4 text-sm font-bold text-red-600 shadow-sm hover:bg-red-50"
             asChild
           >
             <Link href="/register">Sign up</Link>
@@ -38,7 +38,7 @@ export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
           aria-label="Open navigation menu"
           aria-expanded={drawerOpen}
           aria-controls="nav-mobile-drawer"
-          className="flex size-10 items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 transition-colors hover:border-ielts-red/30 hover:bg-ielts-red-light hover:text-ielts-red dark:border-neutral-700"
+          className="flex size-10 items-center justify-center rounded-xl border border-white/30 text-white transition-colors hover:bg-white/10"
         >
           <Menu className="size-5" strokeWidth={1.75} />
         </button>

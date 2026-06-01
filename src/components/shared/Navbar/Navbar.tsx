@@ -6,12 +6,11 @@ import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import TabletNav from "./TabletNav";
 import MobileDrawer from "./MobileDrawer";
-import TopBar from "./TopBar";
 import type { NavbarProps } from "./types";
 import { cn } from "@/lib/utils";
 
 export default function Navbar({
-  showTopBar = true,
+ 
   showSearch = true,
   notificationCount = 2,
 }: NavbarProps) {
@@ -34,14 +33,13 @@ export default function Navbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md transition-shadow duration-300 dark:bg-neutral-950/95",
+        "sticky top-0 z-50 w-full bg-red-600 transition-shadow duration-300",
         showScrolled
-          ? "shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)]"
-          : "shadow-none border-b border-neutral-100/80 dark:border-neutral-800/80"
+          ? "shadow-md shadow-red-900/10"
+          : "shadow-none border-b border-red-700"
       )}
     >
-      {showTopBar && <TopBar />}
-
+  
       <DesktopNav
         showSearch={showSearch}
         notificationCount={notificationCount}

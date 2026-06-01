@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useRef, useState, useEffect, useId } from "react";
@@ -58,15 +59,15 @@ export default function NavDropdown({ label, href, items }: Props) {
         className={cn(
           "nav-link-item group flex items-center gap-1 px-3.5 py-2 text-[0.8125rem] font-medium tracking-tight transition-colors",
           active
-            ? "text-ielts-red"
-            : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            ? "text-white font-bold"
+            : "text-red-100 hover:text-white"
         )}
       >
         <span className="relative">
           {label}
           <span
             className={cn(
-              "absolute -bottom-1 left-0 h-0.5 rounded-full bg-ielts-red transition-all duration-300 ease-out",
+              "absolute -bottom-1 left-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-out",
               active ? "w-full" : "w-0 group-hover:w-full"
             )}
             aria-hidden

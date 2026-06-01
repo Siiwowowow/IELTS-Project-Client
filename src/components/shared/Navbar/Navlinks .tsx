@@ -35,8 +35,8 @@ function NavUnderlineLink({
       className={cn(
         "nav-link-item group relative px-3.5 py-2 text-[0.8125rem] font-medium tracking-tight transition-colors",
         active
-          ? "text-ielts-red"
-          : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100",
+          ? "text-white font-bold"
+          : "text-red-100 hover:text-white",
         className
       )}
     >
@@ -44,7 +44,7 @@ function NavUnderlineLink({
         {label}
         <span
           className={cn(
-            "absolute -bottom-1 left-0 h-0.5 rounded-full bg-ielts-red transition-all duration-300 ease-out",
+            "absolute -bottom-1 left-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-out",
             active ? "w-full" : "w-0 group-hover:w-full"
           )}
           aria-hidden
@@ -84,8 +84,8 @@ export default function NavLinks({
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-ielts-red-light text-ielts-red"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
+                  ? "bg-white/10 text-white font-bold"
+                  : "text-red-100 hover:bg-white/5 hover:text-white"
               )}
             >
               {Icon && <Icon className="size-4 shrink-0 opacity-70" />}

@@ -44,7 +44,7 @@ export interface CartItem {
 
 export interface NavbarProps {
   categories?: Category[];
-  showTopBar?: boolean;
+  
   showSearch?: boolean;
   notificationCount?: number;
 }

@@ -12,7 +12,7 @@ export default function AuthRouteGroupLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`${inter.variable} font-[family-name:var(--font-auth)]`}>
+    <div className={`${inter.variable} font-(family-name:--font-auth)`}>
       {children}
     </div>
   );

@@ -46,7 +46,7 @@ export default function TabletNav({
               <UserAvatar />
               <Link
                 href={dashboardRoute}
-                className="hidden rounded-lg bg-ielts-red px-3 py-2 text-xs font-medium text-white hover:bg-ielts-red-dark sm:inline-block"
+                className="hidden rounded-lg bg-white px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 sm:inline-block"
               >
                 Dashboard
               </Link>
@@ -62,7 +62,7 @@ export default function TabletNav({
             aria-label="Open navigation menu"
             aria-expanded={drawerOpen}
             aria-controls="nav-mobile-drawer"
-            className="flex size-10 items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 transition-colors hover:border-ielts-red/30 hover:bg-ielts-red-light hover:text-ielts-red dark:border-neutral-700"
+            className="flex size-10 items-center justify-center rounded-xl border border-white/30 text-white transition-colors hover:bg-white/10 hover:border-white"
           >
             <Menu className="size-5" strokeWidth={1.75} />
           </button>

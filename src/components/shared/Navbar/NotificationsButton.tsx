@@ -24,13 +24,13 @@ export default function NotificationsButton({
           : "Notifications"
       }
       className={cn(
-        "relative flex size-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+        "relative flex size-9 items-center justify-center rounded-lg text-red-100 transition-colors hover:bg-white/10 hover:text-white",
         className
       )}
     >
       <Bell className="size-[1.125rem]" strokeWidth={1.75} />
       {hasUnread && (
-        <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-ielts-red text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
+        <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-red-600 ring-2 ring-red-600">
           {count > 9 ? "9+" : count}
         </span>
       )}

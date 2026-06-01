@@ -33,16 +33,16 @@ export default function SearchBar({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex items-center gap-2 rounded-xl border bg-neutral-50/80 px-3 transition-all duration-200 dark:bg-neutral-900/50",
+        "flex items-center gap-2 rounded-xl border px-3 transition-all duration-200",
         compact ? "h-9 max-w-[200px]" : "h-10 w-full max-w-[240px]",
         focused
-          ? "border-ielts-red/30 bg-white shadow-sm ring-2 ring-ielts-red/10 dark:bg-neutral-900"
-          : "border-neutral-200/80 hover:border-neutral-300 dark:border-neutral-800",
+          ? "border-white bg-white shadow-sm ring-2 ring-white/20"
+          : "border-white/30 bg-white/10 hover:border-white/50",
         className
       )}
     >
       <Search
-        className="size-4 shrink-0 text-neutral-400"
+        className={cn("size-4 shrink-0", focused ? "text-red-600" : "text-red-200")}
         strokeWidth={1.75}
         aria-hidden
       />
@@ -54,7 +54,10 @@ export default function SearchBar({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
+        className={cn(
+          "min-w-0 flex-1 bg-transparent text-sm outline-none transition-colors",
+          focused ? "text-neutral-900 placeholder:text-neutral-400" : "text-white placeholder:text-red-200"
+        )}
         aria-label="Search platform"
       />
       {query && (
@@ -62,7 +65,7 @@ export default function SearchBar({
           type="button"
           onClick={handleClear}
           aria-label="Clear search"
-          className="rounded-md p-0.5 text-neutral-400 transition-colors hover:text-neutral-600"
+          className={cn("rounded-md p-0.5 transition-colors", focused ? "text-neutral-400 hover:text-neutral-600" : "text-red-200 hover:text-white")}
         >
           <X className="size-3.5" />
         </button>

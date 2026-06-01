@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { loginAction } from "@/app/(authRouteGroup)/(auth)/login/_action";
+import { loginAction } from "@/app/(auth)/(auth)/login/_action";
 import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
   AuthAlert,
@@ -132,7 +134,9 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
                 onChange={(e) => field.handleChange(e.target.value)}
                 error={
                   field.state.meta.isTouched && field.state.meta.errors[0]
-                    ? String(field.state.meta.errors[0])
+                    ? typeof field.state.meta.errors[0] === 'string'
+                      ? field.state.meta.errors[0]
+                      : (field.state.meta.errors[0] as any)?.message || "Invalid input"
                     : null
                 }
               />
@@ -152,7 +156,9 @@ const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
                 onChange={(e) => field.handleChange(e.target.value)}
                 error={
                   field.state.meta.isTouched && field.state.meta.errors[0]
-                    ? String(field.state.meta.errors[0])
+                    ? typeof field.state.meta.errors[0] === 'string'
+                      ? field.state.meta.errors[0]
+                      : (field.state.meta.errors[0] as any)?.message || "Invalid input"
                     : null
                 }
               />

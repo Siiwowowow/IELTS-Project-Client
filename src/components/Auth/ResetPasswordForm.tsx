@@ -3,7 +3,7 @@
 import {
   resendResetOtpAction,
   resetPasswordAction,
-} from "@/app/(authRouteGroup)/(auth)/reset-password/_action";
+} from "@/app/(auth)/(auth)/reset-password/_action";
 import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
   AuthAlert,

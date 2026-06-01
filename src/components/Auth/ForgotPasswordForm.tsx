@@ -1,6 +1,6 @@
 "use client";
 
-import { forgotPasswordAction } from "@/app/(authRouteGroup)/(auth)/forgot-password/_action";
+import { forgotPasswordAction } from "@/app/(auth)/(auth)/forgot-password/_action";
 import { AuthSplitLayout } from "@/components/Auth/layout/AuthSplitLayout";
 import {
   AuthAlert,
