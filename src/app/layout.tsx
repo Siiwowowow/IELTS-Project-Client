@@ -38,7 +38,7 @@ export default async function RootLayout({
   const user = await getUserInfo();
 
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} scroll-smooth`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} scroll-smooth`} data-scroll-behavior="smooth">
       <body className="flex flex-col min-h-screen font-poppins antialiased">
         <QueryProviders>
           <AuthProvider initialUser={user}>

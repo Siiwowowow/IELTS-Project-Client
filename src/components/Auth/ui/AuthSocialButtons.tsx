@@ -43,15 +43,15 @@ export function AuthSocialButtons({ mode = "login", className }: AuthSocialButto
   const label = mode === "login" ? "Sign in" : "Sign up";
 
   const handleGoogle = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (!baseUrl) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+    console.log("handleGoogle called, baseUrl:", baseUrl);
     const redirect = encodeURIComponent("/");
     window.location.href = `${baseUrl}/auth/login/google?redirect=${redirect}`;
   };
 
   const handleGitHub = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (!baseUrl) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+    console.log("handleGitHub called, baseUrl:", baseUrl);
     const redirect = encodeURIComponent("/");
     window.location.href = `${baseUrl}/auth/login/github?redirect=${redirect}`;
   };

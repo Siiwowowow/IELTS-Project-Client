@@ -198,55 +198,50 @@ export default function ReviewPage({ params }: Props) {
           Detailed Review
         </h2>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {attempt.answers.map((ans) => (
             <div
               key={ans.id}
-              className={`rounded-2xl border p-4 transition-all ${
+              className={`rounded-xl border p-5 transition-all shadow-sm ${
                 ans.isCorrect
-                  ? "border-green-200 bg-green-50/60"
-                  : "border-red-200 bg-red-50/60"
+                  ? "border-emerald-200 bg-emerald-50/40"
+                  : "border-rose-200 bg-rose-50/40"
               }`}
             >
-              <div className="flex items-start gap-3">
-                {/* Correct/wrong icon */}
+              <div className="flex items-start gap-3.5">
+                {/* Correct/wrong badge/icon */}
                 <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full mt-0.5 ${
-                    ans.isCorrect ? "bg-green-500" : "bg-red-500"
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full mt-1 ${
+                    ans.isCorrect ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
                   }`}
                 >
                   {ans.isCorrect ? (
-                    <IconCheck size={13} className="text-white" />
+                    <IconCheck size={14} stroke={2.5} />
                   ) : (
-                    <IconX size={13} className="text-white" />
+                    <IconX size={14} stroke={2.5} />
                   )}
                 </div>
 
-                <div className="flex-1 space-y-1.5 min-w-0">
-                  {/* Meta */}
+                <div className="flex-1 space-y-2.5 min-w-0">
+                  {/* Meta: Question number */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-gray-400">
-                      Q{ans.question?.questionNumber}
+                    <span className="text-sm font-bold text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                      Question {ans.question?.questionNumber}
                     </span>
-                    {ans.question?.group?.passage?.title && (
-                      <span className="text-xs text-gray-400 truncate">
-                        — {ans.question.group.passage.title}
-                      </span>
-                    )}
                   </div>
 
-                  {/* Question text */}
-                  <p className="text-sm text-gray-800 font-medium leading-snug">
+                  {/* Question text - Solid Black and Clear */}
+                  <p className="text-[15px] text-black font-semibold leading-snug">
                     {ans.question?.questionText}
                   </p>
 
-                  {/* Answer comparison */}
-                  <div className="flex flex-wrap gap-4 text-sm">
+                  {/* Answer comparison - Dark Text and clear status */}
+                  <div className="flex flex-wrap gap-5 text-sm bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                     <span className="flex items-center gap-1.5">
-                      <span className="text-gray-400 text-xs">Your answer:</span>
+                      <span className="text-gray-900 font-medium">Your answer:</span>
                       <span
-                        className={`font-semibold ${
-                          ans.isCorrect ? "text-green-700" : "text-red-700"
+                        className={`font-bold text-[15px] ${
+                          ans.isCorrect ? "text-emerald-700" : "text-rose-700"
                         }`}
                       >
                         {ans.submittedAnswer || "(no answer)"}
@@ -254,22 +249,25 @@ export default function ReviewPage({ params }: Props) {
                     </span>
 
                     {!ans.isCorrect && ans.question?.correctAnswer && (
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-gray-400 text-xs">Correct:</span>
-                        <span className="font-semibold text-green-700">
+                      <span className="flex items-center gap-1.5 border-l border-gray-200 pl-5">
+                        <span className="text-gray-900 font-medium">Correct answer:</span>
+                        <span className="font-bold text-[15px] text-emerald-700">
                           {ans.question.correctAnswer}
                         </span>
                       </span>
                     )}
                   </div>
 
-                  {/* Explanation */}
+                  {/* Explanation - Clear and readable text */}
                   {ans.question?.explanation && (
-                    <div className="flex items-start gap-2 bg-white/70 border border-gray-200 rounded-xl px-3 py-2 mt-1 shadow-sm">
-                      <IconBulb size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        {ans.question.explanation}
-                      </p>
+                    <div className="flex items-start gap-2.5 bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-2.5 shadow-inner">
+                      <IconBulb size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Explanation</span>
+                        <p className="text-sm text-black leading-relaxed font-normal">
+                          {ans.question.explanation}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

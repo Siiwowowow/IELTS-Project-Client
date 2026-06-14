@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 //src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getDefaultDashboardRoute, getRouteOwner, isAuthRoute, UserRole } from "./lib/authUtils";
@@ -5,26 +6,64 @@ import { jwtUtils } from "./lib/jwtUtils";
 import { isTokenExpiringSoon } from "./lib/tokenUtils";
 import { getNewTokensWithRefreshToken, getUserInfo } from "./services/auth.services";
 
-async function refreshTokenMiddleware(refreshToken: string): Promise<boolean> {
+async function refreshTokenMiddleware(refreshToken: string, sessionToken?: string): Promise<any> {
   try {
-    const refresh = await getNewTokensWithRefreshToken(refreshToken);
-    if (!refresh) return false;
-    return true;
+    const refresh = await getNewTokensWithRefreshToken(refreshToken, sessionToken);
+    return refresh;
   } catch (error) {
     console.error("Error refreshing token in middleware:", error);
-    return false;
+    return null;
   }
 }
 
 export async function proxy(request: NextRequest) {
+  let tokenRefreshed = false;
+  let refreshResult: any = null;
+
+  const wrapResponse = (response: NextResponse) => {
+    if (tokenRefreshed && refreshResult) {
+      if (refreshResult.accessToken) {
+        response.cookies.set("accessToken", refreshResult.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24, // 1 day
+        });
+      }
+      if (refreshResult.refreshToken) {
+        response.cookies.set("refreshToken", refreshResult.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+        });
+      }
+      if (refreshResult.token) {
+        response.cookies.set("better-auth.session_token", refreshResult.token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24, // 1 day
+        });
+      } else {
+        response.cookies.delete("better-auth.session_token");
+      }
+    }
+    return response;
+  };
+
   try {
     const { pathname } = request.nextUrl;
     const pathWithQuery = `${pathname}${request.nextUrl.search}`;
-    const accessToken = request.cookies.get("accessToken")?.value;
+    let accessToken = request.cookies.get("accessToken")?.value;
     const refreshToken = request.cookies.get("refreshToken")?.value;
+    const sessionToken = request.cookies.get("better-auth.session_token")?.value;
 
-    const decodedAccessToken = accessToken && jwtUtils.verifyToken(accessToken, process.env.JWT_ACCESS_SECRET as string).data;
-    const isValidAccessToken = accessToken && jwtUtils.verifyToken(accessToken, process.env.JWT_ACCESS_SECRET as string).success;
+    let decodedAccessToken = accessToken && jwtUtils.verifyToken(accessToken, process.env.JWT_ACCESS_SECRET as string).data;
+    let isValidAccessToken = accessToken && jwtUtils.verifyToken(accessToken, process.env.JWT_ACCESS_SECRET as string).success;
 
     let userRole: UserRole | null = null;
     let rawUserRole: string | null = null;
@@ -37,33 +76,47 @@ export async function proxy(request: NextRequest) {
     const routeOwner = getRouteOwner(pathname);
     const isAuth = isAuthRoute(pathname);
 
-    // ✅ Proactively refresh token
-    if (isValidAccessToken && refreshToken && (await isTokenExpiringSoon(accessToken))) {
-      const requestHeaders = new Headers(request.headers);
-      const response = NextResponse.next({
-        request: { headers: requestHeaders },
-      });
-
+    // ✅ If token is expired/missing but we have a valid refresh token, try to refresh it reactively
+    if (!isValidAccessToken && refreshToken) {
       try {
-        const refreshed = await refreshTokenMiddleware(refreshToken);
-        if (refreshed) {
-          requestHeaders.set("x-token-refreshed", "1");
-        }
-        return NextResponse.next(
-          {
-            request: { headers: requestHeaders },
-            headers: response.headers,
+        refreshResult = await refreshTokenMiddleware(refreshToken, sessionToken);
+        if (refreshResult && refreshResult.accessToken) {
+          accessToken = refreshResult.accessToken;
+          decodedAccessToken = jwtUtils.verifyToken(accessToken!, process.env.JWT_ACCESS_SECRET as string).data;
+          isValidAccessToken = true;
+          tokenRefreshed = true;
+          if (decodedAccessToken) {
+            rawUserRole = decodedAccessToken.role;
+            userRole = rawUserRole as UserRole;
           }
-        );
+        }
       } catch (error) {
-        console.error("Error refreshing token:", error);
+        console.error("Error refreshing expired token in middleware:", error);
       }
-      return response;
+    }
+
+    // ✅ Proactively refresh token if expiring soon (and was valid originally)
+    if (isValidAccessToken && refreshToken && !tokenRefreshed && (await isTokenExpiringSoon(accessToken!))) {
+      try {
+        refreshResult = await refreshTokenMiddleware(refreshToken, sessionToken);
+        if (refreshResult && refreshResult.accessToken) {
+          accessToken = refreshResult.accessToken;
+          decodedAccessToken = jwtUtils.verifyToken(accessToken!, process.env.JWT_ACCESS_SECRET as string).data;
+          isValidAccessToken = true;
+          tokenRefreshed = true;
+          if (decodedAccessToken) {
+            rawUserRole = decodedAccessToken.role;
+            userRole = rawUserRole as UserRole;
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing token proactively:", error);
+      }
     }
 
     // ✅ Rule 1: Logged-in users should not access auth pages
     if (isAuth && isValidAccessToken && pathname !== "/verify-email" && pathname !== "/reset-password") {
-      return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+      return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
     }
 
     // ✅ Rule 2: Reset password page
@@ -73,31 +126,31 @@ export async function proxy(request: NextRequest) {
       if (accessToken && email) {
         const userInfo = await getUserInfo();
         if (userInfo?.needPasswordChange) {
-          return NextResponse.next();
+          return wrapResponse(NextResponse.next());
         } else {
-          return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
         }
       }
 
       if (email) {
-        return NextResponse.next();
+        return wrapResponse(NextResponse.next());
       }
 
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathWithQuery);
-      return NextResponse.redirect(loginUrl);
+      return wrapResponse(NextResponse.redirect(loginUrl));
     }
 
     // ✅ Rule 3: Public route -> allow
     if (routeOwner === null) {
-      return NextResponse.next();
+      return wrapResponse(NextResponse.next());
     }
 
     // ✅ Rule 4: Not logged in but trying to access protected route -> redirect to login
     if (!accessToken || !isValidAccessToken) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathWithQuery);
-      return NextResponse.redirect(loginUrl);
+      return wrapResponse(NextResponse.redirect(loginUrl));
     }
 
     // ✅ Rule 5: Email verification and password change enforcement
@@ -109,13 +162,13 @@ export async function proxy(request: NextRequest) {
           if (pathname !== "/verify-email") {
             const verifyEmailUrl = new URL("/verify-email", request.url);
             verifyEmailUrl.searchParams.set("email", userInfo.email);
-            return NextResponse.redirect(verifyEmailUrl);
+            return wrapResponse(NextResponse.redirect(verifyEmailUrl));
           }
-          return NextResponse.next();
+          return wrapResponse(NextResponse.next());
         }
 
         if (userInfo.emailVerified && pathname === "/verify-email") {
-          return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
         }
 
         // Password change needed
@@ -123,48 +176,48 @@ export async function proxy(request: NextRequest) {
           if (pathname !== "/reset-password") {
             const resetPasswordUrl = new URL("/reset-password", request.url);
             resetPasswordUrl.searchParams.set("email", userInfo.email);
-            return NextResponse.redirect(resetPasswordUrl);
+            return wrapResponse(NextResponse.redirect(resetPasswordUrl));
           }
-          return NextResponse.next();
+          return wrapResponse(NextResponse.next());
         }
 
         if (!userInfo.needPasswordChange && pathname === "/reset-password") {
-          return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
         }
       }
     }
 
     // ✅ Rule 6: Common protected route -> allow (Profile, Change Password etc.)
     if (routeOwner === "COMMON") {
-      return NextResponse.next();
+      return wrapResponse(NextResponse.next());
     }
 
-    // ✅ Rule 7: Role based access control for ADMIN, SELLER, CUSTOMER
+    // ✅ Rule 7: Role based access control for ADMIN, TEACHER, STUDENT
     if (routeOwner === "ADMIN") {
       // SUPER_ADMIN and ADMIN both can access admin routes
       if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
-        return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+        return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
       }
     }
 
     if (routeOwner === "ADMIN") {
       if (userRole !== "ADMIN") {
-        return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+        return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
       }
     }
     if (routeOwner === "TEACHER") {
       if (userRole !== "TEACHER") {
-        return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+        return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
       }
     }
 
     if (routeOwner === "STUDENT") {
       if (userRole !== "STUDENT") {
-        return NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url));
+        return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
       }
     }
 
-    return NextResponse.next();
+    return wrapResponse(NextResponse.next());
   } catch (error) {
     console.error("Error in proxy middleware:", error);
     return NextResponse.next();

@@ -165,10 +165,14 @@ export default function ExamPage({ params }: Props) {
     setMobileTab("questions");
 
     setTimeout(() => {
-      questionRefs.current[qId]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      const element = questionRefs.current[qId] || document.getElementById(`q-input-${qId}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        (element as HTMLElement).focus?.();
+      }
     }, 50);
   };
 
@@ -638,107 +642,133 @@ export default function ExamPage({ params }: Props) {
 
                         {/* QUESTIONS */}
                         <div className="p-5 space-y-5">
-                          {group.questions.map((question) => {
-                            const isAnswered =
-                              !!answers[
-                                question.id
-                              ]?.trim();
+                          {/* Render the reference list once at the top of the questions container if not a table or inline templates */}
+                          {group.type !== "TABLE_COMPLETION" && (!group.passageSegment || !/\[\d+\]/.test(group.passageSegment)) && group.options && group.options.length > 0 && (
+                            <QuestionRenderer
+                              group={{
+                                ...group,
+                                instruction: "",
+                                questions: []
+                              }}
+                              answers={answers}
+                              onAnswer={handleAnswer}
+                            />
+                          )}
 
-                            const isFlagged =
-                              !!flagged[question.id];
+                          {group.type === "TABLE_COMPLETION" || (group.passageSegment && /\[\d+\]/.test(group.passageSegment)) ? (
+                            <div
+                              className="rounded-xl p-5 border border-gray-200 bg-white shadow-sm"
+                            >
+                              <QuestionRenderer
+                                group={group}
+                                answers={answers}
+                                onAnswer={handleAnswer}
+                              />
+                            </div>
+                          ) : (
+                            group.questions.map((question) => {
+                              const isAnswered =
+                                !!answers[
+                                  question.id
+                                ]?.trim();
 
-                            const isActive =
-                              activeQuestionId ===
-                              question.id;
+                              const isFlagged =
+                                !!flagged[question.id];
 
-                            return (
-                              <div
-                                key={question.id}
-                                ref={(el) => {
-                                  questionRefs.current[
-                                    question.id
-                                  ] = el;
-                                }}
-                                onClick={() =>
-                                  setActiveQuestionId(
-                                    question.id
-                                  )
-                                }
-                                className="rounded-xl p-4 transition-all"
-                                style={{
-                                  border: isActive
-                                    ? "2px solid #003580"
-                                    : isFlagged
-                                    ? "2px solid #F59E0B"
-                                    : "2px solid #E2E8F0",
+                              const isActive =
+                                activeQuestionId ===
+                                question.id;
 
-                                  background: isActive
-                                    ? "#EFF6FF"
-                                    : isFlagged
-                                    ? "#FFFBEB"
-                                    : "#FFFFFF",
-                                }}
-                              >
-                                <div className="flex items-center justify-between mb-4">
-                                  <div className="flex items-center gap-2">
-{/* Question number removed for clean UI */}
+                              return (
+                                <div
+                                  key={question.id}
+                                  ref={(el) => {
+                                    questionRefs.current[
+                                      question.id
+                                    ] = el;
+                                  }}
+                                  onClick={() =>
+                                    setActiveQuestionId(
+                                      question.id
+                                    )
+                                  }
+                                  className="rounded-xl p-4 transition-all"
+                                  style={{
+                                    border: isActive
+                                      ? "2px solid #003580"
+                                      : isFlagged
+                                      ? "2px solid #F59E0B"
+                                      : "2px solid #E2E8F0",
 
-                                    {isAnswered && (
-                                      <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-2 py-1 rounded">
-                                        Answered
-                                      </span>
-                                    )}
+                                    background: isActive
+                                      ? "#EFF6FF"
+                                      : isFlagged
+                                      ? "#FFFBEB"
+                                      : "#FFFFFF",
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                      {/* Question number removed for clean UI */}
+
+                                      {isAnswered && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-2 py-1 rounded">
+                                          Answered
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+
+                                        toggleFlag(
+                                          question.id
+                                        );
+                                      }}
+                                      className="text-xs px-3 py-1 rounded border flex items-center gap-1"
+                                      style={{
+                                        background:
+                                          isFlagged
+                                            ? "#FEF3C7"
+                                            : "transparent",
+
+                                        borderColor:
+                                          isFlagged
+                                            ? "#F59E0B"
+                                            : "#E5E7EB",
+
+                                        color:
+                                          isFlagged
+                                            ? "#92400E"
+                                            : "#6B7280",
+                                      }}
+                                    >
+                                      <IconFlag size={12} />
+
+                                      {isFlagged
+                                        ? "Flagged"
+                                        : "Flag"}
+                                    </button>
                                   </div>
 
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-
-                                      toggleFlag(
-                                        question.id
-                                      );
+                                  {/* IMPORTANT */}
+                                  <QuestionRenderer
+                                    group={{
+                                      ...group,
+                                      instruction: "",
+                                      questions: [
+                                        question,
+                                      ],
                                     }}
-                                    className="text-xs px-3 py-1 rounded border flex items-center gap-1"
-                                    style={{
-                                      background:
-                                        isFlagged
-                                          ? "#FEF3C7"
-                                          : "transparent",
-
-                                      borderColor:
-                                        isFlagged
-                                          ? "#F59E0B"
-                                          : "#E5E7EB",
-
-                                      color:
-                                        isFlagged
-                                          ? "#92400E"
-                                          : "#6B7280",
-                                    }}
-                                  >
-                                    <IconFlag size={12} />
-
-                                    {isFlagged
-                                      ? "Flagged"
-                                      : "Flag"}
-                                  </button>
+                                    answers={answers}
+                                    onAnswer={handleAnswer}
+                                    hideReferenceBox={true}
+                                  />
                                 </div>
-
-                                {/* IMPORTANT */}
-                                <QuestionRenderer
-                                  group={{
-                                    ...group,
-                                    instruction: "",
-                                    questions: [
-                                      question,
-                                    ],
-                                  }}
-                                  answers={answers}
-                                  onAnswer={handleAnswer}
-                                />
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     ))}

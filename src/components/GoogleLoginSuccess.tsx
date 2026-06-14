@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
+import { getUserInfo } from "@/services/auth.services";
 
 export function GoogleLoginSuccess() {
   const searchParams = useSearchParams();
@@ -20,15 +21,9 @@ export function GoogleLoginSuccess() {
 
     const fetchUser = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await res.json();
-        if (data?.data) {
-          setUser(data.data); // 🔥 THIS FIXES EVERYTHING
+        const userData = await getUserInfo();
+        if (userData) {
+          setUser(userData); // 🔥 THIS FIXES EVERYTHING
         }
       } catch (err) {
         console.log(err);

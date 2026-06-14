@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { parseBoldText } from "@/lib/utils";
 
 interface HighlightableTextProps {
   /** Plain text to display and allow highlighting */
@@ -72,7 +73,7 @@ export default function HighlightableText({ text }: HighlightableTextProps) {
       // Render plain text safely; preserve line breaks
       style={{ whiteSpace: "pre-wrap" }}
     >
-      {text}
+      {parseBoldText(text)}
     </div>
   );
 }
