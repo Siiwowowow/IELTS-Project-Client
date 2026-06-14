@@ -8,6 +8,8 @@ import { AuthMainShell } from "@/components/Auth/AuthMainShell";
 import { Toaster } from "sonner";
 import { getUserInfo } from "@/services/auth.services";
 
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
