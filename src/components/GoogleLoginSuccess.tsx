@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
 import { getUserInfo } from "@/services/auth.services";
+import { setTokenInCookies } from "@/lib/tokenUtils";
 
 export function GoogleLoginSuccess() {
   const searchParams = useSearchParams();
@@ -18,15 +19,32 @@ export function GoogleLoginSuccess() {
     shownRef.current = true;
 
     const loginStatus = searchParams.get("login");
+    const accessToken = searchParams.get("accessToken");
+    const refreshToken = searchParams.get("refreshToken");
+    const sessionToken = searchParams.get("sessionToken");
 
-    const fetchUser = async () => {
+    const storeTokensAndFetchUser = async () => {
       try {
+        const threeDays = 3 * 24 * 60 * 60;
+        
+        // 1. Store tokens in frontend domain cookies
+        if (accessToken) {
+          await setTokenInCookies("accessToken", accessToken, 24 * 60 * 60, threeDays);
+        }
+        if (refreshToken) {
+          await setTokenInCookies("refreshToken", refreshToken, 24 * 60 * 60, threeDays);
+        }
+        if (sessionToken) {
+          await setTokenInCookies("better-auth.session_token", sessionToken, 24 * 60 * 60, threeDays);
+        }
+
+        // 2. Fetch user details from backend using the now-accessible cookies
         const userData = await getUserInfo();
         if (userData) {
           setUser(userData); // 🔥 THIS FIXES EVERYTHING
         }
       } catch (err) {
-        console.log(err);
+        console.error("Error storing tokens or fetching user:", err);
       }
     };
 
@@ -37,7 +55,7 @@ export function GoogleLoginSuccess() {
         });
       }, 100);
 
-      fetchUser(); // 🔥 REFRESH USER HERE
+      storeTokensAndFetchUser(); // 🔥 STORE TOKENS & REFRESH USER HERE
     }
 
     if (loginStatus === "error") {

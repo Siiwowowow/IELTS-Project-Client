@@ -137,6 +137,7 @@ export async function getUserInfo() {
         // Sending better-auth.session_token would trigger auth.api.getSession()
         // which can fail if the session has expired in the DB, causing 401
         // even when the JWT is perfectly valid.
+        console.log("getUserInfo fetching URL:", `${BASE_API_URL}/auth/me`, "accessToken:", accessToken ? accessToken.substring(0, 15) + "..." : "null");
         let res = await fetch(`${BASE_API_URL}/auth/me`, {
             method: "GET",
             headers: {
@@ -160,7 +161,12 @@ export async function getUserInfo() {
         }
 
         if (!res.ok) {
-            console.error("Failed to fetch user info:", res.status, res.statusText);
+            if (res.status === 404 || res.status === 401) {
+                // Silent return to let the middleware handle clean logout
+                return null;
+            }
+            const errText = await res.text();
+            console.error("Failed to fetch user info:", res.status, res.statusText, "Body:", errText);
             return null;
         }
 

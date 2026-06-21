@@ -19,9 +19,14 @@ async function refreshTokenMiddleware(refreshToken: string, sessionToken?: strin
 export async function proxy(request: NextRequest) {
   let tokenRefreshed = false;
   let refreshResult: any = null;
+  let shouldClearCookies = false;
 
   const wrapResponse = (response: NextResponse) => {
-    if (tokenRefreshed && refreshResult) {
+    if (shouldClearCookies) {
+      response.cookies.delete("accessToken");
+      response.cookies.delete("refreshToken");
+      response.cookies.delete("better-auth.session_token");
+    } else if (tokenRefreshed && refreshResult) {
       if (refreshResult.accessToken) {
         response.cookies.set("accessToken", refreshResult.accessToken, {
           httpOnly: true,
@@ -89,10 +94,19 @@ export async function proxy(request: NextRequest) {
             rawUserRole = decodedAccessToken.role;
             userRole = rawUserRole as UserRole;
           }
+        } else {
+          shouldClearCookies = true;
         }
       } catch (error) {
         console.error("Error refreshing expired token in middleware:", error);
+        shouldClearCookies = true;
       }
+    } else if (!isValidAccessToken && (accessToken || refreshToken)) {
+      shouldClearCookies = true;
+    }
+
+    if (shouldClearCookies) {
+      accessToken = undefined;
     }
 
     // ✅ Proactively refresh token if expiring soon (and was valid originally)
@@ -116,7 +130,7 @@ export async function proxy(request: NextRequest) {
 
     // ✅ Rule 1: Logged-in users should not access auth pages
     if (isAuth && isValidAccessToken && pathname !== "/verify-email" && pathname !== "/reset-password") {
-      return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
+      return wrapResponse(NextResponse.redirect(new URL("/", request.url)));
     }
 
     // ✅ Rule 2: Reset password page
@@ -128,7 +142,7 @@ export async function proxy(request: NextRequest) {
         if (userInfo?.needPasswordChange) {
           return wrapResponse(NextResponse.next());
         } else {
-          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
+          return wrapResponse(NextResponse.redirect(new URL("/", request.url)));
         }
       }
 
@@ -168,7 +182,7 @@ export async function proxy(request: NextRequest) {
         }
 
         if (userInfo.emailVerified && pathname === "/verify-email") {
-          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
+          return wrapResponse(NextResponse.redirect(new URL("/", request.url)));
         }
 
         // Password change needed
@@ -182,8 +196,16 @@ export async function proxy(request: NextRequest) {
         }
 
         if (!userInfo.needPasswordChange && pathname === "/reset-password") {
-          return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
+          return wrapResponse(NextResponse.redirect(new URL("/", request.url)));
         }
+      } else {
+        const response = routeOwner !== null
+          ? NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(pathWithQuery)}`, request.url))
+          : NextResponse.next();
+        response.cookies.delete("accessToken");
+        response.cookies.delete("refreshToken");
+        response.cookies.delete("better-auth.session_token");
+        return response;
       }
     }
 
@@ -200,11 +222,6 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    if (routeOwner === "ADMIN") {
-      if (userRole !== "ADMIN") {
-        return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));
-      }
-    }
     if (routeOwner === "TEACHER") {
       if (userRole !== "TEACHER") {
         return wrapResponse(NextResponse.redirect(new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)));

@@ -88,10 +88,5 @@ export const isValidRedirectForRole = (redirectPath: string, role: UserRole): bo
 
 // ✅ লগইন বা রেজিস্ট্রেশনের পর রিডাইরেক্ট
 export const getRedirectAfterLogin = (role: UserRole, redirectPath?: string): string => {
-  // যদি redirectPath দেওয়া থাকে এবং valid হয়
-  if (redirectPath && isValidRedirectForRole(redirectPath, role)) {
-    return redirectPath;
-  }
-  // নাহলে রোল অনুযায়ী ডিফল্ট ড্যাশবোর্ড
-  return getDefaultDashboardRoute(role);
+  return "/";
 };
