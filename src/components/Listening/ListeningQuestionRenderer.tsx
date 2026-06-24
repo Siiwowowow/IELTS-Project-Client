@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
-import { IQuestion, IQuestionGroup } from "@/types/reading.types";
-import HighlightableText from "./HighlightableText";
+import { IListeningQuestion, IListeningQuestionGroup } from "@/types/listening.types";
+import HighlightableText from "../Reading/HighlightableText";
 import { parseBoldText, getOptionLabel } from "@/lib/utils";
+import React from "react";
 
 function parseGroupInstruction(instruction?: string) {
   if (!instruction) {
@@ -41,7 +41,6 @@ function parseMatchingHeadingsConfig(passageSegment?: string) {
   return { mode: "WITH_CLUES", exampleParagraph: "", exampleAnswer: "" };
 }
 
-
 // ─── Sub-question renderers ───────────────────────────────────────────────────
 
 function TFNGButtons({
@@ -66,7 +65,7 @@ function TFNGButtons({
             className={`flex items-center gap-3 w-full max-w-md px-4 py-2 rounded-xl border text-left text-sm transition-all duration-150 ${
               active
                 ? "bg-[#003580]/5 text-[#003580] border-[#003580] font-bold"
-                : "bg-white text-gray-700 border-gray-200 hover:border-[#003580]/50 hover:bg-gray-50/50"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-[#003580]/50 hover:bg-gray-50/50"
             }`}
           >
             <span
@@ -207,8 +206,8 @@ function SingleQuestion({
   answer,
   onAnswer,
 }: {
-  group: IQuestionGroup;
-  question: IQuestion;
+  group: IListeningQuestionGroup;
+  question: IListeningQuestion;
   answer: string;
   onAnswer: (v: string) => void;
 }) {
@@ -298,7 +297,7 @@ function SingleQuestion({
               id={`q-input-${question.id}`}
               value={answer}
               onChange={(e) => onAnswer(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003580]/25 focus:border-[#003580] transition-all bg-white font-semibold text-black animate-fadeIn"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003580]/25 focus:border-[#003580] transition-all bg-white font-semibold text-black"
             >
               <option value="">— Select —</option>
               {group.options!.map((opt, oIdx) => (
@@ -382,15 +381,15 @@ function SingleQuestion({
             className="w-full max-w-md border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all flex items-center justify-between px-3 py-1.5 group cursor-pointer"
           >
             <span className="text-[11px] font-semibold text-gray-400 group-hover:text-indigo-600">
-              Drag heading here or select:
+              Drag option here or select:
             </span>
             {isWithoutClues ? (
               <input
                 type="text"
-                placeholder="i, ii..."
+                placeholder="A, B, C..."
                 value={answer}
                 onChange={(e) => onAnswer(e.target.value)}
-                className="w-16 text-center text-xs bg-white border border-gray-255 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-black"
+                className="w-16 text-center text-xs bg-white border border-gray-250 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-black"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
@@ -422,10 +421,33 @@ function SingleQuestion({
   ) {
     const opts = group.options ?? [];
     return (
-      <>
-        <HighlightableText text={question.questionText ?? ""} />
-        <MatchingSelect opts={opts} answer={answer} onAnswer={onAnswer} />
-      </>
+      <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100 last:border-b-0 max-w-2xl select-text">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-gray-900 shrink-0 select-none">
+            {question.questionNumber}.
+          </span>
+          {question.questionText && (
+            <span className="text-sm text-gray-800 font-semibold leading-relaxed">
+              <HighlightableText text={question.questionText} />
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            id={`q-input-${question.id}`}
+            value={answer}
+            onChange={(e) => onAnswer(e.target.value)}
+            className="w-40 h-8 px-2 border border-gray-300 rounded text-xs font-semibold text-black bg-white focus:outline-none focus:border-[#1B3A6B]"
+          >
+            <option value="">— Select —</option>
+            {opts.map((opt, i) => (
+              <option key={i} value={opt}>
+                {getOptionLabel(opt)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     );
   }
 
@@ -478,7 +500,7 @@ function parseMarkdownTable(markdown: string) {
 
 function renderTableCellContent(
   text: string,
-  questions: IQuestion[],
+  questions: IListeningQuestion[],
   answers: Record<string, string>,
   onAnswer: (qId: string, value: string) => void,
   options?: string[]
@@ -534,7 +556,7 @@ function renderTableCellContent(
 
 function renderInteractiveText(
   text: string,
-  questions: IQuestion[],
+  questions: IListeningQuestion[],
   answers: Record<string, string>,
   onAnswer: (qId: string, value: string) => void,
   options?: string[]
@@ -594,7 +616,7 @@ function TableCompletion({
   answers,
   onAnswer,
 }: {
-  group: IQuestionGroup;
+  group: IListeningQuestionGroup;
   answers: Record<string, string>;
   onAnswer: (qId: string, value: string) => void;
 }) {
@@ -665,7 +687,7 @@ function NotesCompletion({
   answers,
   onAnswer,
 }: {
-  group: IQuestionGroup;
+  group: IListeningQuestionGroup;
   answers: Record<string, string>;
   onAnswer: (qId: string, value: string) => void;
 }) {
@@ -732,7 +754,7 @@ function NotesCompletion({
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold bg-[#003580]/15 text-[#003580]">
               {q.questionNumber}
             </span>
-            <div className="flex-grow">
+            <div className="flex-1">
               <p className="text-sm text-gray-650 leading-relaxed font-normal">{q.questionText}</p>
               <div className="mt-1 max-w-xs">
                 <TextInput value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} />
@@ -782,19 +804,17 @@ function NotesCompletion({
 // ─── Public group renderer ────────────────────────────────────────────────────
 
 interface Props {
-  group: IQuestionGroup;
+  group: IListeningQuestionGroup;
   answers: Record<string, string>;
   onAnswer: (questionId: string, value: string) => void;
   hideReferenceBox?: boolean;
 }
 
-export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = false }: Props) {
+export function ListeningQuestionRenderer({ group, answers, onAnswer, hideReferenceBox = false }: Props) {
   const isTable = group.type === "TABLE_COMPLETION";
   const isNotes = group.type === "NOTES_COMPLETION";
-  const isMultiMCQ = group.type === "MULTIPLE_CHOICE_MULTIPLE";
   const isMatchingHeadings = group.type === "MATCHING_HEADINGS";
   const isJSONSegment = !!(group.passageSegment && group.passageSegment.trim().startsWith("{"));
-  const mhdgConfig = isMatchingHeadings ? parseMatchingHeadingsConfig(group.passageSegment) : null;
   const hasInteractiveSegment = !isJSONSegment && !!(group.passageSegment && /\[\d+\]/.test(group.passageSegment));
 
   return (
@@ -839,6 +859,17 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
         );
       })()}
 
+      {/* Image Renderer (Diagram / Map labeling etc) */}
+      {group.imageUrl && (
+        <div className="w-full flex items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+          <img
+            src={group.imageUrl}
+            alt="Listening section diagram"
+            className="max-w-full max-h-[350px] rounded-lg object-contain"
+          />
+        </div>
+      )}
+
       {/* Optional passage segment */}
       {group.passageSegment && !isTable && !isNotes && !isJSONSegment && hasInteractiveSegment && (
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-900 leading-relaxed">
@@ -846,7 +877,7 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
         </div>
       )}
 
-      {/* Render list of headings / features block for students to refer to */}
+      {/* Render list of options block for students to refer to */}
       {!hideReferenceBox && (group.type === "MATCHING_HEADINGS" ||
         group.type === "MATCHING_FEATURES" ||
         group.type === "MATCHING_SENTENCE_ENDINGS" ||
@@ -856,20 +887,20 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
         group.options.length > 0 && (
           <div className={`p-5 rounded-xl shadow-sm my-4 ${
             group.type === "MATCHING_HEADINGS"
-              ? "bg-slate-50 border border-slate-350"
+              ? "bg-slate-50 border border-slate-200"
               : "bg-white border border-gray-200"
           }`}>
             <h4 className={`font-extrabold text-sm pb-2 mb-3 tracking-wide uppercase border-b ${
               group.type === "MATCHING_HEADINGS"
-                ? "text-slate-900 border-slate-200 text-center"
+                ? "text-slate-900 border-slate-250 text-center"
                 : "text-[#003580] border-gray-100"
             }`}>
               {group.type === "MATCHING_HEADINGS"
-                ? "List of Headings"
+                ? "Matching Options"
                 : group.type === "MATCHING_FEATURES"
                 ? "List of Features"
                 : group.type === "MATCHING_INFORMATION"
-                ? "Paragraph Selection"
+                ? "Matching Info List"
                 : group.type === "MATCHING_SENTENCE_ENDINGS"
                 ? "Sentence Endings"
                 : "Options List"}
@@ -878,7 +909,7 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
             {group.type === "MATCHING_HEADINGS" ? (
               <div className="space-y-2.5 max-w-xl">
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <span>ℹ️ Drag headings below to the correct questions or select from inline inputs:</span>
+                  <span>Drag options below to the correct questions or select from inputs:</span>
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {group.options.map((opt, idx) => {
@@ -886,7 +917,7 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
                     const hasLabel = label !== opt;
                     const optText = hasLabel ? opt.replace(new RegExp(`^${label}(\\s+|\\.|\\))`, 'i'), '') : opt;
                     
-                    // Check if this option is already chosen in the answers record
+                    // Check if assigned
                     const isAssigned = Object.values(answers).some(
                       (ans) => ans === opt || ans === label || ans === getOptionLabel(opt)
                     );
@@ -901,10 +932,10 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
                         }}
                         className={`flex items-center gap-2.5 p-2 border rounded-xl shadow-sm transition-all select-none ${
                           isAssigned
-                            ? "opacity-45 border-dashed border-gray-200 bg-gray-50/50 cursor-not-allowed"
-                            : "border-gray-200 bg-white hover:border-indigo-400 hover:shadow-indigo-50/30 hover:shadow-md cursor-grab active:cursor-grabbing"
+                            ? "opacity-45 border-dashed border-gray-200 bg-gray-50 cursor-not-allowed"
+                            : "border-gray-200 bg-white hover:border-indigo-400 hover:shadow-indigo-50/30 cursor-grab active:cursor-grabbing"
                         }`}
-                        title={isAssigned ? "Already assigned to a paragraph" : "Drag to any question drop-zone"}
+                        title={isAssigned ? "Already assigned" : "Drag to drop-zone"}
                       >
                         <div className="flex items-center gap-1 shrink-0">
                           <span className="text-gray-300 font-black text-xs select-none">⋮⋮</span>
@@ -931,7 +962,7 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
                 </div>
               </div>
             ) : group.type === "SUMMARY_COMPLETION_WITH_OPTIONS" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 max-w-3xl pl-1 bg-gray-50/50 p-4 rounded-xl border border-gray-150">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 max-w-3xl pl-1 bg-gray-50 p-4 rounded-xl border border-gray-150">
                 {group.options.map((opt, idx) => {
                   const label = getOptionLabel(opt);
                   const hasLabel = label !== opt;
@@ -980,140 +1011,25 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
           </div>
         )}
 
-      {/* Render Matching Headings Example Question (Real IELTS Exam system representation) */}
-      {isMatchingHeadings && mhdgConfig && mhdgConfig.exampleParagraph && (
-        <div className="p-4 border border-slate-200 bg-slate-50/70 rounded-xl max-w-md my-3 shadow-sm flex items-center justify-between gap-4 select-none">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-14 shrink-0 items-center justify-center rounded bg-indigo-50 border border-indigo-100 text-[9px] font-black uppercase text-indigo-700 tracking-wider">
-              Example
-            </span>
-            <span className="text-sm font-semibold text-gray-800">{mhdgConfig.exampleParagraph}</span>
-          </div>
-          {mhdgConfig.mode === "WITH_CLUES" ? (
-            <select
-              disabled
-              value={mhdgConfig.exampleAnswer}
-              className="w-32 px-2 py-1 text-xs border border-gray-300 rounded bg-gray-100 font-semibold text-gray-500 cursor-not-allowed"
-            >
-              <option value={mhdgConfig.exampleAnswer}>{getOptionLabel(mhdgConfig.exampleAnswer)}</option>
-            </select>
-          ) : (
-            <input
-              type="text"
-              disabled
-              value={getOptionLabel(mhdgConfig.exampleAnswer)}
-              className="w-16 px-2 py-1 text-xs border border-gray-300 rounded bg-gray-100 font-semibold text-gray-500 text-center cursor-not-allowed"
-            />
-          )}
-        </div>
-      )}
-
-      {/* Questions */}
-      {isTable ? (
-        <TableCompletion group={group} answers={answers} onAnswer={onAnswer} />
-      ) : isNotes ? (
-        <NotesCompletion group={group} answers={answers} onAnswer={onAnswer} />
-      ) : isMultiMCQ ? (
-        <div className="space-y-4 select-text pl-2">
-          {/* Main prompt from the first question */}
-          {group.questions[0]?.questionText && (
-            <div className="flex items-start gap-2 text-sm md:text-base font-bold text-gray-800 mb-2">
-              <span className="text-gray-900 font-bold leading-snug">
-                {group.questions[0].questionText}
-              </span>
+      {/* Render Sub-questions */}
+      <div className="space-y-4">
+        {isTable ? (
+          <TableCompletion group={group} answers={answers} onAnswer={onAnswer} />
+        ) : isNotes ? (
+          <NotesCompletion group={group} answers={answers} onAnswer={onAnswer} />
+        ) : (
+          group.questions.map((question) => (
+            <div key={question.id} className="p-1">
+              <SingleQuestion
+                group={group}
+                question={question}
+                answer={answers[question.id] ?? ""}
+                onAnswer={(val) => onAnswer(question.id, val)}
+              />
             </div>
-          )}
-          
-          <div className="grid gap-2 pl-2 max-w-[650px]">
-            {(() => {
-              const opts = group.questions[0]?.options ?? [];
-              const currentSelectedOpts = group.questions
-                .map((q) => answers[q.id])
-                .filter(Boolean);
-                
-              return opts.map((opt, oIdx) => {
-                const label = String.fromCharCode(65 + oIdx); // A, B, C...
-                const active = currentSelectedOpts.includes(opt);
-                
-                const handleToggle = () => {
-                  if (active) {
-                    const targetQ = group.questions.find((q) => answers[q.id] === opt);
-                    if (targetQ) {
-                      onAnswer(targetQ.id, "");
-                    }
-                  } else {
-                    const emptyQ = group.questions.find((q) => !answers[q.id]);
-                    if (emptyQ) {
-                      onAnswer(emptyQ.id, opt);
-                    } else {
-                      if (group.questions.length > 0) {
-                        onAnswer(group.questions[0].id, opt);
-                      }
-                    }
-                  }
-                };
-                
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={handleToggle}
-                    className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium select-none ${
-                      active
-                        ? "text-[#003580] font-bold"
-                        : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 shrink-0">
-                      {/* Bold label in a small gray circle */}
-                      <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-800 select-none">
-                        {label}
-                      </span>
-                      {/* Checkbox square bullet point */}
-                      <span className={`inline-flex w-4 h-4 rounded border items-center justify-center shrink-0 ${
-                        active ? "border-[#003580] bg-[#003580] text-white" : "border-gray-300 bg-white"
-                      }`}>
-                        {active && <span className="text-[10px] font-black leading-none">✓</span>}
-                      </span>
-                    </span>
-                    <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
-                      {opt}
-                    </span>
-                  </button>
-                );
-              });
-            })()}
-          </div>
-        </div>
-      ) : hasInteractiveSegment ? (
-        // Inline inputs rendered in passageSegment, no need to list questions below
-        null
-      ) : (
-        group.questions.map((q) => {
-          const answered = !!(answers[q.id]?.trim());
-          return (
-            <div key={q.id} className="flex gap-3">
-              <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold mt-0.5 transition-colors ${
-                  answered
-                    ? "bg-[#003580] text-white"
-                    : "bg-[#003580]/10 text-[#003580]"
-                }`}
-              >
-                {q.questionNumber}
-              </span>
-              <div className="flex-1">
-                <SingleQuestion
-                  group={group}
-                  question={q}
-                  answer={answers[q.id] ?? ""}
-                  onAnswer={(v) => onAnswer(q.id, v)}
-                />
-              </div>
-            </div>
-          );
-        })
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

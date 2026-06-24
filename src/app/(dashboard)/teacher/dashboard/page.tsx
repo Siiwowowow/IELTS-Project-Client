@@ -7,6 +7,22 @@ import { Progress } from '@/components/ui/progress'
 import { readingService } from '@/services/reading.services'
 import { toast } from 'sonner'
 import { useSearchParams, useRouter } from 'next/navigation'
+
+function parseGroupInstruction(instruction?: string) {
+  if (!instruction) {
+    return { range: "", inst1: "", inst2: "", heading: "" };
+  }
+  if (instruction.includes("|||")) {
+    const parts = instruction.split("|||");
+    return {
+      range: parts[0] || "",
+      inst1: parts[1] || "",
+      inst2: parts[2] || "",
+      heading: parts[3] || "",
+    };
+  }
+  return { range: "", inst1: instruction, inst2: "", heading: "" };
+}
 import { 
   IconBook2, 
   IconPlus, 
@@ -25,6 +41,7 @@ import {
   IconTable,
   IconBold
 } from '@tabler/icons-react'
+import VisualNotesBuilder from '@/components/shared/VisualNotesBuilder'
 
 // Tab definitions for IELTS modules
 const modules = [
@@ -37,6 +54,7 @@ const modules = [
 // All Official IELTS Reading Question Types
 const readingQuestionTypes = [
   { code: "R-MCQ", title: "Multiple Choice Questions (MCQ)", desc: "Select correct answers from list options.", type: "MULTIPLE_CHOICE" },
+  { code: "R-MMCQ", title: "Multiple Choice (Checkbox)", desc: "Select multiple correct answers from list options.", type: "MULTIPLE_CHOICE_MULTIPLE" },
   { code: "R-TFN", title: "True / False / Not Given", desc: "Identify if statements agree with factual passage details.", type: "TRUE_FALSE_NOT_GIVEN" },
   { code: "R-YNN", title: "Yes / No / Not Given", desc: "Identify if statements agree with the writer's opinions/views.", type: "YES_NO_NOT_GIVEN" },
   { code: "R-MHDG", title: "Matching Headings", desc: "Match headers from a list to paragraph or section letters.", type: "MATCHING_HEADINGS" },
@@ -395,6 +413,54 @@ function FormatInput({ inputRef, value, onChange, placeholder, required }: Forma
   )
 }
 
+interface IeltsHeaderInputProps {
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  className?: string
+}
+
+function IeltsHeaderInput({ value, onChange, placeholder, className }: IeltsHeaderInputProps) {
+  const ref = useRef<HTMLInputElement>(null)
+
+  const handleBold = () => {
+    const input = ref.current
+    if (!input) return
+    const start = input.selectionStart ?? 0
+    const end = input.selectionEnd ?? 0
+    const selectedText = value.substring(start, end)
+    const replacement = `**${selectedText}**`
+    const newValue = value.substring(0, start) + replacement + value.substring(end)
+    onChange(newValue)
+
+    setTimeout(() => {
+      input.focus()
+      input.setSelectionRange(start + 2, start + 2 + selectedText.length)
+    }, 0)
+  }
+
+  return (
+    <div className="relative flex items-center w-full">
+      <input
+        ref={ref}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={className || "w-full text-xs font-semibold px-3 py-2 border border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 text-black placeholder:text-gray-400 bg-white pr-8"}
+      />
+      <button
+        type="button"
+        onClick={handleBold}
+        className="absolute right-2 top-2.5 text-indigo-400 hover:text-indigo-600 transition-colors p-1"
+        title="Bold"
+      >
+        <IconBold size={12} className="stroke-[3]" />
+      </button>
+    </div>
+  )
+}
+
 function convertMarkdownToHtml(text: string): string {
   if (!text) return "";
   
@@ -472,12 +538,13 @@ function TeacherDashboardContent() {
             group.questions?.forEach((q: any) => {
               // Reconstruct correct answer for MCQ
               let correctAnswer = q.correctAnswer;
-              if (group.type === "MULTIPLE_CHOICE" && q.options && q.options.length > 0) {
+              if ((group.type === "MULTIPLE_CHOICE" || group.type === "MULTIPLE_CHOICE_MULTIPLE") && q.options && q.options.length > 0) {
                 const idx = q.options.indexOf(q.correctAnswer);
                 if (idx === 0) correctAnswer = "A";
                 else if (idx === 1) correctAnswer = "B";
                 else if (idx === 2) correctAnswer = "C";
                 else if (idx === 3) correctAnswer = "D";
+                else if (idx === 4) correctAnswer = "E";
               }
 
               loadedQuestions.push({
@@ -562,6 +629,7 @@ function TeacherDashboardContent() {
   const [mcqOptB, setMcqOptB] = useState('')
   const [mcqOptC, setMcqOptC] = useState('')
   const [mcqOptD, setMcqOptD] = useState('')
+  const [mcqOptE, setMcqOptE] = useState('')
 
   // Custom Matching options / list of headings (newlines)
   const [groupOptions, setGroupOptions] = useState('')
@@ -592,6 +660,7 @@ function TeacherDashboardContent() {
   const mcqOptBRef = useRef<HTMLTextAreaElement>(null)
   const mcqOptCRef = useRef<HTMLTextAreaElement>(null)
   const mcqOptDRef = useRef<HTMLTextAreaElement>(null)
+  const mcqOptERef = useRef<HTMLTextAreaElement>(null)
   const explanationRef = useRef<HTMLTextAreaElement>(null)
   const answerInputRef = useRef<HTMLTextAreaElement>(null)
   const passageInstructionRef = useRef<HTMLTextAreaElement>(null)
@@ -681,12 +750,13 @@ function TeacherDashboardContent() {
     // Map correct answer and options based on MCQ or other types
     let finalCorrectAnswer = correctAnswer
     let finalOptions: string[] = []
-    if (selectedTypeDetails.type === "MULTIPLE_CHOICE") {
-      finalOptions = [mcqOptA, mcqOptB, mcqOptC, mcqOptD].filter(Boolean)
+    if (selectedTypeDetails.type === "MULTIPLE_CHOICE" || selectedTypeDetails.type === "MULTIPLE_CHOICE_MULTIPLE") {
+      finalOptions = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE].filter(Boolean)
       if (correctAnswer === "A") finalCorrectAnswer = mcqOptA
       else if (correctAnswer === "B") finalCorrectAnswer = mcqOptB
       else if (correctAnswer === "C") finalCorrectAnswer = mcqOptC
       else if (correctAnswer === "D") finalCorrectAnswer = mcqOptD
+      else if (correctAnswer === "E") finalCorrectAnswer = mcqOptE
     }
 
     let finalGroupOptions: string[] = []
@@ -733,6 +803,7 @@ function TeacherDashboardContent() {
     setMcqOptB('')
     setMcqOptC('')
     setMcqOptD('')
+    setMcqOptE('')
     setQuestionImage(null)
     setQuestionImageName('')
     // Keep instruction, groupOptions, and table template for convenience when adding sequential questions
@@ -1490,7 +1561,7 @@ function TeacherDashboardContent() {
                       )}
                     </div>
 
-                    {/* Question Number Override & Instructions */}
+                    {/* Question Number Override & IELTS Header Configuration */}
                     <div className="grid gap-3 sm:grid-cols-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest block">Q# (Optional)</label>
@@ -1502,23 +1573,57 @@ function TeacherDashboardContent() {
                           className="w-full text-xs font-bold px-3 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-none focus:border-indigo-400 text-black"
                         />
                       </div>
-                      <div className="sm:col-span-3 space-y-1">
-                        <FormatToolbar 
-                          inputRef={instructionRef}
-                          value={questionInstruction}
-                          onChange={setQuestionInstruction}
-                          label="Group Instructions"
-                        />
-                        <textarea 
-                          ref={instructionRef}
-                          rows={2}
-                          value={questionInstruction}
-                          onChange={(e) => setQuestionInstruction(e.target.value)}
-                          placeholder="e.g. Write TRUE, FALSE or NOT GIVEN in boxes 1-5 on your answer sheet." 
-                          className="w-full text-xs font-semibold px-3.5 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-none focus:border-indigo-400 text-black placeholder:text-gray-400 resize-y"
-                          required
-                        />
-                      </div>
+                      
+                      {(() => {
+                        const parsed = parseGroupInstruction(questionInstruction);
+                        const updateField = (field: "range" | "inst1" | "inst2" | "heading", val: string) => {
+                          const next = { ...parsed, [field]: val };
+                          const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}`;
+                          setQuestionInstruction(serialized);
+                        };
+
+                        return (
+                          <div className="sm:col-span-3 space-y-3 bg-slate-50 p-4 rounded-xl border border-indigo-100">
+                            <span className="text-[10px] font-extrabold uppercase text-indigo-900 tracking-wider block mb-1 font-bold">
+                              IELTS Block Header Configuration (4 Header Fields)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-500 uppercase">1. Question Range</label>
+                                <IeltsHeaderInput
+                                  value={parsed.range}
+                                  onChange={(val) => updateField("range", val)}
+                                  placeholder="e.g. Questions 1–5"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-500 uppercase">2. Question Title/Heading (Centered)</label>
+                                <IeltsHeaderInput
+                                  value={parsed.heading}
+                                  onChange={(val) => updateField("heading", val)}
+                                  placeholder="e.g. Clean energy solution"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-500 uppercase">3. Instruction Line 1 (Italic)</label>
+                                <IeltsHeaderInput
+                                  value={parsed.inst1}
+                                  onChange={(val) => updateField("inst1", val)}
+                                  placeholder="e.g. Choose the correct letter..."
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-500 uppercase">4. Instruction Line 2 (Italic)</label>
+                                <IeltsHeaderInput
+                                  value={parsed.inst2}
+                                  onChange={(val) => updateField("inst2", val)}
+                                  placeholder="e.g. Write the correct letter..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Conditional input: Matching Options */}
@@ -1560,6 +1665,26 @@ function TeacherDashboardContent() {
                               onChange={(val) => setPassageSegment(val)} 
                             />
                           </>
+                        ) : selectedQuestionType === "R-NCOMP" ? (
+                          <>
+                            <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest block font-bold mb-1">
+                              Notes Completion Editor <span className="text-rose-500">*</span>
+                            </label>
+                            <VisualNotesBuilder
+                              value={passageSegment}
+                              onChange={(val) => setPassageSegment(val)}
+                              questions={
+                                (() => {
+                                  const existing = compiledQuestions
+                                    .filter(q => q.passageIndex === activePassage && q.typeCode === "R-NCOMP")
+                                    .map(q => q.questionNumber);
+                                  const nextQNum = Number(customQuestionNumber) || (compiledQuestions.length + 1);
+                                  const allNums = Array.from(new Set([...existing, nextQNum])).sort((a, b) => a - b);
+                                  return allNums.map(num => ({ questionNumber: num }));
+                                })()
+                              }
+                            />
+                          </>
                         ) : (
                           <>
                             <FormatToolbar 
@@ -1580,7 +1705,7 @@ function TeacherDashboardContent() {
                                   ? "What happens when people encounter misinformation?\n\nAlthough people have [31] to misinformation, there is debate about precisely how and when we label something as true or untrue. The philosophers Descartes and Spinoza had [32] about how people engage..."
                                   : "Write summary text or bulleted notes. Place [1], [2], etc., where blanks should appear."
                               }
-                              className="w-full text-xs font-semibold px-3.5 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-none focus:border-indigo-400 text-black placeholder:text-gray-400 font-mono resize-y"
+                              className="w-full text-xs font-semibold px-3.5 py-2.5 border border-indigo-100 rounded-lg bg-white focus:outline-none focus:border-indigo-400 text-black placeholder:text-gray-400 font-mono resize-y"
                               required
                             />
                           </>
@@ -1617,7 +1742,7 @@ function TeacherDashboardContent() {
                     </div>
 
                     {/* MCQ Options Choices */}
-                    {selectedQuestionType === "R-MCQ" && (
+                    {(selectedQuestionType === "R-MCQ" || selectedQuestionType === "R-MMCQ") && (
                       <div className="space-y-3">
                         <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest block">Multiple Choice Options</label>
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -1649,6 +1774,15 @@ function TeacherDashboardContent() {
                             placeholder="Option D text"
                             required
                           />
+                          {selectedQuestionType === "R-MMCQ" && (
+                            <FormatInput 
+                              inputRef={mcqOptERef}
+                              value={mcqOptE}
+                              onChange={setMcqOptE}
+                              placeholder="Option E text (Required for check)"
+                              required
+                            />
+                          )}
                         </div>
                       </div>
                     )}
@@ -1657,7 +1791,7 @@ function TeacherDashboardContent() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest block font-bold">Correct Answer Value <span className="text-rose-500">*</span></label>
-                        {selectedQuestionType === "R-MCQ" ? (
+                        {(selectedQuestionType === "R-MCQ" || selectedQuestionType === "R-MMCQ") ? (
                           <select 
                             value={correctAnswer}
                             onChange={(e) => setCorrectAnswer(e.target.value)}
@@ -1669,6 +1803,7 @@ function TeacherDashboardContent() {
                             <option value="B">Option B</option>
                             <option value="C">Option C</option>
                             <option value="D">Option D</option>
+                            {selectedQuestionType === "R-MMCQ" && <option value="E">Option E</option>}
                           </select>
                         ) : selectedQuestionType === "R-TFN" ? (
                           <select 

@@ -40,22 +40,22 @@ const mainNavItems = [
 const practiceItems = [
   {
     title: "Reading",
-    url: "/student/practice/reading",
+    url: "/practice/reading",
     icon: IconBook2,
   },
   {
     title: "Listening",
-    url: "/student/practice/listening",
+    url: "/practice/listening",
     icon: IconHeadset,
   },
   {
     title: "Writing",
-    url: "/student/practice/writing",
+    url: "/practice/writing",
     icon: IconPencil,
   },
   {
     title: "Speaking",
-    url: "/student/practice/speaking",
+    url: "/practice/speaking",
     icon: IconMicrophone,
   },
   {

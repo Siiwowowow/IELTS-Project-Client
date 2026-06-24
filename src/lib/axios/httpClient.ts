@@ -36,6 +36,7 @@ const axiosInstance = () => instance;
 export interface ApiRequestOptions {
     params?: Record<string, unknown>;
     headers?: Record<string, string>;
+    timeout?: number;
 }
 
 const httpGet = async <TData>(endpoint: string, options?: ApiRequestOptions) : Promise<ApiResponse<TData>> => {
@@ -44,6 +45,7 @@ const httpGet = async <TData>(endpoint: string, options?: ApiRequestOptions) : P
         const response = await instance.get<ApiResponse<TData>>(endpoint, {
             params: options?.params,
             headers: options?.headers,
+            timeout: options?.timeout,
         });
         return response.data;
     } catch (error) {       
@@ -57,6 +59,7 @@ const httpPost = async <TData>(endpoint: string, data: unknown, options?: ApiReq
         const response = await axiosInstance().post<ApiResponse<TData>>(endpoint, data, {
             params: options?.params,
             headers: options?.headers,
+            timeout: options?.timeout,
         });
         return response.data;
     } catch (error) {
@@ -70,6 +73,7 @@ const httpPut = async <TData>(endpoint: string, data: unknown, options?: ApiRequ
         const response = await axiosInstance().put<ApiResponse<TData>>(endpoint, data, {
             params: options?.params,
             headers: options?.headers,
+            timeout: options?.timeout,
         });
         return response.data;
     } catch (error) {
@@ -83,6 +87,7 @@ const httpPatch = async <TData>(endpoint: string, data: unknown, options?: ApiRe
         const response = await axiosInstance().patch<ApiResponse<TData>>(endpoint, data, {
             params: options?.params,
             headers: options?.headers,
+            timeout: options?.timeout,
         });
         return response.data;
     }
@@ -97,6 +102,7 @@ const httpDelete =  async <TData>(endpoint: string, options?: ApiRequestOptions)
         const response = await axiosInstance().delete<ApiResponse<TData>>(endpoint, {
             params: options?.params,
             headers: options?.headers,
+            timeout: options?.timeout,
         });
         return response.data;
     } catch (error) {

@@ -1,25 +1,7 @@
-// src/types/reading.types.ts
+// src/types/listening.types.ts
+import { QuestionGroupType } from './reading.types';
 
-export type QuestionGroupType =
-  | 'TRUE_FALSE_NOT_GIVEN'
-  | 'YES_NO_NOT_GIVEN'
-  | 'MULTIPLE_CHOICE'
-  | 'MULTIPLE_CHOICE_MULTIPLE'
-  | 'SHORT_ANSWER'
-  | 'SENTENCE_COMPLETION'
-  | 'SUMMARY_COMPLETION'
-  | 'MATCHING_HEADINGS'
-  | 'MATCHING_FEATURES'
-  | 'MATCHING_SENTENCE_ENDINGS'
-  | 'DIAGRAM_LABELLING'
-  | 'FLOW_CHART_COMPLETION'
-  | 'TABLE_COMPLETION'
-  | 'MATCHING_INFORMATION'
-  | 'SUMMARY_COMPLETION_WITH_OPTIONS'
-  | 'SUMMARY_COMPLETION_WITHOUT_OPTIONS'
-  | 'NOTES_COMPLETION';
-
-export interface IQuestion {
+export interface IListeningQuestion {
   id: string;
   groupId: string;
   questionNumber: number;
@@ -29,30 +11,31 @@ export interface IQuestion {
   explanation?: string;   // stripped for students on exam fetch
 }
 
-export interface IQuestionGroup {
+export interface IListeningQuestionGroup {
   id: string;
-  passageId: string;
+  sectionId: string;
   type: QuestionGroupType;
   instruction?: string;
   passageSegment?: string;
   options?: string[];       // heading list / feature list etc.
   imageUrl?: string;
   order: number;
-  questions: IQuestion[];
+  questions: IListeningQuestion[];
 }
 
-export interface IPassage {
+export interface IListeningSection {
   id: string;
   examId: string;
   title: string;
-  text?: string;
-  pdfUrl?: string;
-  imageUrl?: string;
+  audioUrl: string;
+  youtubeUrl?: string;
+  script?: string;
+  instruction?: string;
   order: number;
-  questionGroups: IQuestionGroup[];
+  questionGroups: IListeningQuestionGroup[];
 }
 
-export interface IExam {
+export interface IListeningExam {
   id: string;
   title: string;
   description?: string;
@@ -60,37 +43,37 @@ export interface IExam {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
-  passages?: IPassage[];
-  _count?: { passages: number };
+  sections?: IListeningSection[];
+  _count?: { sections: number };
 }
 
 // ---------- Submission ----------
 
-export interface ISubmitAnswer {
+export interface IListeningSubmitAnswer {
   questionId: string;
   submittedAnswer: string;
 }
 
-export interface ISubmitAttempt {
-  answers: ISubmitAnswer[];
+export interface IListeningSubmitAttempt {
+  answers: IListeningSubmitAnswer[];
 }
 
 // ---------- Attempt / Review ----------
 
-export interface IAnswerWithQuestion {
+export interface IListeningAnswerWithQuestion {
   id: string;
   attemptId: string;
   questionId: string;
   submittedAnswer: string;
   isCorrect: boolean;
-  question: IQuestion & {
-    group: IQuestionGroup & {
-      passage: { title: string };
+  question: IListeningQuestion & {
+    group: IListeningQuestionGroup & {
+      section: { title: string };
     };
   };
 }
 
-export interface IAttemptResult {
+export interface IListeningAttemptResult {
   id: string;
   userId: string;
   examId: string;
@@ -99,11 +82,21 @@ export interface IAttemptResult {
   status: string;
   score: number;
   bandScore: number;
-  answers: IAnswerWithQuestion[];
-  exam: { title: string; duration: number };
+  answers: IListeningAnswerWithQuestion[];
+  exam: {
+    title: string;
+    duration: number;
+    sections?: {
+      id: string;
+      title: string;
+      youtubeUrl?: string | null;
+      script?: string | null;
+      order: number;
+    }[];
+  };
 }
 
-export interface IAttemptHistory {
+export interface IListeningAttemptHistory {
   id: string;
   examId: string;
   score: number;

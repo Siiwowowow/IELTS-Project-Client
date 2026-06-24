@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { readingService } from "@/services/reading.services";
 import {
@@ -98,7 +98,16 @@ export default function ReviewPage({ params }: Props) {
   }
 
   // ── Derived ──────────────────────────────────────────────────────────────────
-  const total     = attempt.answers.length;
+  const sortedAnswers = useMemo(() => {
+    if (!attempt?.answers) return [];
+    return [...attempt.answers].sort((a: any, b: any) => {
+      const numA = a.question?.questionNumber ?? 0;
+      const numB = b.question?.questionNumber ?? 0;
+      return numA - numB;
+    });
+  }, [attempt?.answers]);
+
+  const total     = sortedAnswers.length > 0 ? sortedAnswers.length : attempt.answers.length;
   const correct   = attempt.score;
   const wrong     = total - correct;
   const pct       = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -111,7 +120,7 @@ export default function ReviewPage({ params }: Props) {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-3xl mx-auto pb-12 py-6">
+    <div className="space-y-6 max-w-3xl mx-auto pb-12 py-6 px-4">
 
       {/* Back */}
       <Link
@@ -192,20 +201,65 @@ export default function ReviewPage({ params }: Props) {
       </div>
 
       {/* ── Detailed answer review ────────────────────────────────────────── */}
-      <div>
-        <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+      <div className="space-y-6">
+        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <IconTarget size={18} className="text-primary" />
           Detailed Review
         </h2>
 
+        {/* Answer Sheet Grid Summary */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <IconCircleCheck className="text-emerald-600" size={18} />
+            Answer Sheet Summary
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {sortedAnswers.map((ans) => {
+              const qNum = ans.question?.questionNumber;
+              return (
+                <div
+                  key={ans.id}
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                    ans.isCorrect
+                      ? "bg-emerald-50/50 border-emerald-200 hover:bg-emerald-50"
+                      : "bg-rose-50/50 border-rose-200 hover:bg-rose-50"
+                  }`}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-gray-400">Q{qNum}</span>
+                    <span className="text-sm font-semibold truncate text-gray-800" title={ans.submittedAnswer || "(No answer)"}>
+                      {ans.submittedAnswer || "-"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium truncate" title={ans.question?.correctAnswer}>
+                      Key: {ans.question?.correctAnswer || "-"}
+                    </span>
+                  </div>
+                  <div className="shrink-0 ml-2">
+                    {ans.isCorrect ? (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white">
+                        <IconCheck size={11} stroke={3} />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-600 text-white">
+                        <IconX size={11} stroke={3} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Detailed Question List */}
         <div className="space-y-4">
-          {attempt.answers.map((ans) => (
+          {sortedAnswers.map((ans) => (
             <div
               key={ans.id}
-              className={`rounded-xl border p-5 transition-all shadow-sm ${
+              className={`rounded-xl border p-5 transition-all shadow-sm bg-white ${
                 ans.isCorrect
-                  ? "border-emerald-200 bg-emerald-50/40"
-                  : "border-rose-200 bg-rose-50/40"
+                  ? "border-emerald-100 hover:border-emerald-200 hover:bg-emerald-50/10"
+                  : "border-rose-100 hover:border-rose-200 hover:bg-rose-50/10"
               }`}
             >
               <div className="flex items-start gap-3.5">
@@ -225,7 +279,7 @@ export default function ReviewPage({ params }: Props) {
                 <div className="flex-1 space-y-2.5 min-w-0">
                   {/* Meta: Question number */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-bold text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                    <span className="text-sm font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 shadow-sm">
                       Question {ans.question?.questionNumber}
                     </span>
                   </div>
@@ -236,7 +290,7 @@ export default function ReviewPage({ params }: Props) {
                   </p>
 
                   {/* Answer comparison - Dark Text and clear status */}
-                  <div className="flex flex-wrap gap-5 text-sm bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                  <div className="flex flex-wrap gap-5 text-sm bg-gray-50 p-3 rounded-lg border border-gray-150/70 shadow-inner">
                     <span className="flex items-center gap-1.5">
                       <span className="text-gray-900 font-medium">Your answer:</span>
                       <span
@@ -248,14 +302,12 @@ export default function ReviewPage({ params }: Props) {
                       </span>
                     </span>
 
-                    {!ans.isCorrect && ans.question?.correctAnswer && (
-                      <span className="flex items-center gap-1.5 border-l border-gray-200 pl-5">
-                        <span className="text-gray-900 font-medium">Correct answer:</span>
-                        <span className="font-bold text-[15px] text-emerald-700">
-                          {ans.question.correctAnswer}
-                        </span>
+                    <span className="flex items-center gap-1.5 border-l border-gray-200 pl-5">
+                      <span className="text-gray-900 font-medium">Correct answer:</span>
+                      <span className="font-bold text-[15px] text-emerald-700">
+                        {ans.question?.correctAnswer}
                       </span>
-                    )}
+                    </span>
                   </div>
 
                   {/* Explanation - Clear and readable text */}

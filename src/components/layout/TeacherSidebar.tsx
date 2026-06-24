@@ -28,13 +28,23 @@ import { usePathname } from "next/navigation";
 
 const menuItems = [
   {
-    title: "Exam Creator",
+    title: "Reading Creator",
     url: "/teacher/dashboard",
     icon: IconFilePlus,
   },
   {
-    title: "My Exams",
+    title: "My Reading Exams",
     url: "/teacher/exams",
+    icon: IconNotebook,
+  },
+  {
+    title: "Listening Creator",
+    url: "/teacher/listening/create",
+    icon: IconFilePlus,
+  },
+  {
+    title: "My Listening Exams",
+    url: "/teacher/listening/exams",
     icon: IconNotebook,
   },
 ];

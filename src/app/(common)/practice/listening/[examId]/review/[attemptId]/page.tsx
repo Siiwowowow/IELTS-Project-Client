@@ -1,0 +1,549 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import React, { use, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { listeningService } from "@/services/listening.services";
+import {
+  IconLoader2,
+  IconAlertCircle,
+  IconArrowLeft,
+  IconCheck,
+  IconX,
+  IconTrophy,
+  IconTarget,
+  IconChartBar,
+  IconClock,
+  IconBulb,
+  IconCircleCheck,
+  IconBrandYoutube,
+  IconArticle,
+} from "@tabler/icons-react";
+import Link from "next/link";
+
+interface Props {
+  params: Promise<{ examId: string; attemptId: string }>;
+}
+
+function bandColor(band: number) {
+  if (band >= 8) return { ring: "border-emerald-400", text: "text-emerald-600", bg: "bg-emerald-50" };
+  if (band >= 7) return { ring: "border-green-400",   text: "text-green-600",   bg: "bg-green-50" };
+  if (band >= 6) return { ring: "border-blue-400",    text: "text-blue-600",    bg: "bg-blue-50" };
+  if (band >= 5) return { ring: "border-orange-400",  text: "text-orange-600",  bg: "bg-orange-50" };
+  return         { ring: "border-red-400",    text: "text-red-600",    bg: "bg-red-50" };
+}
+
+function bandLabel(band: number) {
+  if (band >= 8.5) return "Expert";
+  if (band >= 7.5) return "Very Good";
+  if (band >= 6.5) return "Good";
+  if (band >= 5.5) return "Competent";
+  if (band >= 4.5) return "Modest";
+  return "Limited";
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  highlight,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  sub?: string;
+  highlight?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center bg-white border border-gray-200 rounded-2xl p-5 gap-1 text-center shadow-sm">
+      <span className={`text-2xl font-bold ${highlight ?? "text-gray-700"}`}>{value}</span>
+      <span className="text-xs text-gray-400 flex items-center gap-1">
+        {icon}
+        {label}
+      </span>
+      {sub && <span className="text-[11px] text-gray-400">{sub}</span>}
+    </div>
+  );
+}
+
+export default function ListeningReviewPage({ params }: Props) {
+  const { examId, attemptId } = use(params);
+  const [activeTab, setActiveTab] = useState<"review" | "script" | "youtube">("review");
+  const [activeSecIdx, setActiveSecIdx] = useState(0);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["listening-attempt-review", attemptId],
+    queryFn: () => listeningService.getAttemptReview(attemptId),
+  });
+
+  const attempt = data?.data;
+
+  // ── Derived ──────────────────────────────────────────────────────────────────
+  const allExamQuestions = React.useMemo(() => {
+    let counter = 1;
+    if (!attempt?.exam?.sections) return [];
+    return (attempt.exam.sections ?? [])
+      .sort((a: any, b: any) => a.order - b.order)
+      .flatMap((s: any) =>
+        (s.questionGroups ?? [])
+          .sort((a: any, b: any) => a.order - b.order)
+          .flatMap((g: any) =>
+            (g.questions ?? []).map((q: any) => ({
+              ...q,
+              sectionTitle: s.title,
+              questionNumber: counter++,
+            }))
+          )
+      );
+  }, [attempt?.exam?.sections]);
+
+  const sortedAnswers = React.useMemo(() => {
+    if (!attempt?.answers) return [];
+    return [...attempt.answers].sort((a: any, b: any) => {
+      const numA = a.question?.questionNumber ?? 0;
+      const numB = b.question?.questionNumber ?? 0;
+      return numA - numB;
+    });
+  }, [attempt?.answers]);
+
+  // ── Loading ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <IconLoader2 size={40} className="animate-spin text-blue-600" />
+        <p className="text-sm text-gray-500 font-medium">Loading your listening results…</p>
+      </div>
+    );
+  }
+
+  // ── Error ────────────────────────────────────────────────────────────────────
+  if (isError || !attempt) {
+    return (
+      <div className="flex items-center gap-3 p-5 bg-red-50 border border-red-100 rounded-2xl text-red-700 max-w-lg mx-auto mt-12">
+        <IconAlertCircle size={22} className="shrink-0" />
+        <div>
+          <p className="font-semibold text-sm">Failed to load review</p>
+          <p className="text-xs mt-0.5 text-red-500">Please go back and try again.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const total     = sortedAnswers.length > 0 ? sortedAnswers.length : attempt.answers.length;
+  const correct   = attempt.score;
+  const wrong     = total - correct;
+  const pct       = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const bc        = bandColor(attempt.bandScore);
+  const label     = bandLabel(attempt.bandScore);
+
+  const startMs   = new Date(attempt.startTime).getTime();
+  const endMs     = new Date(attempt.endTime).getTime();
+  const elapsedMin = Math.round((endMs - startMs) / 60000);
+
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto pb-12 py-6 px-4">
+      {/* Back */}
+      <Link
+        href="/practice/listening"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-600 transition-colors"
+      >
+        <IconArrowLeft size={15} />
+        Back to Listening Practice
+      </Link>
+
+      {/* ── Hero score card ───────────────────────────────────────────────── */}
+      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white overflow-hidden shadow-lg">
+        {/* Decorative blobs */}
+        <div className="absolute -top-8 -right-8 h-40 w-40 rounded-full bg-blue-600/20 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+
+        <div className="relative flex flex-col md:flex-row items-center gap-6">
+          {/* Trophy */}
+          <div className={`flex items-center justify-center h-20 w-20 rounded-2xl border-2 ${bc.ring} ${bc.bg} shrink-0 shadow-inner`}>
+            <IconTrophy size={36} className={bc.text} />
+          </div>
+
+          {/* Titles */}
+          <div className="text-center md:text-left flex-1">
+            <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Exam Complete</p>
+            <h1 className="text-xl font-bold text-white leading-tight">{attempt.exam.title}</h1>
+            <p className={`text-sm font-medium mt-1 ${bc.text}`}>{label}</p>
+          </div>
+
+          {/* Band score */}
+          <div className="text-center shrink-0">
+            <div className={`text-5xl font-extrabold ${bc.text}`}>{attempt.bandScore}</div>
+            <div className="text-xs text-slate-400 mt-1">IELTS Band Score</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats row ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          icon={<IconCircleCheck size={12} />}
+          label="Correct"
+          value={correct}
+          highlight="text-green-600"
+        />
+        <StatCard
+          icon={<IconX size={12} />}
+          label="Incorrect"
+          value={wrong}
+          highlight="text-red-500"
+        />
+        <StatCard
+          icon={<IconChartBar size={12} />}
+          label="Accuracy"
+          value={`${pct}%`}
+          highlight={pct >= 70 ? "text-green-600" : pct >= 50 ? "text-orange-600" : "text-red-500"}
+        />
+        <StatCard
+          icon={<IconClock size={12} />}
+          label="Time taken"
+          value={`${elapsedMin}m`}
+          sub={`of ${attempt.exam.duration}m`}
+        />
+      </div>
+
+      {/* ── Progress bar ──────────────────────────────────────────────────── */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>Performance</span>
+          <span>{correct}/{total} correct</span>
+        </div>
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-400 transition-all duration-700"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* ── Tabs selector ─────────────────────────────────────────────────── */}
+      <div className="flex border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("review")}
+          className={`flex-1 py-3 text-center border-b-2 font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2 ${
+            activeTab === "review"
+              ? "border-[#1B3A6B] text-[#1B3A6B] font-extrabold"
+              : "border-transparent text-gray-500 hover:text-gray-800"
+          }`}
+        >
+          <IconTarget size={16} />
+          <span>Detailed Review</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("script")}
+          className={`flex-1 py-3 text-center border-b-2 font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2 ${
+            activeTab === "script"
+              ? "border-[#1B3A6B] text-[#1B3A6B] font-extrabold"
+              : "border-transparent text-gray-500 hover:text-gray-800"
+          }`}
+        >
+          <IconArticle size={16} />
+          <span>Listening Script</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("youtube")}
+          className={`flex-1 py-3 text-center border-b-2 font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2 ${
+            activeTab === "youtube"
+              ? "border-[#1B3A6B] text-[#1B3A6B] font-extrabold"
+              : "border-transparent text-gray-500 hover:text-gray-800"
+          }`}
+        >
+          <IconBrandYoutube size={16} />
+          <span>Video Walkthrough</span>
+        </button>
+      </div>
+
+      {/* ── Tabs content ──────────────────────────────────────────────────── */}
+      {/* ── Tabs content ──────────────────────────────────────────────────── */}
+      {activeTab === "review" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Answer Sheet Grid Summary */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <IconCircleCheck className="text-blue-600" size={18} />
+              Answer Sheet Summary
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {sortedAnswers.map((ans) => {
+                const qNum = ans.question?.questionNumber;
+                return (
+                  <div
+                    key={ans.id}
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      ans.isCorrect
+                        ? "bg-emerald-50/50 border-emerald-200 hover:bg-emerald-50"
+                        : "bg-rose-50/50 border-rose-200 hover:bg-rose-50"
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-gray-400">Q{qNum}</span>
+                      <span className="text-sm font-semibold truncate text-gray-800" title={ans.submittedAnswer || "(No answer)"}>
+                        {ans.submittedAnswer || "-"}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-medium truncate" title={ans.question?.correctAnswer}>
+                        Key: {ans.question?.correctAnswer || "-"}
+                      </span>
+                    </div>
+                    <div className="shrink-0 ml-2">
+                      {ans.isCorrect ? (
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white">
+                          <IconCheck size={11} stroke={3} />
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-600 text-white">
+                          <IconX size={11} stroke={3} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detailed Question List */}
+          <div className="space-y-4">
+            {sortedAnswers.map((ans) => {
+              const q = ans.question;
+              if (!q) return null;
+              const submittedAnswer = ans.submittedAnswer || "";
+              const isCorrect = ans.isCorrect;
+              const sectionTitle = q.group?.section?.title || "Listening Section";
+
+              return (
+                <div
+                  key={ans.id}
+                  className={`rounded-xl border p-5 transition-all shadow-sm bg-white ${
+                    isCorrect
+                      ? "border-emerald-100 hover:border-emerald-200 hover:bg-emerald-50/10"
+                      : "border-rose-100 hover:border-rose-200 hover:bg-rose-50/10"
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5">
+                    {/* Correct/wrong badge/icon */}
+                    <div
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full mt-1 ${
+                        isCorrect ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                      }`}
+                    >
+                      {isCorrect ? (
+                        <IconCheck size={14} stroke={2.5} />
+                      ) : (
+                        <IconX size={14} stroke={2.5} />
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-2.5 min-w-0">
+                      {/* Meta: Question number and section */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                          Question {q.questionNumber}
+                        </span>
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                          {sectionTitle}
+                        </span>
+                      </div>
+
+                      {/* Question text */}
+                      {q.questionText && (
+                        <p className="text-[15px] text-black font-semibold leading-snug">
+                          {q.questionText}
+                        </p>
+                      )}
+
+                      {/* Answer comparison */}
+                      <div className="flex flex-wrap gap-5 text-sm bg-gray-50 p-3 rounded-lg border border-gray-150/70 shadow-inner">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-gray-900 font-medium">Your answer:</span>
+                          <span
+                            className={`font-bold text-[15px] ${
+                              isCorrect ? "text-emerald-700" : "text-rose-700"
+                            }`}
+                          >
+                            {submittedAnswer || "(no answer)"}
+                          </span>
+                        </span>
+
+                        <span className="flex items-center gap-1.5 border-l border-gray-200 pl-5">
+                          <span className="text-gray-900 font-medium">Correct answer:</span>
+                          <span className="font-bold text-[15px] text-emerald-700">
+                            {q.correctAnswer}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Explanation */}
+                      {q.explanation && (
+                        <div className="flex items-start gap-2.5 bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-2.5 shadow-inner">
+                          <IconBulb size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Explanation</span>
+                            <p className="text-sm text-black leading-relaxed font-normal">
+                              {q.explanation}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "script" && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Sub-tabs for Section */}
+          <div className="flex bg-gray-100 p-1 rounded-xl gap-1 max-w-[480px]">
+            {Array.from({ length: 4 }).map((_, idx) => {
+              const sec = attempt.exam.sections?.find((s: any) => s.order === idx + 1);
+              const label = sec?.title || `Section ${idx + 1}`;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveSecIdx(idx)}
+                  className={`flex-1 py-1.5 text-center text-xs font-bold uppercase rounded-lg transition ${
+                    activeSecIdx === idx
+                      ? "bg-[#1B3A6B] text-white shadow-sm"
+                      : "text-gray-600 hover:text-black hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const sec = attempt.exam.sections?.find((s: any) => s.order === activeSecIdx + 1);
+            if (sec && sec.script) {
+              return (
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+                  <h3 className="font-extrabold text-sm text-[#1B3A6B] uppercase tracking-wide border-b border-gray-150 pb-2">
+                    {sec.title} Listening Transcript
+                  </h3>
+                  <div className="text-sm text-gray-800 leading-relaxed font-normal whitespace-pre-wrap bg-slate-50 border border-slate-100 p-4 rounded-xl max-h-[500px] overflow-y-auto font-mono">
+                    {sec.script}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl py-12 px-6 text-center text-gray-400 font-semibold shadow-sm">
+                No script transcript has been uploaded for this section by the instructor.
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {activeTab === "youtube" && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Sub-tabs for Section */}
+          <div className="flex bg-gray-100 p-1 rounded-xl gap-1 max-w-[480px]">
+            {Array.from({ length: 4 }).map((_, idx) => {
+              const sec = attempt.exam.sections?.find((s: any) => s.order === idx + 1);
+              const label = sec?.title || `Section ${idx + 1}`;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveSecIdx(idx)}
+                  className={`flex-1 py-1.5 text-center text-xs font-bold uppercase rounded-lg transition ${
+                    activeSecIdx === idx
+                      ? "bg-[#1B3A6B] text-white shadow-sm"
+                      : "text-gray-600 hover:text-black hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const sec = attempt.exam.sections?.find((s: any) => s.order === activeSecIdx + 1);
+            const embedUrl = getYoutubeEmbedUrl(sec?.youtubeUrl);
+            if (sec && embedUrl) {
+              return (
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+                  <h3 className="font-extrabold text-sm text-[#1B3A6B] uppercase tracking-wide border-b border-gray-150 pb-2">
+                    {sec.title} Video Walkthrough
+                  </h3>
+                  <div className="aspect-video w-full overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-black">
+                    <iframe
+                      className="w-full h-full"
+                      src={embedUrl}
+                      title="YouTube video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                </div>
+              );
+            }
+            if (sec && sec.youtubeUrl) {
+              return (
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm text-center space-y-4">
+                  <p className="text-sm font-semibold text-gray-700">Video Walkthrough Link</p>
+                  <a
+                    href={sec.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded transition"
+                  >
+                    Open YouTube Video
+                  </a>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl py-12 px-6 text-center text-gray-400 font-semibold shadow-sm">
+                No video walkthrough has been uploaded for this section by the instructor.
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Link
+          href="/practice/listening"
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl transition-all shadow-md shadow-blue-500/20 text-sm cursor-pointer"
+        >
+          Practice Another Exam
+        </Link>
+        <Link
+          href={`/practice/listening/${examId}`}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 hover:border-blue-400 text-gray-700 hover:text-blue-600 font-semibold rounded-2xl transition-all text-sm cursor-pointer"
+        >
+          Retry This Exam
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function getYoutubeEmbedUrl(url?: string | null) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+  return null;
+}
