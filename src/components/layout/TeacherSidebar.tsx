@@ -8,6 +8,7 @@ import {
   IconUser,
   IconFilePlus,
   IconNotebook,
+  IconWriting,
 } from "@tabler/icons-react";
 
 import {
@@ -45,6 +46,16 @@ const menuItems = [
   {
     title: "My Listening Exams",
     url: "/teacher/listening/exams",
+    icon: IconNotebook,
+  },
+  {
+    title: "Writing Creator",
+    url: "/teacher/writing/create",
+    icon: IconWriting,
+  },
+  {
+    title: "My Writing Exams",
+    url: "/teacher/writing/exams",
     icon: IconNotebook,
   },
 ];
