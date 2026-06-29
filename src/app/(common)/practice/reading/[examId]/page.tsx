@@ -1,5 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/refs */
+ 
 "use client";
 
 import { use, useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -13,16 +14,13 @@ import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import {
-  IconLoader2,
-  IconSend,
+ 
   IconBook,
   IconAlertCircle,
   IconArrowLeft,
   IconArrowRight,
   IconFlag,
-  IconHelp,
-  IconChevronUp,
-  IconChevronDown,
+ 
   IconMaximize,
   IconMinimize,
   IconClock,
@@ -56,8 +54,6 @@ export default function ExamPage({ params }: Props) {
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
 
   const [mobileTab, setMobileTab] = useState<"passage" | "questions">("passage");
-
-  const [showNavPanel, setShowNavPanel] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -1042,7 +1038,7 @@ export default function ExamPage({ params }: Props) {
               <button
                 type="button"
                 onClick={() => doSubmit(answersRef.current)}
-                className="flex-grow py-2 text-sm font-extrabold bg-red-700 hover:bg-red-800 text-white transition rounded shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="grow py-2 text-sm font-extrabold bg-red-700 hover:bg-red-800 text-white transition rounded shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <IconCheck size={16} />
                 <span>Submit</span>

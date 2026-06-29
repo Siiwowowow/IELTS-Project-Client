@@ -1,5 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/refs */
+ 
 "use client";
 
 import { use, useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -18,7 +20,7 @@ import {
   IconAlertCircle,
   IconArrowLeft,
   IconArrowRight,
-  IconFlag,
+ 
   IconMaximize,
   IconMinimize,
   IconClock,
@@ -28,7 +30,7 @@ import {
   IconUpload,
   IconCheck,
 } from "@tabler/icons-react";
-import Link from "next/link";
+
 
 interface Props {
   params: Promise<{ examId: string }>;
@@ -374,7 +376,7 @@ export default function ExamPage({ params }: Props) {
         </div>
 
         {/* MAIN */}
-        <div className="flex-grow flex-1 min-h-0 overflow-hidden">
+        <div className="grow flex-1 min-h-0 overflow-hidden">
           {processedPassages.map((passage, idx) => {
             const passagePanel = (
               <div
@@ -695,7 +697,7 @@ export default function ExamPage({ params }: Props) {
             <button
               type="button"
               onClick={() => doSubmit(answersRef.current)}
-              className="flex-grow py-2 text-sm font-extrabold bg-red-700 hover:bg-red-800 text-white transition rounded shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="grow py-2 text-sm font-extrabold bg-red-700 hover:bg-red-800 text-white transition rounded shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <IconCheck size={16} />
               <span>Submit</span>

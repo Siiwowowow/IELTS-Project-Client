@@ -1,4 +1,5 @@
-/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -173,7 +174,7 @@ export default function ListeningReviewPage({ params }: Props) {
       </Link>
 
       {/* ── Hero score card ───────────────────────────────────────────────── */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white overflow-hidden shadow-lg">
+      <div className="relative bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white overflow-hidden shadow-lg">
         {/* Decorative blobs */}
         <div className="absolute -top-8 -right-8 h-40 w-40 rounded-full bg-blue-600/20 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
@@ -242,7 +243,7 @@ export default function ListeningReviewPage({ params }: Props) {
         </div>
         <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-400 transition-all duration-700"
+            className="h-full rounded-full bg-linear-to-r from-blue-600 to-indigo-400 transition-all duration-700"
             style={{ width: `${pct}%` }}
           />
         </div>
