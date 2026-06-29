@@ -377,8 +377,22 @@ export default function WritingReviewPage({ params }: Props) {
                     Word Count: <strong className="text-gray-800">{activeResponse.wordCount ?? 0} words</strong>
                   </span>
                 </div>
-                <div className="text-sm font-medium text-gray-800 leading-relaxed whitespace-pre-wrap bg-slate-50/30 p-4 rounded-xl select-text">
-                  {activeResponse.essay || "No response was written for this task."}
+                <div className="text-sm font-medium text-gray-800 leading-relaxed whitespace-pre-wrap select-text">
+                  {activeResponse.essay && activeResponse.essay.trim() !== "" ? (
+                    <div className="bg-slate-50/30 p-4 rounded-xl border border-gray-100/50">
+                      {activeResponse.essay}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center gap-3 border border-dashed border-amber-250 rounded-2xl bg-amber-50/15 text-amber-850 p-6">
+                      <IconAlertTriangle size={28} className="text-amber-500 animate-pulse" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-sm text-amber-900">Task Left Unanswered</p>
+                        <p className="text-xs text-gray-500 font-medium max-w-xs mx-auto">
+                          You did not write or submit any response for this writing task during the assessment.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

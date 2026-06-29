@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-comment-textnodes */
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect, Suspense } from 'react'
@@ -43,13 +44,7 @@ import {
 } from '@tabler/icons-react'
 import VisualNotesBuilder from '@/components/shared/VisualNotesBuilder'
 
-// Tab definitions for IELTS modules
-const modules = [
-  { id: 'reading', label: 'Reading Exam Builder', icon: IconBook2, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
-  { id: 'listening', label: 'Listening Builder', icon: IconBook2, color: 'text-violet-500 bg-violet-50/50 border-violet-100/50' },
-  { id: 'writing', label: 'Writing Builder', icon: IconBook2, color: 'text-amber-500 bg-amber-50/50 border-amber-100/50' },
-  { id: 'speaking', label: 'Speaking Builder', icon: IconBook2, color: 'text-rose-500 bg-rose-50/50 border-rose-100/50' },
-]
+// Tab definitions for IELTS modules (removed)
 
 // All Official IELTS Reading Question Types
 const readingQuestionTypes = [
@@ -489,7 +484,6 @@ function TeacherDashboardContent() {
   const editId = searchParams.get('edit')
   const [loadingEdit, setLoadingEdit] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<'reading' | 'listening' | 'writing' | 'speaking'>('reading')
   const [selectedQuestionType, setSelectedQuestionType] = useState<string | null>(null)
   
   // Exam metadata states
@@ -608,13 +602,11 @@ function TeacherDashboardContent() {
   })
 
   // Uploading states
-  const [uploadingPdf, setUploadingPdf] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingQImage, setUploadingQImage] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
 
   // PDF & Image input references
-  const pdfInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   // Question Form States
@@ -681,29 +673,7 @@ function TeacherDashboardContent() {
     })
   }
 
-  // Passage PDF selection handler
-  const handlePdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setUploadingPdf(true)
-      try {
-        const formData = new FormData()
-        formData.append("file", file)
-        const res = await readingService.uploadFile(formData)
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(2)
-        updatePassageField('pdf', {
-          name: file.name,
-          size: `${sizeMb} MB`,
-          url: res.data.url
-        })
-        toast.success("PDF uploaded successfully!")
-      } catch (err: any) {
-        toast.error("PDF upload failed: " + (err?.response?.data?.message || err.message))
-      } finally {
-        setUploadingPdf(false)
-      }
-    }
-  }
+
 
   // Passage/Question Image selection handler
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, isQuestionImage = false) => {
@@ -1009,67 +979,6 @@ function TeacherDashboardContent() {
           Publish Mock Exam
         </Button>
       </div>
-
-      {/* Module Selector */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {modules.map((mod) => {
-          const Icon = mod.icon
-          const isActive = activeTab === mod.id
-          
-          return (
-            <button
-              key={mod.id}
-              onClick={() => {
-                setActiveTab(mod.id as any)
-                setSelectedQuestionType(null)
-              }}
-              className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden ${
-                isActive
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100/50'
-                  : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/20'
-              }`}
-            >
-              <div className={`p-2 rounded-lg shrink-0 border ${
-                isActive ? 'bg-white/20 border-white/15 text-white' : mod.color
-              }`}>
-                <Icon size={20} />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[9px] font-bold uppercase tracking-widest block opacity-70">
-                  {mod.id === 'reading' ? 'Active Segment' : 'Locked Segment'}
-                </span>
-                <span className="font-extrabold text-sm truncate block mt-0.5">{mod.label}</span>
-              </div>
-              {mod.id !== 'reading' && (
-                <span className="absolute top-2 right-2 text-[8px] font-black tracking-widest bg-gray-100 border border-gray-200 text-gray-400 px-1 py-0.5 rounded uppercase">
-                  Inactive
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {activeTab !== 'reading' ? (
-        <Card className="bg-white border-gray-200 shadow-sm py-16 text-center">
-          <CardContent className="flex flex-col items-center max-w-md mx-auto">
-            <div className="h-16 w-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 mb-4">
-              <IconAlertCircle size={28} />
-            </div>
-            <h2 className="text-xl font-black text-black">Module Integration In Progress</h2>
-            <p className="text-gray-500 font-semibold text-sm mt-2 leading-relaxed">
-              Your website currently has the **Reading Segment** active. The Listening, Writing, and Speaking exam creators are currently reserved as the system integrates.
-            </p>
-            <Button 
-              onClick={() => setActiveTab('reading')}
-              className="mt-6 bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 font-bold transition-all duration-200"
-            >
-              Return to Reading Builder <IconArrowRight size={15} className="ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        /* 3-Passage Reading Exam Creator Layout */
         <div className="grid gap-6 lg:grid-cols-12 animate-fadeIn">
           
           {/* Main Workspace Column (8) */}
@@ -1233,95 +1142,48 @@ function TeacherDashboardContent() {
                   />
                 </div>
 
-                {/* PDF & Image Upload System */}
-                <div className="grid gap-4 md:grid-cols-2">
+                {/* Image Upload System */}
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Attach Passage Image Diagram</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={imageInputRef}
+                    onChange={(e) => handleImageChange(e)}
+                    className="hidden" 
+                  />
                   
-                  {/* PDF Upload */}
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Attach Passage PDF</label>
-                    <input 
-                      type="file" 
-                      accept=".pdf" 
-                      ref={pdfInputRef}
-                      onChange={handlePdfChange}
-                      className="hidden" 
-                    />
-                    
-                    {uploadingPdf ? (
-                      <div className="flex flex-col items-center justify-center p-5 border border-indigo-200 bg-indigo-50/30 rounded-xl h-36">
-                        <IconLoader2 size={32} className="text-indigo-600 animate-spin" />
-                        <span className="text-xs text-indigo-950 font-bold mt-2">Uploading PDF to Cloudinary...</span>
-                      </div>
-                    ) : passages[activePassage].pdf ? (
-                      <div className="flex flex-col items-center justify-center p-5 border border-indigo-200 bg-indigo-50/30 rounded-xl shrink-0 h-36 text-center animate-fadeIn">
-                        <IconFileText size={32} className="text-indigo-600" />
-                        <span className="font-bold text-xs text-indigo-950 mt-2 max-w-[200px] truncate">{passages[activePassage].pdf?.name}</span>
-                        <span className="text-[10px] text-indigo-500 font-bold mt-0.5">{passages[activePassage].pdf?.size}</span>
+                  {uploadingImage ? (
+                    <div className="flex flex-col items-center justify-center p-5 border border-indigo-200 bg-indigo-50/30 rounded-xl h-36">
+                      <IconLoader2 size={32} className="text-indigo-600 animate-spin" />
+                      <span className="text-xs text-indigo-950 font-bold mt-2">Uploading Image...</span>
+                    </div>
+                  ) : passages[activePassage].image ? (
+                    <div className="relative group rounded-xl overflow-hidden border border-gray-200 h-36 flex items-center justify-center bg-gray-50/50 animate-fadeIn">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={passages[activePassage].image || ''} alt="Passage visual chart reference" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col justify-center items-center transition-opacity duration-200 text-white p-2">
+                        <span className="font-bold text-xs truncate max-w-[150px]">{passages[activePassage].imageName}</span>
                         <Button 
-                          onClick={() => updatePassageField('pdf', null)}
+                          onClick={() => { updatePassageField('image', null); updatePassageField('imageName', ''); }}
                           variant="ghost" 
                           size="sm" 
-                          className="text-red-500 hover:text-red-700 font-bold hover:bg-transparent text-[10px] mt-1.5 h-6 p-0"
+                          className="text-red-400 hover:text-red-600 font-bold hover:bg-transparent text-[10px] mt-2 h-6 p-0"
                         >
-                          Remove PDF
+                          Remove Image
                         </Button>
                       </div>
-                    ) : (
-                      <div 
-                        onClick={() => pdfInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl cursor-pointer hover:bg-gray-50/40 transition-all duration-200 h-36 text-center group"
-                      >
-                        <IconCloudUpload size={32} className="text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                        <span className="font-bold text-xs text-gray-800 mt-2">Upload Passage {activePassage} PDF</span>
-                        <span className="text-[10px] text-gray-400 font-semibold mt-1">Accepts formal PDF file transcripts</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Image Upload */}
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Attach Passage Image Diagram</label>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      ref={imageInputRef}
-                      onChange={(e) => handleImageChange(e)}
-                      className="hidden" 
-                    />
-                    
-                    {uploadingImage ? (
-                      <div className="flex flex-col items-center justify-center p-5 border border-indigo-200 bg-indigo-50/30 rounded-xl h-36">
-                        <IconLoader2 size={32} className="text-indigo-600 animate-spin" />
-                        <span className="text-xs text-indigo-950 font-bold mt-2">Uploading Image...</span>
-                      </div>
-                    ) : passages[activePassage].image ? (
-                      <div className="relative group rounded-xl overflow-hidden border border-gray-200 h-36 flex items-center justify-center bg-gray-50/50 animate-fadeIn">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={passages[activePassage].image || ''} alt="Passage visual chart reference" className="h-full w-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col justify-center items-center transition-opacity duration-200 text-white p-2">
-                          <span className="font-bold text-xs truncate max-w-[150px]">{passages[activePassage].imageName}</span>
-                          <Button 
-                            onClick={() => { updatePassageField('image', null); updatePassageField('imageName', ''); }}
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-400 hover:text-red-600 font-bold hover:bg-transparent text-[10px] mt-2 h-6 p-0"
-                          >
-                            Remove Image
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => imageInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl cursor-pointer hover:bg-gray-50/40 transition-all duration-200 h-36 text-center group"
-                      >
-                        <IconPhoto size={32} className="text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                        <span className="font-bold text-xs text-gray-800 mt-2">Upload Visual Diagram</span>
-                        <span className="text-[10px] text-gray-400 font-semibold mt-1">For chart, graph, map details</span>
-                      </div>
-                    )}
-                  </div>
-
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => imageInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl cursor-pointer hover:bg-gray-50/40 transition-all duration-200 h-36 text-center group"
+                    >
+                      <IconPhoto size={32} className="text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                      <span className="font-bold text-xs text-gray-800 mt-2">Upload Visual Diagram</span>
+                      <span className="text-[10px] text-gray-400 font-semibold mt-1">For chart, graph, map details</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Passage Body Text */}
@@ -2023,8 +1885,7 @@ function TeacherDashboardContent() {
           </div>
 
         </div>
-      )}
-    </div>
+      </div>
   )
 }
 
