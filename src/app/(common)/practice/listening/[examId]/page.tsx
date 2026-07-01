@@ -4,11 +4,13 @@
 
 import { use, useState, useRef, useCallback, useEffect, Key } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { listeningService } from "@/services/listening.services";
+import { mockTestService } from "@/services/mocktest.services";
 import { toast } from "sonner";
 import { IconAlertCircle, IconCheck, IconLoader2, IconArrowLeft } from "@tabler/icons-react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTextHighlighter } from "@/hooks/useTextHighlighter";
 import Link from "next/link";
 
 // Import modular components
@@ -25,7 +27,11 @@ interface Props {
 export default function ListeningExamPage({ params }: Props) {
   const { examId } = use(params);
   const router = useRouter();
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const mockAttemptId = searchParams.get("mockAttemptId");
+  const mockTestId = searchParams.get("mockTestId");
 
   // Core Exam States
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -65,6 +71,7 @@ export default function ListeningExamPage({ params }: Props) {
   });
 
   const exam = data?.data;
+  useTextHighlighter(workspaceRef, [exam]);
 
   // Dynamically calculate sequential question numbers (1 to 40) across all sections
   let questionCounter = 1;
@@ -104,9 +111,21 @@ export default function ListeningExamPage({ params }: Props) {
         answers: answersArray,
       } as const);
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success("Answers submitted successfully!");
-      router.push(`/practice/listening/${examId}/review/${res.data.id}`);
+      if (mockAttemptId && mockTestId) {
+        try {
+          await mockTestService.updateAttempt(mockAttemptId, {
+            listeningAttemptId: res.data.id,
+          });
+          router.push(`/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=listening`);
+        } catch (err) {
+          toast.error("Failed to link attempt to mock test session.");
+          router.push(`/practice/listening/${examId}/review/${res.data.id}`);
+        }
+      } else {
+        router.push(`/practice/listening/${examId}/review/${res.data.id}`);
+      }
     },
     onError: (err: any) => {
       submittedRef.current = false;
@@ -166,11 +185,6 @@ export default function ListeningExamPage({ params }: Props) {
 
   // Lock-down exam listeners
   useEffect(() => {
-    const preventContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.error("Right-click context menu is locked during the exam.");
-    };
-
     const preventReloads = (e: KeyboardEvent) => {
       if (e.key === "F5") {
         e.preventDefault();
@@ -186,7 +200,6 @@ export default function ListeningExamPage({ params }: Props) {
       }
     };
 
-    document.addEventListener("contextmenu", preventContextMenu);
     window.addEventListener("keydown", preventReloads);
 
     const onFullscreenChange = () => {
@@ -195,7 +208,6 @@ export default function ListeningExamPage({ params }: Props) {
     document.addEventListener("fullscreenchange", onFullscreenChange);
 
     return () => {
-      document.removeEventListener("contextmenu", preventContextMenu);
       window.removeEventListener("keydown", preventReloads);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
@@ -463,9 +475,15 @@ export default function ListeningExamPage({ params }: Props) {
           background-color: #FFFFFF !important;
           font-family: Arial, Helvetica, sans-serif !important;
         }
+
+        .highlighted {
+          background-color: #fdff32 !important;
+          color: #000000 !important;
+          cursor: pointer;
+        }
       `}</style>
 
-      <div className="flex flex-col h-screen bg-white text-gray-800 select-none relative font-sans">
+      <div className="flex flex-col h-screen bg-white text-gray-800 relative font-sans">
         
         {/* 1. CANDIDATE TOP HEADER */}
         <CandidateHeader
@@ -479,7 +497,7 @@ export default function ListeningExamPage({ params }: Props) {
         />
 
         {/* WORKSPACE AREA */}
-        <div className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
+        <div ref={workspaceRef} className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
           
           {/* 2. FIXED AUDIO PLAYER BAR */}
           <IELTSAudioPlayer

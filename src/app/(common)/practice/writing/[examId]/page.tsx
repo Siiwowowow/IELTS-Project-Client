@@ -5,8 +5,9 @@
 
 import { use, useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { writingService } from "@/services/writing.services";
+import { mockTestService } from "@/services/mocktest.services";
 import { WritingCandidateHeader } from "@/components/Writing/WritingCandidateHeader";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,7 @@ import {
   IconFileText,
 } from "@tabler/icons-react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTextHighlighter } from "@/hooks/useTextHighlighter";
 import Link from "next/link";
 
 interface Props {
@@ -50,7 +52,12 @@ function formatTimeRemaining(seconds: number): string {
 export default function WritingExamPage({ params }: Props) {
   const { examId } = use(params);
   const router = useRouter();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const mockAttemptId = searchParams.get("mockAttemptId");
+  const mockTestId = searchParams.get("mockTestId");
 
   // Core Exam States
   const [answers, setAnswers] = useState<Record<string, string>>({}); // key is taskId
@@ -104,6 +111,7 @@ export default function WritingExamPage({ params }: Props) {
   });
 
   const exam = data?.data;
+  useTextHighlighter(workspaceRef, [exam]);
   const sortedTasks = exam?.tasks ? [...exam.tasks].sort((a, b) => a.order - b.order) : [];
   const activeTask = sortedTasks[activeTaskIdx];
 
@@ -121,9 +129,21 @@ export default function WritingExamPage({ params }: Props) {
         responses: responsesArray,
       });
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success("Writing attempt submitted successfully!");
-      router.push(`/practice/writing/${examId}/review/${res.data.id}`);
+      if (mockAttemptId && mockTestId) {
+        try {
+          await mockTestService.updateAttempt(mockAttemptId, {
+            writingAttemptId: res.data.id,
+          });
+          router.push(`/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=writing`);
+        } catch (err) {
+          toast.error("Failed to link attempt to mock test session.");
+          router.push(`/practice/writing/${examId}/review/${res.data.id}`);
+        }
+      } else {
+        router.push(`/practice/writing/${examId}/review/${res.data.id}`);
+      }
     },
     onError: (err: any) => {
       submittedRef.current = false;
@@ -182,11 +202,6 @@ export default function WritingExamPage({ params }: Props) {
 
   // Lock-down exam listeners (context menu, reloads, keys)
   useEffect(() => {
-    const preventContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.error("Right-click context menu is locked during the exam.");
-    };
-
     const preventReloads = (e: KeyboardEvent) => {
       if (e.key === "F5") {
         e.preventDefault();
@@ -202,7 +217,6 @@ export default function WritingExamPage({ params }: Props) {
       }
     };
 
-    document.addEventListener("contextmenu", preventContextMenu);
     window.addEventListener("keydown", preventReloads);
 
     const onFullscreenChange = () => {
@@ -211,7 +225,6 @@ export default function WritingExamPage({ params }: Props) {
     document.addEventListener("fullscreenchange", onFullscreenChange);
 
     return () => {
-      document.removeEventListener("contextmenu", preventContextMenu);
       window.removeEventListener("keydown", preventReloads);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
@@ -273,21 +286,29 @@ export default function WritingExamPage({ params }: Props) {
   const minWordsRequired = activeTask?.minWords ?? (activeTaskIdx === 0 ? 150 : 250);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-900 flex flex-col select-none overflow-hidden antialiased">
-      {/* Dynamic CBT Candidate Header */}
-      <WritingCandidateHeader
-        candidateName={user?.name || "IELTS Candidate"}
-        candidateId={user?.id?.slice(0, 8).toUpperCase() || "CANDIDATE"}
-        examTitle={exam.title}
-        examType={exam.examType}
-        timeRemainingText={formatTimeRemaining(timeRemainingSeconds)}
-        isWarningPeriod={isWarningPeriod}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={handleToggleFullscreen}
-      />
+    <>
+      <style>{`
+        .highlighted {
+          background-color: #fdff32 !important;
+          color: #000000 !important;
+          cursor: pointer;
+        }
+      `}</style>
+      <div className="min-h-screen bg-slate-50 text-gray-900 flex flex-col overflow-hidden antialiased">
+        {/* Dynamic CBT Candidate Header */}
+        <WritingCandidateHeader
+          candidateName={user?.name || "IELTS Candidate"}
+          candidateId={user?.id?.slice(0, 8).toUpperCase() || "CANDIDATE"}
+          examTitle={exam.title}
+          examType={exam.examType}
+          timeRemainingText={formatTimeRemaining(timeRemainingSeconds)}
+          isWarningPeriod={isWarningPeriod}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={handleToggleFullscreen}
+        />
 
-      {/* Main Testing Workspace Grid (Left/Right Splitscreen) */}
-      <main className="flex-1 mt-14 mb-16 flex flex-row overflow-hidden w-full h-[calc(100vh-120px)] relative">
+        {/* Main Testing Workspace Grid (Left/Right Splitscreen) */}
+        <main ref={workspaceRef} className="flex-1 mt-14 mb-16 flex flex-row overflow-hidden w-full h-[calc(100vh-120px)] relative">
         {/* LEFT PANEL: Visual Stimulus / Exam Prompts */}
         <section 
           className="border-r border-gray-200 bg-white flex flex-col overflow-y-auto"
@@ -517,5 +538,6 @@ export default function WritingExamPage({ params }: Props) {
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -75,7 +75,7 @@ export function QuestionGroupCard({
   const isAnyFlagged = group.questions.some((q) => flagged[q.id]);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5 md:p-6 shadow-sm select-none font-sans relative hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)] transition-shadow duration-150">
+    <div className="bg-white border border-gray-200 rounded-lg p-5 md:p-6 shadow-sm font-sans relative hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)] transition-shadow duration-150">
       
       {/* CARD HEADER */}
       <div className="flex items-center justify-between border-b border-gray-150 pb-3 mb-4">
@@ -218,11 +218,10 @@ export function QuestionGroupCard({
                     const label = String.fromCharCode(65 + oIdx); // A, B, C
                     const active = answers[q.id] === opt;
                     return (
-                      <button
+                      <div
                         key={opt}
-                        type="button"
                         onClick={() => onAnswer(q.id, opt)}
-                        className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium select-none ${
+                        className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium cursor-pointer ${
                           active
                             ? "text-[#1B3A6B] font-bold"
                             : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
@@ -234,7 +233,7 @@ export function QuestionGroupCard({
                             {label}
                           </span>
                           {/* Radio circle bullet point */}
-                          <span className={`inline-flex w-4 h-4 rounded-full border items-center justify-center shrink-0 ${
+                          <span className={`inline-flex w-4 h-4 rounded-full border items-center justify-center shrink-0 select-none ${
                             active ? "border-[#1B3A6B]" : "border-gray-300"
                           }`}>
                             {active && <span className="w-2.5 h-2.5 rounded-full bg-[#1B3A6B]" />}
@@ -243,7 +242,7 @@ export function QuestionGroupCard({
                         <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
                           {opt}
                         </span>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -386,11 +385,10 @@ export function QuestionGroupCard({
                 };
                 
                 return (
-                  <button
+                  <div
                     key={opt}
-                    type="button"
                     onClick={handleToggle}
-                    className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium select-none ${
+                    className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium cursor-pointer ${
                       active
                         ? "text-[#1B3A6B] font-bold"
                         : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
@@ -402,7 +400,7 @@ export function QuestionGroupCard({
                         {label}
                       </span>
                       {/* Checkbox square bullet point */}
-                      <span className={`inline-flex w-4 h-4 rounded border items-center justify-center shrink-0 ${
+                      <span className={`inline-flex w-4 h-4 rounded border items-center justify-center shrink-0 select-none ${
                         active ? "border-[#1B3A6B] bg-[#1B3A6B] text-white" : "border-gray-300 bg-white"
                       }`}>
                         {active && <span className="text-[10px] font-black leading-none">✓</span>}
@@ -411,7 +409,7 @@ export function QuestionGroupCard({
                     <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
                       {opt}
                     </span>
-                  </button>
+                  </div>
                 );
               });
             })()}

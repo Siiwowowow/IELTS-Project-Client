@@ -6,12 +6,12 @@ import { SectionHeader } from "../shared/SectionHeader";
 import { cn } from "@/lib/utils";
 
 const annotations = [
-  { label: "Live section timer", top: "8%", left: "4%", icon: Clock },
-  { label: "Question navigator", top: "12%", right: "6%", icon: Grid3X3 },
-  { label: "Split-screen reading", bottom: "38%", left: "6%", icon: BookOpen },
-  { label: "Writing task editor", bottom: "18%", right: "8%", icon: PenLine },
-  { label: "Listening player", bottom: "8%", left: "28%", icon: Headphones },
-  { label: "Speaking recorder", bottom: "8%", right: "22%", icon: Mic },
+  { label: "লাইভ সেকশন টাইমার", top: "8%", left: "4%", icon: Clock },
+  { label: "কোশ্চেন নেভিগেটর", top: "12%", right: "6%", icon: Grid3X3 },
+  { label: "স্প্লিট-স্ক্রিন রিডিং", bottom: "38%", left: "6%", icon: BookOpen },
+  { label: "রাইটিং টাস্ক এডিটর", bottom: "18%", right: "8%", icon: PenLine },
+  { label: "লিসেনিং প্লেয়ার", bottom: "8%", left: "28%", icon: Headphones },
+  { label: "স্পিকিং রেকর্ডার", bottom: "8%", right: "22%", icon: Mic },
 ];
 
 export function CBTExperienceSection() {
@@ -20,9 +20,9 @@ export function CBTExperienceSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Authentic Simulation"
-            title="Experience the Real IELTS Computer-Based Exam"
-            description="Every detail — from timers to navigation — mirrors the official CBT environment so exam day feels familiar."
+            eyebrow="বাস্তবসম্মত সিমুলেশন"
+            title="বাস্তব কম্পিউটার-বেসড পরীক্ষার অভিজ্ঞতা নিন"
+            description="টাইমার থেকে শুরু করে নেভিগেশন — প্রতিটি ডিটেইলস অফিশিয়াল CBT ইন্টারফেসের অনুকরণে তৈরি, যাতে পরীক্ষার দিন আপনার কোনো জড়তা না থাকে।"
           />
         </InView>
 
@@ -37,7 +37,7 @@ export function CBTExperienceSection() {
                 <span className="size-3 rounded-full bg-emerald-500/90" />
               </div>
               <span className="flex-1 text-center text-xs font-medium text-neutral-400">
-                IELTS on Computer — Full Mock Test
+                কম্পিউটারে IELTS — সম্পূর্ণ মক টেস্ট
               </span>
               <span className="rounded bg-red-600/90 px-2 py-0.5 font-mono text-xs font-bold text-white">
                 01:42:18
@@ -47,7 +47,7 @@ export function CBTExperienceSection() {
             <div className="grid lg:grid-cols-2">
               <div className="border-b border-neutral-800 p-6 lg:border-b-0 lg:border-r">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-red-400">
-                  Reading Passage 3
+                  রিডিং প্যাসেজ ৩
                 </p>
                 <div className="space-y-2">
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -61,7 +61,7 @@ export function CBTExperienceSection() {
               </div>
               <div className="p-6">
                 <p className="mb-3 text-xs font-semibold text-neutral-400">
-                  Questions 27–32
+                  প্রশ্ন ২৭–৩২
                 </p>
                 <div className="grid grid-cols-6 gap-1.5">
                   {Array.from({ length: 24 }).map((_, i) => (
@@ -70,7 +70,7 @@ export function CBTExperienceSection() {
                       className={cn(
                         "flex h-7 items-center justify-center rounded text-[10px] font-medium",
                         i === 4
-                          ? "bg-ielts-red text-white"
+                           ? "bg-ielts-red text-white"
                           : i < 10
                             ? "bg-emerald-900/50 text-emerald-400"
                             : "bg-neutral-800 text-neutral-500"
@@ -85,9 +85,9 @@ export function CBTExperienceSection() {
 
             <div className="grid grid-cols-3 gap-px border-t border-neutral-800 bg-neutral-950">
               {[
-                { label: "Writing Task 2", words: "287 / 250 min" },
-                { label: "Listening Part 3", words: "Playing 02:14" },
-                { label: "Speaking Part 2", words: "Recording..." },
+                { label: "রাইটিং টাস্ক ২", words: "২৮৭ / ২৫০ শব্দ" },
+                { label: "লিসেনিং পার্ট ৩", words: "চলছে ০২:১৪" },
+                { label: "স্পিকিং পার্ট ২", words: "রেকর্ড হচ্ছে..." },
               ].map((panel) => (
                 <div
                   key={panel.label}

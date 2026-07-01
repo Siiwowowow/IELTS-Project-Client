@@ -6,13 +6,15 @@
 import { use, useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { readingService } from "@/services/reading.services";
+import { mockTestService } from "@/services/mocktest.services";
 import { ExamTimer } from "@/components/Reading/ExamTimer";
 import HighlightablePassage from "@/components/Reading/HighlightablePassage";
 import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTextHighlighter } from "@/hooks/useTextHighlighter";
 import {
  
   IconBook,
@@ -46,7 +48,12 @@ function formatGroupType(type: string) {
 export default function ExamPage({ params }: Props) {
   const { examId } = use(params);
   const router = useRouter();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const mockAttemptId = searchParams.get("mockAttemptId");
+  const mockTestId = searchParams.get("mockTestId");
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answersRef = useRef<Record<string, string>>({});
@@ -61,11 +68,6 @@ export default function ExamPage({ params }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const preventContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.error("Right-click context menu is locked during the exam.");
-    };
-
     const preventReloads = (e: KeyboardEvent) => {
       if (e.key === "F5") {
         e.preventDefault();
@@ -81,7 +83,6 @@ export default function ExamPage({ params }: Props) {
       }
     };
 
-    document.addEventListener("contextmenu", preventContextMenu);
     window.addEventListener("keydown", preventReloads);
 
     const onFullscreenChange = () => {
@@ -90,7 +91,6 @@ export default function ExamPage({ params }: Props) {
     document.addEventListener("fullscreenchange", onFullscreenChange);
 
     return () => {
-      document.removeEventListener("contextmenu", preventContextMenu);
       window.removeEventListener("keydown", preventReloads);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
@@ -139,6 +139,7 @@ export default function ExamPage({ params }: Props) {
   });
 
   const exam = data?.data;
+  useTextHighlighter(workspaceRef, [exam]);
 
   const mutation = useMutation({
     mutationFn: (snap: Record<string, string>) => {
@@ -154,10 +155,21 @@ export default function ExamPage({ params }: Props) {
       } as const);
     },
 
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success("Answers submitted! Redirecting to your results…");
-
-      router.push(`/practice/reading/${examId}/review/${res.data.id}`);
+      if (mockAttemptId && mockTestId) {
+        try {
+          await mockTestService.updateAttempt(mockAttemptId, {
+            readingAttemptId: res.data.id,
+          });
+          router.push(`/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=reading`);
+        } catch (err) {
+          toast.error("Failed to link attempt to mock test session.");
+          router.push(`/practice/reading/${examId}/review/${res.data.id}`);
+        }
+      } else {
+        router.push(`/practice/reading/${examId}/review/${res.data.id}`);
+      }
     },
 
     onError: (err: any) => {
@@ -433,8 +445,14 @@ export default function ExamPage({ params }: Props) {
           max-width: 450px;
           box-shadow: 0 20px 60px rgba(0,0,0,0.25);
         }
+
+        .highlighted {
+          background-color: #fdff32 !important;
+          color: #000000 !important;
+          cursor: pointer;
+        }
       `}</style>
-      <div className="flex flex-col h-screen bg-white text-gray-800 select-none relative font-sans">
+      <div className="flex flex-col h-screen bg-white text-gray-800 relative font-sans">
         {/* 1. CANDIDATE TOP HEADER */}
         <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-40 select-none font-sans shadow-sm">
           {/* LEFT: Logo and Candidate Details */}
@@ -500,7 +518,7 @@ export default function ExamPage({ params }: Props) {
         </header>
 
         {/* WORKSPACE AREA */}
-        <div className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
+        <div ref={workspaceRef} className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
           
           {/* PROGRESS */}
           <div className="h-1 bg-red-950 shrink-0">
@@ -713,11 +731,11 @@ export default function ExamPage({ params }: Props) {
                                         question.id
                                       ] = el;
                                     }}
-                                    onClick={() =>
-                                      setActiveQuestionId(
-                                        question.id
-                                      )
-                                    }
+                                    onClick={() => {
+                                      const sel = window.getSelection();
+                                      if (sel && !sel.isCollapsed) return;
+                                      setActiveQuestionId(question.id);
+                                    }}
                                     className="rounded-xl p-4 transition-all"
                                     style={{
                                       border: isQuestionActive

@@ -18,9 +18,9 @@ export function AIFeedbackSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="AI-Powered Evaluation"
-            title="Instant Writing & Speaking Feedback"
-            description="Professional-grade AI analysis aligned with IELTS assessment criteria — grammar, coherence, lexical resource, and pronunciation."
+            eyebrow="এআই-চালিত মূল্যায়ন"
+            title="তাৎক্ষণিক রাইটিং ও স্পিকিং ফিডব্যাক"
+            description="অফিশিয়াল আইইএলটিএস মূল্যায়ন মানদণ্ডের সাথে সামঞ্জস্যপূর্ণ পেশাদার এআই বিশ্লেষণ — ব্যাকরণ, সুসংগতি, শব্দভাণ্ডার এবং সঠিক উচ্চারণ।"
           />
         </InView>
 
@@ -29,7 +29,7 @@ export function AIFeedbackSection() {
             <GlassCard className="h-full p-6 sm:p-8">
               <div className="mb-4 flex items-center gap-2">
                 <PenLine className="size-5 text-ielts-red" />
-                <h3 className="font-bold text-neutral-900">Writing Correction</h3>
+                <h3 className="font-bold text-neutral-900">রাইটিং সংশোধন (Writing Correction)</h3>
                 <span className="ml-auto flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-ielts-red">
                   <Sparkles className="size-3" />
                   AI
@@ -52,10 +52,10 @@ export function AIFeedbackSection() {
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { label: "Task Achievement", score: "6.5" },
-                  { label: "Coherence", score: "7.0" },
-                  { label: "Lexical Resource", score: "6.5" },
-                  { label: "Grammar", score: "6.0" },
+                  { label: "টাস্ক অ্যাচিভমেন্ট", score: "6.5" },
+                  { label: "কোহেরেন্স (সুসংগতি)", score: "7.0" },
+                  { label: "লেক্সিক্যাল রিসোর্স", score: "6.5" },
+                  { label: "গ্রামার (ব্যাকরণ)", score: "6.0" },
                 ].map((c) => (
                   <div
                     key={c.label}
@@ -69,7 +69,7 @@ export function AIFeedbackSection() {
 
               <div className="mt-4 flex items-center justify-between rounded-xl bg-gradient-to-r from-red-50 to-blue-50 p-4">
                 <span className="text-sm font-medium text-neutral-700">
-                  Estimated Writing Band
+                  আনুমানিক রাইটিং ব্যান্ড (Estimated Band)
                 </span>
                 <span className="text-2xl font-bold text-ielts-red">6.5</span>
               </div>
@@ -80,7 +80,7 @@ export function AIFeedbackSection() {
             <GlassCard className="h-full p-6 sm:p-8">
               <div className="mb-4 flex items-center gap-2">
                 <Mic className="size-5 text-ielts-red" />
-                <h3 className="font-bold text-neutral-900">Speaking Analysis</h3>
+                <h3 className="font-bold text-neutral-900">স্পিকিং বিশ্লেষণ (Speaking Analysis)</h3>
               </div>
 
               <div className="flex h-24 items-end justify-center gap-0.5 rounded-xl bg-neutral-900 p-4">
@@ -100,9 +100,9 @@ export function AIFeedbackSection() {
 
               <div className="mt-4 space-y-2">
                 {[
-                  "Fluency & coherence: natural pace with minor hesitations",
-                  "Pronunciation: clear vowel sounds; work on /θ/ in \"think\"",
-                  "Lexical resource: good topic vocabulary range",
+                  "অনর্গলতা ও সুসংগতি: সামান্য দ্বিধাদ্বন্দ্ব সহ স্বাভাবিক গতি বজায় রাখুন (Fluency)",
+                  "উচ্চারণ: স্বরবর্ণের উচ্চারণ স্পষ্ট; \"think\" শব্দের /θ/ উচ্চারণে মনোযোগ দিন (Pronunciation)",
+                  "লেক্সিক্যাল রিসোর্স: বিষয়ের সাথে প্রাসঙ্গিক চমৎকার শব্দভাণ্ডার (Vocabulary)",
                 ].map((tip) => (
                   <div
                     key={tip}
@@ -116,7 +116,7 @@ export function AIFeedbackSection() {
 
               <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
                 <span className="text-sm font-medium text-neutral-700">
-                  Estimated Speaking Band
+                  আনুমানিক স্পিকিং ব্যান্ড (Estimated Band)
                 </span>
                 <span className="text-2xl font-bold text-emerald-700">7.0</span>
               </div>

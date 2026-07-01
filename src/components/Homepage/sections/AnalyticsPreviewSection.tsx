@@ -27,29 +27,29 @@ function ChartSkeleton({ className }: { className?: string }) {
 }
 
 const bandTrend = [
-  { week: "W1", listening: 6.0, reading: 5.5, writing: 5.5, speaking: 6.0 },
-  { week: "W2", listening: 6.5, reading: 6.0, writing: 5.5, speaking: 6.0 },
-  { week: "W3", listening: 6.5, reading: 6.5, writing: 6.0, speaking: 6.5 },
-  { week: "W4", listening: 7.0, reading: 6.5, writing: 6.0, speaking: 6.5 },
-  { week: "W5", listening: 7.0, reading: 7.0, writing: 6.5, speaking: 7.0 },
-  { week: "W6", listening: 7.5, reading: 7.0, writing: 6.5, speaking: 7.0 },
+  { week: "সপ্তাহ ১", listening: 6.0, reading: 5.5, writing: 5.5, speaking: 6.0 },
+  { week: "সপ্তাহ ২", listening: 6.5, reading: 6.0, writing: 5.5, speaking: 6.0 },
+  { week: "সপ্তাহ ৩", listening: 6.5, reading: 6.5, writing: 6.0, speaking: 6.5 },
+  { week: "সপ্তাহ ৪", listening: 7.0, reading: 6.5, writing: 6.0, speaking: 6.5 },
+  { week: "সপ্তাহ ৫", listening: 7.0, reading: 7.0, writing: 6.5, speaking: 7.0 },
+  { week: "সপ্তাহ ৬", listening: 7.5, reading: 7.0, writing: 6.5, speaking: 7.0 },
 ];
 
 const weeklyStudy = [
-  { day: "Mon", hours: 2.5 },
-  { day: "Tue", hours: 1.8 },
-  { day: "Wed", hours: 3.2 },
-  { day: "Thu", hours: 2.0 },
-  { day: "Fri", hours: 4.1 },
-  { day: "Sat", hours: 5.0 },
-  { day: "Sun", hours: 3.5 },
+  { day: "সোম", hours: 2.5 },
+  { day: "মঙ্গল", hours: 1.8 },
+  { day: "বুধ", hours: 3.2 },
+  { day: "বৃহ", hours: 2.0 },
+  { day: "শুক্র", hours: 4.1 },
+  { day: "শনি", hours: 5.0 },
+  { day: "রবি", hours: 3.5 },
 ];
 
 const skills = [
-  { skill: "Listening", score: 7.5, weak: false },
-  { skill: "Reading", score: 7.0, weak: false },
-  { skill: "Writing", score: 6.0, weak: true },
-  { skill: "Speaking", score: 7.0, weak: false },
+  { skill: "লিসেনিং", score: 7.5, weak: false },
+  { skill: "রিডিং", score: 7.0, weak: false },
+  { skill: "রাইটিং", score: 6.0, weak: true },
+  { skill: "স্পিকিং", score: 7.0, weak: false },
 ];
 
 const heatmap = [
@@ -65,9 +65,9 @@ export function AnalyticsPreviewSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Performance Insights"
-            title="Data-Driven Progress Tracking"
-            description="Understand your strengths, target weak areas, and watch your band score climb with actionable analytics."
+            eyebrow="ফলাফল ও বিশ্লেষণ"
+            title="ডাটা-চালিত প্রোগ্রেস ট্র্যাকিং"
+            description="আপনার শক্তির জায়গাগুলো বুঝুন, দুর্বলতাগুলো চিহ্নিত করুন এবং নিখুঁত বিশ্লেষণের মাধ্যমে নিজের ব্যান্ড স্কোর উন্নত হতে দেখুন।"
           />
         </InView>
 
@@ -75,9 +75,9 @@ export function AnalyticsPreviewSection() {
           <div className="grid gap-6 lg:grid-cols-3">
             <GlassCard className="lg:col-span-2 p-6">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-semibold text-neutral-900">Band Score Trend</h3>
+                <h3 className="font-semibold text-neutral-900">ব্যান্ড স্কোর ট্রেন্ড</h3>
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  +1.5 overall
+                  +১.৫ ওভারঅল বৃদ্ধি
                 </span>
               </div>
               <div className="relative h-[220px] w-full">
@@ -116,7 +116,7 @@ export function AnalyticsPreviewSection() {
                   </div>
                   {s.weak && (
                     <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-                      Focus area
+                      চর্চা বৃদ্ধি করুন
                     </span>
                   )}
                 </GlassCard>
@@ -126,7 +126,7 @@ export function AnalyticsPreviewSection() {
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <GlassCard className="p-6">
-              <h3 className="mb-4 font-semibold text-neutral-900">Weekly Study Hours</h3>
+              <h3 className="mb-4 font-semibold text-neutral-900">সাপ্তাহিক প্র্যাকটিসের ঘণ্টা</h3>
               <div className="relative h-[180px] w-full">
                 <ClientOnly fallback={<ChartSkeleton className="h-full w-full" />}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 180 }}>
@@ -150,7 +150,7 @@ export function AnalyticsPreviewSection() {
             </GlassCard>
 
             <GlassCard className="p-6">
-              <h3 className="mb-4 font-semibold text-neutral-900">Activity Heatmap</h3>
+              <h3 className="mb-4 font-semibold text-neutral-900">অ্যাক্টিভিটি হিটম্যাপ</h3>
               <div className="grid grid-cols-7 gap-1.5">
                 {heatmap.flat().map((level, i) => (
                   <div
@@ -166,7 +166,7 @@ export function AnalyticsPreviewSection() {
                 ))}
               </div>
               <p className="mt-4 text-xs text-neutral-500">
-                Darker cells indicate more practice activity — spot gaps in your study routine.
+                গাঢ় রঙের সেলগুলো অধিক প্র্যাকটিস নির্দেশ করে — আপনার প্র্যাকটিসের বিরতিগুলো সহজেই চিহ্নিত করুন।
               </p>
             </GlassCard>
           </div>

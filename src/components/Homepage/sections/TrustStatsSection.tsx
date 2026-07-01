@@ -7,21 +7,21 @@ import { AnimatedCounter } from "../shared/AnimatedCounter";
 const stats = [
   {
     icon: Users,
-    label: "Students enrolled",
+    label: "নিবন্ধিত শিক্ষার্থী",
     end: 284000,
     suffix: "+",
     gradient: "from-red-500 to-red-600",
   },
   {
     icon: ClipboardCheck,
-    label: "Mock tests completed",
+    label: "সম্পন্ন মক টেস্ট",
     end: 1200000,
     suffix: "+",
     gradient: "from-blue-500 to-blue-600",
   },
   {
     icon: TrendingUp,
-    label: "Average band improvement",
+    label: "গড় ব্যান্ড স্কোর উন্নতি",
     end: 1.2,
     suffix: "",
     decimals: 1,
@@ -30,14 +30,14 @@ const stats = [
   },
   {
     icon: Globe2,
-    label: "Countries reached",
+    label: "অংশগ্রহণকারী দেশ",
     end: 142,
     suffix: "",
     gradient: "from-violet-500 to-violet-600",
   },
   {
     icon: Activity,
-    label: "Daily active learners",
+    label: "প্রতিদিনের সক্রিয় শিক্ষার্থী",
     end: 18500,
     suffix: "+",
     gradient: "from-amber-500 to-orange-500",

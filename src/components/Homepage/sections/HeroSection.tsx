@@ -49,19 +49,17 @@ export function HeroSection() {
               ))}
             </div>
             <p className="-ml-2 pr-2 font-medium">
-              Join 280,000+ IELTS learners worldwide
+              বিশ্বজুড়ে ২৮০,০০০+ আইইএলটিএস শিক্ষার্থীর সাথে যুক্ত হোন
             </p>
           </div>
 
           <h1 className="mt-8 max-w-xl text-center text-5xl font-medium leading-[1.2] text-slate-900 md:text-left md:text-6xl md:leading-[1.15]">
-            Practice IELTS like the{" "}
-            <span className="text-ielts-red">real computer-based exam</span>
+            বাস্তব কম্পিউটারের মতো{" "}
+            <span className="text-ielts-red">IELTS পরীক্ষা</span> প্র্যাকটিস করুন
           </h1>
 
           <p className="mt-4 max-w-lg text-center text-sm leading-relaxed text-slate-600 md:text-left md:text-base">
-            Authentic CBT simulation with Listening, Reading, Writing, and
-            Speaking — plus mock tests, analytics, and AI feedback to reach your
-            target band score.
+            লিসেনিং, রিডিং, রাইটিং এবং স্পিকিংয়ের নির্ভুল সিবিটি (CBT) সিমুলেশন — সাথে আপনার কাঙ্ক্ষিত ব্যান্ড স্কোর অর্জনে রয়েছে মক টেস্ট, অ্যানালিটিক্স এবং এআই (AI) ফিডব্যাক।
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm md:justify-start">
@@ -69,14 +67,14 @@ export function HeroSection() {
               href="/mock-tests/full"
               className="inline-flex h-11 items-center justify-center rounded-md bg-ielts-red px-7 font-medium text-white transition hover:bg-ielts-red-dark active:scale-[0.98]"
             >
-              Start free mock test
+              ফ্রি মক টেস্ট শুরু করুন
             </Link>
             <Link
               href="#cbt"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-400 px-6 font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]"
             >
               <Video className="size-5 stroke-[1.25]" strokeWidth={1.25} />
-              <span>Watch demo</span>
+              <span>ডেমো দেখুন</span>
             </Link>
           </div>
         </div>

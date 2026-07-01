@@ -12,56 +12,56 @@ import { Input } from "@/components/ui/input";
 
 const footerColumns = [
   {
-    title: "Platform",
+    title: "প্ল্যাটফর্ম",
     links: [
-      { label: "Dashboard", href: "/user/dashboard" },
-      { label: "Mock Tests", href: "/mock-tests" },
-      { label: "Analytics", href: "/analytics" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "ড্যাশবোর্ড", href: "/user/dashboard" },
+      { label: "মক টেস্ট", href: "/mock-tests" },
+      { label: "অ্যানালিটিক্স", href: "/analytics" },
+      { label: "প্যাকেজ ও মূল্য", href: "#pricing" },
     ],
   },
   {
-    title: "Practice Modules",
+    title: "প্র্যাকটিস মডিউল",
     links: [
-      { label: "Listening", href: "/practice/listening" },
-      { label: "Reading", href: "/practice/reading" },
-      { label: "Writing", href: "/practice/writing" },
-      { label: "Speaking", href: "/practice/speaking" },
-      { label: "Vocabulary", href: "/practice/vocabulary" },
+      { label: "লিসেনিং", href: "/practice/listening" },
+      { label: "রিডিং", href: "/practice/reading" },
+      { label: "রাইটিং", href: "/practice/writing" },
+      { label: "স্পিকিং", href: "/practice/speaking" },
+      { label: "শব্দভাণ্ডার (Vocabulary)", href: "/practice/vocabulary" },
     ],
   },
   {
-    title: "Company",
+    title: "প্রতিষ্ঠান",
     links: [
-      { label: "About Us", href: "/about" },
-      { label: "Careers", href: "/careers" },
-      { label: "Partners", href: "/partners" },
-      { label: "Press", href: "/press" },
+      { label: "আমাদের সম্পর্কে", href: "/about" },
+      { label: "ক্যারিয়ার", href: "/careers" },
+      { label: "অংশীদারিত্ব (Partners)", href: "/partners" },
+      { label: "প্রেস", href: "/press" },
     ],
   },
   {
-    title: "Resources",
+    title: "রিসোর্স",
     links: [
-      { label: "Blog", href: "/blog" },
-      { label: "Study Guides", href: "/guides" },
-      { label: "Band Calculator", href: "/tools/band-calculator" },
-      { label: "Help Centre", href: "/help" },
+      { label: "ব্লগ", href: "/blog" },
+      { label: "স্টাডি গাইড", href: "/guides" },
+      { label: "ব্যান্ড ক্যালকুলেটর", href: "/tools/band-calculator" },
+      { label: "হেল্প সেন্টার", href: "/help" },
     ],
   },
   {
-    title: "Support",
+    title: "সহায়তা",
     links: [
-      { label: "Contact", href: "/contact" },
-      { label: "FAQs", href: "#faq" },
-      { label: "System Status", href: "/status" },
+      { label: "যোগাযোগ", href: "/contact" },
+      { label: "সাধারণ জিজ্ঞাসা (FAQs)", href: "#faq" },
+      { label: "সিস্টেম স্ট্যাটাস", href: "/status" },
     ],
   },
   {
-    title: "Legal",
+    title: "আইনি বিষয়",
     links: [
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "/cookies" },
+      { label: "গোপনীয়তার নীতি", href: "/privacy" },
+      { label: "ব্যবহারের শর্তাবলী", href: "/terms" },
+      { label: "কুকি পলিসি", href: "/cookies" },
     ],
   },
 ];
@@ -84,8 +84,7 @@ export function FooterSection() {
               IELTS<span className="text-ielts-red">Prep</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-neutral-400">
-              Premium computer-based IELTS preparation — practice like the real
-              exam, anywhere in the world.
+              কম্পিউটার-বেসড আইইএলটিএস প্রস্তুতির সেরা প্ল্যাটফর্ম — বিশ্বের যেকোনো স্থান থেকে রিয়েল পরীক্ষার মতো প্র্যাকটিস করুন।
             </p>
 
             <div className="mt-6 space-y-2 text-sm">
@@ -95,11 +94,11 @@ export function FooterSection() {
               </p>
               <p className="flex items-center gap-2">
                 <Phone className="size-4 text-ielts-red" />
-                +44 20 7123 4567
+                +৪৪ ২০ ৭১২৩ ৪৫৬৭
               </p>
               <p className="flex items-center gap-2">
                 <MapPin className="size-4 text-ielts-red" />
-                London, United Kingdom
+                লন্ডন, যুক্তরাজ্য
               </p>
             </div>
 
@@ -140,34 +139,32 @@ export function FooterSection() {
 
         <div className="mt-12 flex flex-col gap-6 border-t border-neutral-800 pt-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-md">
-            <h4 className="font-semibold text-white">Stay updated</h4>
+            <h4 className="font-semibold text-white">আমাদের সাথে থাকুন</h4>
             <p className="mt-1 text-sm text-neutral-400">
-              IELTS tips, mock test releases, and study strategies — weekly.
+              আইইএলটিএস টিপস, মক টেস্ট আপডেট এবং প্রস্তুতির কৌশল পান প্রতি সপ্তাহে।
             </p>
             <form className="mt-4 flex gap-2">
               <Input
                 type="email"
-                placeholder="your@email.com"
+                placeholder="আপনার ইমেইল দিন"
                 className="h-10 flex-1 rounded-lg border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-500"
               />
-              <Button className="h-10 shrink-0 rounded-lg px-4">Subscribe</Button>
+              <Button className="h-10 shrink-0 rounded-lg px-4 bg-ielts-red hover:bg-ielts-red-dark text-white">সাবস্ক্রাইব</Button>
             </form>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <div className="rounded-lg border border-neutral-800 px-4 py-2 text-xs text-neutral-400">
-              App Store — Coming Soon
+              অ্যাপ স্টোর — শীঘ্রই আসছে
             </div>
             <div className="rounded-lg border border-neutral-800 px-4 py-2 text-xs text-neutral-400">
-              Google Play — Coming Soon
+              গুগল প্লে — শীঘ্রই আসছে
             </div>
           </div>
         </div>
 
         <p className="mt-10 text-center text-xs text-neutral-500">
-          © 2026 IELTS Prep. All rights reserved. IELTS is
-          a registered trademark of Cambridge Assessment English, the British
-          Council, and IDP Education Australia.
+          © ২০২৬ আইইএলটিএস প্রিপ (IELTS Prep)। সর্বস্বত্ব সংরক্ষিত। IELTS হলো ক্যামব্রিজ অ্যাসেসমেন্ট ইংলিশ, ব্রিটিশ কাউন্সিল এবং আইডিপি এডুকেশন অস্ট্রেলিয়ার নিবন্ধিত ট্রেডমার্ক।
         </p>
       </div>
     </footer>

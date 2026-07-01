@@ -26,58 +26,58 @@ import { SectionHeader } from "../shared/SectionHeader";
 const features = [
   {
     icon: Monitor,
-    title: "Real CBT Exam Interface",
+    title: "বাস্তব CBT পরীক্ষা ইন্টারফেস",
     description:
-      "Pixel-accurate computer-based test UI with timers, navigator, and official question layouts.",
+      "টাইমার, কোয়েশ্চেন নেভিগেটর এবং অফিশিয়াল লেআউটসহ সম্পূর্ণ বাস্তবসম্মত কম্পিউটার-বেসড টেস্ট UI।",
     gradient: "from-red-500/20 to-red-600/5",
   },
   {
     icon: Headphones,
-    title: "Listening Practice",
+    title: "লিসেনিং প্র্যাকটিস",
     description:
-      "Authentic audio passages with note-taking, review time, and section timers.",
+      "নোট নেওয়ার সুবিধা, রিভিও টাইম এবং সেকশন টাইমারসহ আসল পরীক্ষার উপযোগী অডিও প্যাসেজ।",
     gradient: "from-blue-500/20 to-blue-600/5",
   },
   {
     icon: BookOpen,
-    title: "Reading Practice",
+    title: "রিডিং প্র্যাকটিস",
     description:
-      "Academic and general training passages with highlight tools and split-screen layout.",
+      "হাইলাইট টুল এবং স্প্লিট-স্ক্রিন লেআউটসহ একাডেমিক এবং জেনারেল ট্রেনিংসের প্যাসেজ।",
     gradient: "from-violet-500/20 to-violet-600/5",
   },
   {
     icon: PenLine,
-    title: "Writing Evaluation",
+    title: "রাইটিং মূল্যায়ন",
     description:
-      "Task 1 & 2 editors with word count, auto-save, and band-scored AI feedback.",
+      "শব্দ সংখ্যা ট্র্যাকার, অটো-সেভ এবং এআই ব্যান্ড স্কোর ফিডব্যাকসহ রাইটিং টাস্ক ১ ও ২ এডিটর।",
     gradient: "from-amber-500/20 to-amber-600/5",
   },
   {
     icon: Mic,
-    title: "Speaking Practice",
+    title: "স্পিকিং প্র্যাকটিস",
     description:
-      "Timed parts with recording, playback, and pronunciation analysis.",
+      "রেকর্ডিং, প্লেব্যাক এবং উচ্চারণ বিশ্লেষণের সুবিধাসহ সময়-নিয়ন্ত্রিত পার্টস প্র্যাকটিস।",
     gradient: "from-emerald-500/20 to-emerald-600/5",
   },
   {
     icon: Library,
-    title: "Vocabulary Flashcards",
+    title: "ভোকেবুলারি ফ্ল্যাশকার্ডস",
     description:
-      "Topic-based decks with spaced repetition and IELTS high-frequency word lists.",
+      "স্পেসড রিপিটেশন এবং আইইএলটিএস হাই-ফ্রিকোয়েন্সি ওয়ার্ড লিস্টসহ বিষয়ভিত্তিক ফ্ল্যাশকার্ড ডেক।",
     gradient: "from-cyan-500/20 to-cyan-600/5",
   },
   {
     icon: Sparkles,
-    title: "AI Feedback",
+    title: "এআই ফিডব্যাক",
     description:
-      "Instant corrections for grammar, coherence, lexical resource, and pronunciation.",
+      "ব্যাকরণ, সুসংগতি, লেক্সিক্যাল রিসোর্স এবং উচ্চারণের জন্য তাত্ক্ষণিক এআই সংশোধন ও পরামর্শ।",
     gradient: "from-fuchsia-500/20 to-fuchsia-600/5",
   },
   {
     icon: BarChart3,
-    title: "Analytics Dashboard",
+    title: "অ্যানালিটিক্স ড্যাশবোর্ড",
     description:
-      "Track band progress, weak skills, study streaks, and mock test performance.",
+      "ব্যান্ড প্রোগ্রেস, দুর্বল দক্ষতা, স্টাডি স্ট্রিক এবং মক টেস্টের ফলাফল নিখুঁতভাবে ট্র্যাকিংয়ের সুবিধা।",
     gradient: "from-neutral-500/15 to-neutral-600/5",
   },
 ];
@@ -114,9 +114,9 @@ export function FeatureCarouselSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Platform Features"
-            title="Everything You Need for IELTS Success"
-            description="A complete preparation ecosystem — from authentic CBT practice to AI-powered insights."
+            eyebrow="প্ল্যাটফর্মের সুবিধাসমূহ"
+            title="আইইএলটিএস সফলতার সম্পূর্ণ প্যাকেজ"
+            description="আইইএলটিএস প্রস্তুতির একটি সম্পূর্ণ মাধ্যম — যেখানে পাবেন বাস্তব CBT প্র্যাকটিস থেকে শুরু করে AI-চালিত ফিডব্যাক ও বিশ্লেষণ।"
           />
         </InView>
 

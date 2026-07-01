@@ -1,10 +1,12 @@
+/* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { use, useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { speakingService } from "@/services/speaking.services";
+import { mockTestService } from "@/services/mocktest.services";
 import { toast } from "sonner";
 import {
   IconLoader2,
@@ -21,6 +23,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTextHighlighter } from "@/hooks/useTextHighlighter";
 import Link from "next/link";
 
 interface Props {
@@ -30,7 +33,12 @@ interface Props {
 export default function SpeakingExamPage({ params }: Props) {
   const { examId } = use(params);
   const router = useRouter();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const mockAttemptId = searchParams.get("mockAttemptId");
+  const mockTestId = searchParams.get("mockTestId");
 
   // Screen state: 'MIC_CHECK' | 'TEST' | 'COMPLETED'
   const [screen, setScreen] = useState<"MIC_CHECK" | "TEST" | "COMPLETED">("MIC_CHECK");
@@ -77,6 +85,7 @@ export default function SpeakingExamPage({ params }: Props) {
   });
 
   const exam = data?.data;
+  useTextHighlighter(workspaceRef, [exam]);
   const parts = exam?.parts ? [...exam.parts].sort((a, b) => a.order - b.order) : [];
   const currentPart = parts[currentPartIdx];
   const questions = currentPart?.questions ? [...currentPart.questions].sort((a, b) => a.order - b.order) : [];
@@ -87,10 +96,22 @@ export default function SpeakingExamPage({ params }: Props) {
     mutationFn: (answersPayload: { answers: { questionId: string; audioUrl: string | null }[] }) => {
       return speakingService.submitAttempt(examId, answersPayload);
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success("Speaking exam submitted successfully!");
       setScreen("COMPLETED");
-      router.push(`/practice/speaking/${examId}/review/${res.data.id}`);
+      if (mockAttemptId && mockTestId) {
+        try {
+          await mockTestService.updateAttempt(mockAttemptId, {
+            speakingAttemptId: res.data.id,
+          });
+          router.push(`/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=speaking`);
+        } catch (err) {
+          toast.error("Failed to link attempt to mock test session.");
+          router.push(`/practice/speaking/${examId}/review/${res.data.id}`);
+        }
+      } else {
+        router.push(`/practice/speaking/${examId}/review/${res.data.id}`);
+      }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || "Submission failed. Please try again.";
@@ -519,49 +540,57 @@ export default function SpeakingExamPage({ params }: Props) {
   const activeUploads = Object.values(uploadsInProgress).filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col select-none antialiased">
-      {/* Candiate Test Header */}
-      <header className="h-16 shrink-0 bg-white border-b border-gray-200 px-6 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100">
-            <IconMicrophone size={22} />
+    <>
+      <style>{`
+        .highlighted {
+          background-color: #fdff32 !important;
+          color: #000000 !important;
+          cursor: pointer;
+        }
+      `}</style>
+      <div className="min-h-screen bg-slate-50 flex flex-col antialiased">
+        {/* Candiate Test Header */}
+        <header className="h-16 shrink-0 bg-white border-b border-gray-200 px-6 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100">
+              <IconMicrophone size={22} />
+            </div>
+            <div>
+              <h2 className="font-black text-gray-900 text-sm">{exam.title}</h2>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">IELTS Speaking Assessment</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-black text-gray-900 text-sm">{exam.title}</h2>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">IELTS Speaking Assessment</p>
-          </div>
-        </div>
 
-        {/* Global Progress Bar */}
-        <div className="hidden md:flex items-center gap-3 w-64">
-          <div className="w-full bg-gray-150 h-2 rounded-full overflow-hidden">
-            <div className="bg-rose-500 h-full transition-all duration-300" style={{ width: `${(currentGlobalQNum / totalQuestionsInExam) * 100}%` }} />
-          </div>
-          <span className="text-[10px] font-black text-gray-400 shrink-0 uppercase tracking-wide">
-            Q: {currentGlobalQNum}/{totalQuestionsInExam}
-          </span>
-        </div>
-
-        {/* Action / submission indicator */}
-        <div className="flex items-center gap-3">
-          {activeUploads > 0 && (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold animate-pulse">
-              <IconLoader2 size={12} className="animate-spin text-amber-600" />
-              <span>Uploading {activeUploads} Audio{activeUploads !== 1 ? "s" : ""}...</span>
+          {/* Global Progress Bar */}
+          <div className="hidden md:flex items-center gap-3 w-64">
+            <div className="w-full bg-gray-150 h-2 rounded-full overflow-hidden">
+              <div className="bg-rose-500 h-full transition-all duration-300" style={{ width: `${(currentGlobalQNum / totalQuestionsInExam) * 100}%` }} />
+            </div>
+            <span className="text-[10px] font-black text-gray-400 shrink-0 uppercase tracking-wide">
+              Q: {currentGlobalQNum}/{totalQuestionsInExam}
             </span>
-          )}
+          </div>
 
-          <button
-            onClick={handleSubmit}
-            className="px-4.5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95"
-          >
-            Submit Assessment
-          </button>
-        </div>
-      </header>
+          {/* Action / submission indicator */}
+          <div className="flex items-center gap-3">
+            {activeUploads > 0 && (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold animate-pulse">
+                <IconLoader2 size={12} className="animate-spin text-amber-600" />
+                <span>Uploading {activeUploads} Audio{activeUploads !== 1 ? "s" : ""}...</span>
+              </span>
+            )}
 
-      {/* Main workspace container */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 md:p-6 gap-6 min-h-[calc(100vh-4rem)]">
+            <button
+              onClick={handleSubmit}
+              className="px-4.5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95"
+            >
+              Submit Assessment
+            </button>
+          </div>
+        </header>
+
+        {/* Main workspace container */}
+        <main ref={workspaceRef} className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 md:p-6 gap-6 min-h-[calc(100vh-4rem)]">
         {/* Left container: Task cue card or interview questions */}
         <section className="flex-1 bg-white rounded-3xl border border-gray-150 p-6 md:p-8 flex flex-col justify-between shadow-sm space-y-6 min-h-[400px]">
           
@@ -727,5 +756,6 @@ export default function SpeakingExamPage({ params }: Props) {
         </section>
       </main>
     </div>
+    </>
   );
 }

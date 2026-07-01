@@ -58,32 +58,31 @@ function TFNGButtons({
         const label = String.fromCharCode(65 + i); // A, B, C
         const active = answer.trim().toLowerCase() === opt.trim().toLowerCase();
         return (
-          <button
+          <div
             key={opt}
-            type="button"
             onClick={() => onAnswer(opt)}
-            className={`flex items-center gap-3 w-full max-w-md px-4 py-2 rounded-xl border text-left text-sm transition-all duration-150 ${
+            className={`flex items-center gap-3 w-full max-w-md px-4 py-2 rounded-xl border text-left text-sm transition-all duration-150 cursor-pointer ${
               active
                 ? "bg-[#003580]/5 text-[#003580] border-[#003580] font-bold"
                   : "bg-white text-gray-700 border-gray-200 hover:border-[#003580]/50 hover:bg-gray-50/50"
             }`}
           >
             <span
-              className={`h-5 w-5 rounded-full flex shrink-0 items-center justify-center text-[10px] font-black ${
+              className={`h-5 w-5 rounded-full flex shrink-0 items-center justify-center text-[10px] font-black select-none ${
                 active ? "bg-[#003580] text-white" : "bg-gray-100 text-gray-500"
               }`}
             >
               {label}
             </span>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex w-4 h-4 rounded-full border shrink-0 items-center justify-center ${
+              <span className={`inline-flex w-4 h-4 rounded-full border shrink-0 items-center justify-center select-none ${
                 active ? "border-[#003580]" : "border-gray-300"
               }`}>
-                {active && <span className="w-2 h-2 rounded-full bg-[#003580]" />}
+                {active && <span className="w-2.5 h-2.5 rounded-full bg-[#003580]" />}
               </span>
               <span className="font-semibold text-gray-800">{parseBoldText(opt)}</span>
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -141,11 +140,10 @@ function MCQButtons({
         const label = String.fromCharCode(65 + i);
         const active = answer === opt;
         return (
-          <button
+          <div
             key={opt}
-            type="button"
             onClick={() => onAnswer(opt)}
-            className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium select-none ${
+            className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium cursor-pointer ${
               active
                 ? "text-[#1B3A6B] font-bold"
                 : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
@@ -157,7 +155,7 @@ function MCQButtons({
                 {label}
               </span>
               {/* Radio circle bullet point */}
-              <span className={`inline-flex w-4 h-4 rounded-full border items-center justify-center shrink-0 ${
+              <span className={`inline-flex w-4 h-4 rounded-full border items-center justify-center shrink-0 select-none ${
                 active ? "border-[#1B3A6B]" : "border-gray-300"
               }`}>
                 {active && <span className="w-2.5 h-2.5 rounded-full bg-[#1B3A6B]" />}
@@ -166,7 +164,7 @@ function MCQButtons({
             <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
               {parseBoldText(opt)}
             </span>
-          </button>
+          </div>
         );
       })}
     </div>

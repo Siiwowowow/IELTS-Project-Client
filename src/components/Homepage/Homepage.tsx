@@ -1,5 +1,6 @@
 import { HeroSection } from "./sections/HeroSection";
 import { TrustStatsSection } from "./sections/TrustStatsSection";
+import { IeltsImportanceSection } from "./sections/IeltsImportanceSection";
 import { FeatureCarouselSection } from "./sections/FeatureCarouselSection";
 import { CBTExperienceSection } from "./sections/CBTExperienceSection";
 import { PracticeModulesSection } from "./sections/PracticeModulesSection";
@@ -18,6 +19,7 @@ export function Homepage() {
     <div className="homepage pb-20 font-[family-name:var(--font-inter)] antialiased sm:pb-0">
       <HeroSection />
       <TrustStatsSection />
+      <IeltsImportanceSection />
       <FeatureCarouselSection />
       <CBTExperienceSection />
       <PracticeModulesSection />

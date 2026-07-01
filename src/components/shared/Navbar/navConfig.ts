@@ -18,74 +18,74 @@ import type { NavItem, MobileDrawerSection } from "./types";
 
 export const practiceMenuItems = [
   {
-    label: "Listening",
+    label: "লিসেনিং",
     href: "/practice/listening",
-    description: "Audio passages & question types",
+    description: "অডিও প্যাসেজ ও প্রশ্নের ধরণসমূহ",
     icon: Headphones,
   },
   {
-    label: "Reading",
+    label: "রিডিং",
     href: "/practice/reading",
-    description: "Academic & general passages",
+    description: "একাডেমিক ও জেনারেল প্যাসেজ",
     icon: BookOpen,
   },
   {
-    label: "Writing",
+    label: "রাইটিং",
     href: "/practice/writing",
-    description: "Task 1 & Task 2 practice",
+    description: "টাস্ক ১ ও টাস্ক ২ প্র্যাকটিস",
     icon: PenLine,
   },
   {
-    label: "Speaking",
+    label: "স্পিকিং",
     href: "/practice/speaking",
-    description: "Parts 1, 2 & 3 simulations",
+    description: "পার্ট ১, ২ ও ৩ সিমুলেশন",
     icon: Mic,
   },
   {
-    label: "Vocabulary",
+    label: "ভোকেবুলারি",
     href: "/practice/vocabulary",
-    description: "Topic-based word banks",
+    description: "টপিক-ভিত্তিক শব্দভাণ্ডার",
     icon: Library,
   },
 ];
 
 export const mockTestsMenuItems = [
   {
-    label: "Full Mock Test",
+    label: "ফুল মক টেস্ট",
     href: "/mock-tests/full",
-    description: "Complete 2h 45m CBT simulation",
+    description: "সম্পূর্ণ ২ ঘণ্টা ৪৫ মিনিটের পরীক্ষা",
     icon: ClipboardList,
   },
   {
-    label: "Timed Section Tests",
+    label: "টাইমড সেকশন টেস্ট",
     href: "/mock-tests/sections",
-    description: "Practice under real time limits",
+    description: "বাস্তব সময়ের অধীনে প্র্যাকটিস",
     icon: Timer,
   },
   {
-    label: "Band Score Predictor",
+    label: "ব্যান্ড স্কোর প্রেডিক্টর",
     href: "/mock-tests/predictor",
-    description: "AI-assisted score estimation",
+    description: "AI-চালিত ব্যান্ড স্কোর অনুমান",
     icon: Target,
   },
 ];
 
 export const desktopNavItems: NavItem[] = [
-  { label: "Home", href: "/" },
+  { label: "হোম", href: "/" },
   {
-    label: "Practice",
+    label: "প্র্যাকটিস",
     href: "/practice",
     children: practiceMenuItems,
   },
   {
-    label: "Mock Tests",
+    label: "মক টেস্ট",
     href: "/mock-tests",
     children: mockTestsMenuItems,
   },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Analytics", href: "/analytics" },
+  { label: "প্রাইসিং", href: "/pricing" },
+  { label: "অ্যানালিটিক্স", href: "/analytics" },
   {
-    label: "Dashboard",
+    label: "ড্যাশবোর্ড",
     href: "/dashboard",
     requiresAuth: true,
     icon: LayoutDashboard,
@@ -95,7 +95,7 @@ export const desktopNavItems: NavItem[] = [
 export const mobileDrawerSections: MobileDrawerSection[] = [
   {
     id: "practice",
-    label: "Practice",
+    label: "প্র্যাকটিস",
     href: "/practice",
     icon: BookOpen,
     children: practiceMenuItems.map(({ label, href, icon }) => ({
@@ -106,7 +106,7 @@ export const mobileDrawerSections: MobileDrawerSection[] = [
   },
   {
     id: "mock-tests",
-    label: "Mock Tests",
+    label: "মক টেস্ট",
     href: "/mock-tests",
     icon: ClipboardList,
     children: mockTestsMenuItems.map(({ label, href, icon }) => ({
@@ -118,18 +118,18 @@ export const mobileDrawerSections: MobileDrawerSection[] = [
 ];
 
 export const mobileDrawerLinks = [
-  { label: "Home", href: "/", icon: Home },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Pricing", href: "/pricing", icon: CreditCard },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "হোম", href: "/", icon: Home },
+  { label: "অ্যানালিটিক্স", href: "/analytics", icon: BarChart3 },
+  { label: "প্রাইসিং", href: "/pricing", icon: CreditCard },
+  { label: "সেটিংস", href: "/settings", icon: Settings },
 ];
 
 export const mobileStandaloneSkills = [
-  { label: "Listening", href: "/practice/listening", icon: Headphones },
-  { label: "Reading", href: "/practice/reading", icon: BookOpen },
-  { label: "Writing", href: "/practice/writing", icon: FileText },
-  { label: "Speaking", href: "/practice/speaking", icon: Mic },
-  { label: "Vocabulary", href: "/practice/vocabulary", icon: Library },
+  { label: "লিসেনিং", href: "/practice/listening", icon: Headphones },
+  { label: "রিডিং", href: "/practice/reading", icon: BookOpen },
+  { label: "রাইটিং", href: "/practice/writing", icon: FileText },
+  { label: "স্পিকিং", href: "/practice/speaking", icon: Mic },
+  { label: "ভোকেবুলারি", href: "/practice/vocabulary", icon: Library },
 ];
 
 /** All routes shown in the mobile/tablet drawer (mirrors desktop nav + extras). */

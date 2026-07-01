@@ -10,51 +10,51 @@ import { cn } from "@/lib/utils";
 
 const plans = [
   {
-    name: "Free",
+    name: "ফ্রি (Free)",
     monthly: 0,
     yearly: 0,
-    description: "Get started with essential practice tools.",
+    description: "প্রয়োজনীয় প্র্যাকটিস টুলস দিয়ে এখনই আপনার প্রস্তুতি শুরু করুন।",
     features: [
-      "3 mock tests per month",
-      "Basic practice modules",
-      "Limited AI feedback",
-      "Community support",
+      "প্রতি মাসে ৩টি মক টেস্ট",
+      "বেসিক প্র্যাকটিস মডিউল",
+      "সীমাবদ্ধ এআই ফিডব্যাক",
+      "কমিউনিটি ফোরাম সাপোর্ট",
     ],
-    cta: "Get Started",
+    cta: "ফ্রি শুরু করুন",
     href: "/register",
     popular: false,
   },
   {
-    name: "Premium",
+    name: "প্রিমিয়াম (Premium)",
     monthly: 19,
     yearly: 15,
-    description: "Full CBT practice for serious candidates.",
+    description: "গুরুত্বসহকারে সম্পূর্ণ সিবিটি প্রস্তুতির জন্য পারফেক্ট প্যাকেজ।",
     features: [
-      "Unlimited mock tests",
-      "All practice modules",
-      "Full AI writing & speaking feedback",
-      "Analytics dashboard",
-      "Vocabulary & grammar tools",
-      "Email support",
+      "আনলিমিটেড মক টেস্ট",
+      "সকল প্র্যাকটিস মডিউল",
+      "সম্পূর্ণ এআই রাইটিং ও স্পিকিং ফিডব্যাক",
+      "অ্যানালিটিক্স ড্যাশবোর্ড",
+      "ভোকেবুলারি ও গ্রামার টুলস",
+      "ইমেইল সাপোর্ট",
     ],
-    cta: "Start Premium",
+    cta: "প্রিমিয়াম শুরু করুন",
     href: "/register?plan=premium",
     popular: true,
   },
   {
-    name: "Pro",
+    name: "প্রো (Pro)",
     monthly: 39,
     yearly: 32,
-    description: "Maximum preparation with expert features.",
+    description: "অভিজ্ঞ মেন্টর ও এক্সপার্ট ফিচারের মাধ্যমে সর্বোচ্চ প্রস্তুতি।",
     features: [
-      "Everything in Premium",
-      "1-on-1 speaking reviews",
-      "Personalized study plans",
-      "Priority AI processing",
-      "Exportable progress reports",
-      "Priority support",
+      "প্রিমিয়ামের সবকিছু অন্তর্ভুক্ত",
+      "১-অন-১ লাইভ স্পিকিং রিভিউ",
+      "ব্যক্তিগত স্টাডি প্ল্যান",
+      "অগ্রাধিকার ভিত্তিক এআই প্রসেসিং",
+      "ডাউনলোডযোগ্য প্রোগ্রেস রিপোর্ট",
+      "অগ্রাধিকার সাপোর্ট",
     ],
-    cta: "Go Pro",
+    cta: "প্রো শুরু করুন",
     href: "/register?plan=pro",
     popular: false,
   },
@@ -68,9 +68,9 @@ export function PricingSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Pricing"
-            title="Plans for Every Stage of Preparation"
-            description="Start free, upgrade when you're ready. Cancel anytime."
+            eyebrow="প্যাকেজ ও মূল্য"
+            title="আপনার প্রস্তুতির প্রতিটি ধাপের জন্য উপযুক্ত প্যাকেজ"
+            description="ফ্রি দিয়ে শুরু করুন, আপনার প্রয়োজন অনুযায়ী যেকোনো সময় আপগ্রেড করুন। যেকোনো সময় বাতিল করার সুবিধা।"
           />
 
           <div className="mt-10 flex items-center justify-center gap-3">
@@ -80,7 +80,7 @@ export function PricingSection() {
                 !yearly ? "text-neutral-900" : "text-neutral-400"
               )}
             >
-              Monthly
+              মাসিক
             </span>
             <button
               type="button"
@@ -105,10 +105,10 @@ export function PricingSection() {
                 yearly ? "text-neutral-900" : "text-neutral-400"
               )}
             >
-              Yearly
+              বার্ষিক
             </span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-              Save 20%
+              ২০% ছাড়!
             </span>
           </div>
         </InView>
@@ -127,7 +127,7 @@ export function PricingSection() {
                 {plan.popular && (
                   <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ielts-red px-3 py-1 text-xs font-semibold text-white">
                     <Sparkles className="size-3" />
-                    Most Popular
+                    সেরা পছন্দ
                   </span>
                 )}
                 <h3 className="text-xl font-bold text-neutral-900">{plan.name}</h3>
@@ -137,7 +137,7 @@ export function PricingSection() {
                     ${yearly ? plan.yearly : plan.monthly}
                   </span>
                   <span className="text-neutral-500">
-                    {plan.monthly === 0 ? "" : "/mo"}
+                    {plan.monthly === 0 ? "" : "/মাস"}
                   </span>
                 </div>
                 <ul className="mt-8 flex-1 space-y-3">

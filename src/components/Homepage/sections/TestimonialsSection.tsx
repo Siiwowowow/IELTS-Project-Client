@@ -15,39 +15,39 @@ import { cn } from "@/lib/utils";
 
 const testimonials = [
   {
-    name: "Priya Sharma",
-    country: "🇮🇳 India",
+    name: "প্রিয়া শর্মা",
+    country: "🇮🇳 ভারত",
     before: 6.0,
     after: 7.5,
     quote:
-      "The CBT interface was identical to my test centre. I walked in confident — and achieved my target band on the first attempt.",
+      "এই প্ল্যাটফর্মের CBT ইন্টারফেস আমার বাস্তব পরীক্ষার কেন্দ্রের মতোই হুবহু ছিল। আমি সম্পূর্ণ আত্মবিশ্বাসের সাথে পরীক্ষা দিয়ে প্রথমবারেই আমার কাঙ্ক্ষিত ব্যান্ড অর্জন করেছি।",
     verified: true,
   },
   {
-    name: "James Okonkwo",
-    country: "🇳🇬 Nigeria",
+    name: "জেমস ওকোনকো",
+    country: "🇳🇬 নাইজেরিয়া",
     before: 5.5,
     after: 7.0,
     quote:
-      "AI writing feedback transformed my Task 2 structure. I improved by 1.5 bands in six weeks of focused practice.",
+      "এআই রাইটিং ফিডব্যাক আমার টাস্ক ২-এর গঠন সম্পূর্ণ বদলে দিয়েছে। মাত্র ৬ সপ্তাহের নিবিড় অনুশীলনে আমার স্কোর ১.৫ ব্যান্ড বৃদ্ধি পেয়েছে।",
     verified: true,
   },
   {
-    name: "Maria Chen",
-    country: "🇨🇳 China",
+    name: "মারিয়া চেন",
+    country: "🇨🇳 চীন",
     before: 6.5,
     after: 8.0,
     quote:
-      "Mock tests with real timers prepared me mentally. Analytics showed exactly where to spend my study hours.",
+      "রিয়েল টাইমারসহ মক টেস্ট আমাকে মানসিকভাবে প্রস্তুত করেছিল। অ্যানালিটিক্স খুব নির্ভুলভাবে দেখিয়েছিল যে আমার কোন বিষয়ে আরও মনোযোগ দেওয়া দরকার।",
     verified: true,
   },
   {
-    name: "Ahmed Al-Rashid",
-    country: "🇦🇪 UAE",
+    name: "আহমেদ আল-রশিদ",
+    country: "🇦🇪 সংযুক্ত আরব আমিরাত",
     before: 6.0,
     after: 7.0,
     quote:
-      "Speaking practice with pronunciation analysis fixed issues I never noticed. Highly recommend for CBT candidates.",
+      "উচ্চারণ বিশ্লেষণ সহ স্পিকিং প্র্যাকটিস আমার এমন কিছু ত্রুটি সংশোধন করেছে যা আমি আগে কখনও লক্ষ্য করিনি। সকল CBT পরীক্ষার্থীদের জন্য অত্যন্ত সুপারিশ করছি।",
     verified: true,
   },
 ];
@@ -69,9 +69,9 @@ export function TestimonialsSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Success Stories"
-            title="Trusted by Students Worldwide"
-            description="Real band improvements from learners who prepared with our authentic CBT platform."
+            eyebrow="সফলতার গল্প"
+            title="বিশ্বজুড়ে শিক্ষার্থীদের আস্থার প্রতীক"
+            description="আমাদের বাস্তবসম্মত সিবিটি প্ল্যাটফর্ম ব্যবহার করে শিক্ষার্থীদের অর্জিত ব্যান্ড স্কোরের অভূতপূর্ব উন্নতি।"
           />
         </InView>
 
@@ -105,7 +105,7 @@ export function TestimonialsSection() {
                         <p className="text-xs text-neutral-500">{t.country}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-neutral-400">Band</p>
+                        <p className="text-xs text-neutral-400">ব্যান্ড</p>
                         <p className="font-bold text-neutral-900">
                           <span className="text-neutral-400 line-through">
                             {t.before}
@@ -124,9 +124,9 @@ export function TestimonialsSection() {
         <InView delay={120} className="mt-10">
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { label: "4.9/5 average rating", sub: "12,400+ reviews" },
-              { label: "Verified student stories", sub: "Band scores confirmed" },
-              { label: "Video testimonials", sub: "Watch success journeys" },
+              { label: "৪.৯/৫ গড় রেটিং", sub: "১২,৪০০+ রিভিউ" },
+              { label: "যাচাইকৃত শিক্ষার্থীর গল্প", sub: "ব্যান্ড স্কোর নিশ্চিত" },
+              { label: "ভিডিও প্রশংসাপত্র", sub: "সফলতার যাত্রা দেখুন" },
             ].map((item) => (
               <div
                 key={item.label}

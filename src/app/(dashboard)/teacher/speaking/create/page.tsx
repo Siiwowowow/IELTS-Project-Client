@@ -299,30 +299,28 @@ function SpeakingBuilderContent() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full pb-20 select-text">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/teacher/speaking/exams"
-          className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-rose-500 transition"
-        >
-          <IconArrowLeft size={16} /> Back to My Speaking Exams
-        </Link>
-        <span className="text-xs font-black text-rose-500 bg-rose-50 border border-rose-100 rounded-full px-3 py-1 uppercase tracking-widest">
-          {editId ? "Edit Mode" : "Creation Mode"}
-        </span>
-      </div>
+      {/* Premium Header Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 p-6 md:p-8 rounded-2xl shadow-md border border-rose-950/40 relative overflow-hidden text-white">
+        <div className="absolute -top-12 -right-12 h-44 w-44 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 h-36 w-36 bg-orange-500/5 rounded-full blur-2xl pointer-events-none" />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white shadow-sm">
-              <IconMicrophone size={20} />
+        <div className="flex items-center gap-4 z-10">
+          <Link
+            href="/teacher/speaking/exams"
+            className="p-3 border border-rose-900/60 bg-rose-950/40 text-rose-200 hover:text-white rounded-xl hover:bg-rose-900/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <IconArrowLeft size={18} />
+          </Link>
+          <div>
+            <span className="text-[9px] font-black tracking-widest uppercase bg-rose-500/20 border border-rose-400/20 text-rose-300 px-2.5 py-0.5 rounded-full w-max block">
+              Speaking Creator
             </span>
-            {editId ? "Edit Speaking Exam" : "Create Speaking Mock Exam"}
-          </h1>
-          <p className="text-sm font-bold text-gray-500 mt-1">
-            Build structured IELTS Speaking simulation modules with customizable timers and questions.
-          </p>
+            <h1 className="text-xl md:text-2xl font-black tracking-tight mt-1 flex items-center gap-2">
+              <IconMicrophone size={24} className="text-rose-400 stroke-[2.2]" />
+              <span>{editId ? "Edit Speaking Exam Workspace" : "Create New Speaking Exam Workspace"}</span>
+            </h1>
+            <p className="text-xs text-rose-200/70 mt-1 max-w-xl">Build structured IELTS Speaking simulation modules with customizable Part timers and examiner questions.</p>
+          </div>
         </div>
       </div>
 

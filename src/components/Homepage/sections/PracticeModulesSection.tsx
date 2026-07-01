@@ -17,14 +17,14 @@ import { SectionHeader } from "../shared/SectionHeader";
 import { cn } from "@/lib/utils";
 
 const modules = [
-  { icon: Headphones, label: "Listening", href: "/practice/listening", color: "group-hover:border-red-200 group-hover:shadow-red-500/10" },
-  { icon: BookOpen, label: "Reading", href: "/practice/reading", color: "group-hover:border-blue-200 group-hover:shadow-blue-500/10" },
-  { icon: PenLine, label: "Writing", href: "/practice/writing", color: "group-hover:border-amber-200 group-hover:shadow-amber-500/10" },
-  { icon: Mic, label: "Speaking", href: "/practice/speaking", color: "group-hover:border-emerald-200 group-hover:shadow-emerald-500/10" },
-  { icon: Library, label: "Vocabulary", href: "/practice/vocabulary", color: "group-hover:border-violet-200 group-hover:shadow-violet-500/10" },
-  { icon: Languages, label: "Grammar", href: "/practice/grammar", color: "group-hover:border-cyan-200 group-hover:shadow-cyan-500/10" },
-  { icon: AudioLines, label: "Pronunciation", href: "/practice/pronunciation", color: "group-hover:border-pink-200 group-hover:shadow-pink-500/10" },
-  { icon: ClipboardList, label: "Mock Tests", href: "/mock-tests/full", color: "group-hover:border-ielts-red/30 group-hover:shadow-red-500/15" },
+  { icon: Headphones, label: "লিসেনিং", href: "/practice/listening", color: "group-hover:border-red-200 group-hover:shadow-red-500/10" },
+  { icon: BookOpen, label: "রিডিং", href: "/practice/reading", color: "group-hover:border-blue-200 group-hover:shadow-blue-500/10" },
+  { icon: PenLine, label: "রাইটিং", href: "/practice/writing", color: "group-hover:border-amber-200 group-hover:shadow-amber-500/10" },
+  { icon: Mic, label: "স্পিকিং", href: "/practice/speaking", color: "group-hover:border-emerald-200 group-hover:shadow-emerald-500/10" },
+  { icon: Library, label: "ভোকেবুলারি", href: "/practice/vocabulary", color: "group-hover:border-violet-200 group-hover:shadow-violet-500/10" },
+  { icon: Languages, label: "গ্রামার", href: "/practice/grammar", color: "group-hover:border-cyan-200 group-hover:shadow-cyan-500/10" },
+  { icon: AudioLines, label: "উচ্চারণ", href: "/practice/pronunciation", color: "group-hover:border-pink-200 group-hover:shadow-pink-500/10" },
+  { icon: ClipboardList, label: "মক টেস্ট", href: "/mock-tests/full", color: "group-hover:border-ielts-red/30 group-hover:shadow-red-500/15" },
 ];
 
 export function PracticeModulesSection() {
@@ -33,9 +33,9 @@ export function PracticeModulesSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <InView>
           <SectionHeader
-            eyebrow="Practice Modules"
-            title="Master Every IELTS Skill"
-            description="Structured practice paths for each test component — from targeted drills to full mock exams."
+            eyebrow="প্র্যাকটিস মডিউল"
+            title="আইইএলটিএস-এর প্রতিটি দক্ষতা ঝালিয়ে নিন"
+            description="প্রতিটি পরীক্ষার অংশের জন্য সুনির্দিষ্ট প্র্যাকটিস পাথ — টার্গেটেড ড্রিল থেকে শুরু করে ফুল মক এক্সাম।"
           />
         </InView>
 
@@ -54,10 +54,10 @@ export function PracticeModulesSection() {
                 </div>
                 <h3 className="text-lg font-bold text-neutral-900">{mod.label}</h3>
                 <p className="mt-2 flex-1 text-sm text-neutral-500">
-                  Official-style exercises with instant scoring and progress tracking.
+                  ইনস্ট্যান্ট স্কোরিং এবং প্রোগ্রেস ট্র্যাকিং সুবিধা সহ অফিশিয়াল-স্টাইল অনুশীলন।
                 </p>
                 <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-ielts-red opacity-0 transition-opacity group-hover:opacity-100">
-                  Start practice
+                  প্র্যাকটিস শুরু করুন
                   <ArrowUpRight className="size-4" />
                 </span>
                 <div className="absolute inset-x-0 bottom-0 h-0.5 scale-x-0 rounded-b-2xl bg-gradient-to-r from-ielts-red to-red-400 transition-transform duration-300 group-hover:scale-x-100" />

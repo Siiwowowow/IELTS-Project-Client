@@ -844,20 +844,26 @@ export default function CreateListeningExamPage() {
     <div className="max-w-6xl mx-auto w-full p-4 md:p-6 font-sans space-y-6">
       
       {/* HEADER BANNER */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 md:p-8 rounded-2xl shadow-md border border-indigo-900/40 relative overflow-hidden text-white">
+        <div className="absolute -top-12 -right-12 h-44 w-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 h-36 w-36 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex items-center gap-4 z-10">
           <button
             type="button"
             onClick={() => router.push("/teacher/listening/exams")}
-            className="p-2 border border-gray-200 bg-white text-gray-500 hover:text-black rounded-xl hover:bg-gray-50 transition"
+            className="p-3 border border-indigo-900/60 bg-indigo-950/40 text-indigo-205 hover:text-white rounded-xl hover:bg-indigo-900/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
             <IconArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">
-              {editExamId ? "Edit Listening Exam" : "Create New Listening Exam"}
+            <span className="text-[9px] font-black tracking-widest uppercase bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 px-2.5 py-0.5 rounded-full w-max block">
+              Listening Creator
+            </span>
+            <h1 className="text-xl md:text-2xl font-black tracking-tight mt-1">
+              {editExamId ? "Edit Listening Exam Workspace" : "Create New Listening Exam Workspace"}
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">Craft dynamic listening parts, upload audios, scripts, and configure question grids.</p>
+            <p className="text-xs text-indigo-200/70 mt-1 max-w-xl">Craft dynamic listening parts, upload examiner audios, script transcripts, and build responsive question grids.</p>
           </div>
         </div>
 

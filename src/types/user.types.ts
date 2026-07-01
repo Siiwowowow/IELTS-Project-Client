@@ -11,4 +11,5 @@ export interface ICurrentUser {
 
   role?: string;
   status?: string;
+  isPremium?: boolean;
 }

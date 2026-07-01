@@ -26,32 +26,32 @@ export default function TeacherLayout({
     <SidebarProvider>
       <TeacherSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/55 px-6 bg-white/70 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1 text-gray-500 hover:text-black hover:bg-gray-100 transition-colors" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+            <SidebarTrigger className="-ml-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all" />
+            <Separator orientation="vertical" className="mx-2 h-4 bg-slate-200" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/teacher/dashboard" className="text-gray-500 font-medium hover:text-black transition-colors">
+                  <BreadcrumbLink href="/teacher/dashboard" className="text-slate-500 font-bold hover:text-indigo-650 transition-colors">
                     Teacher Portal
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="font-semibold text-black">Dashboard</BreadcrumbPage>
+                  <BreadcrumbPage className="font-extrabold text-slate-900">Dashboard</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
           <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2 text-neutral-500 hover:text-[#DC2626] transition-colors">
+            <Button variant="ghost" size="sm" className="gap-2 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50/50 rounded-xl transition-all font-bold">
               <Home className="size-4" />
               <span className="hidden sm:inline">Home</span>
             </Button>
           </Link>
         </header>
-        <div className="flex flex-1 flex-col gap-6 p-6 bg-gray-50/50 min-h-[calc(100vh-4rem)]">
+        <div className="flex flex-1 flex-col gap-6 p-6 bg-slate-50/50 min-h-[calc(100vh-4rem)]">
           {children}
         </div>
       </SidebarInset>

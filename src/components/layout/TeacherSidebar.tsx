@@ -10,6 +10,7 @@ import {
   IconNotebook,
   IconWriting,
   IconMicrophone,
+  IconTrophy,
 } from "@tabler/icons-react";
 
 import {
@@ -69,6 +70,11 @@ const menuItems = [
     url: "/teacher/speaking/exams",
     icon: IconNotebook,
   },
+  {
+    title: "Full Mock Test",
+    url: "/teacher/mock-tests",
+    icon: IconTrophy,
+  },
 ];
 
 export function TeacherSidebar() {
@@ -84,25 +90,25 @@ export function TeacherSidebar() {
             asChild
             isActive={isActive}
             tooltip={item.title}
-            className={`w-full relative transition-all duration-200 text-base rounded-lg px-3 py-2.5 flex items-center gap-3 group border border-transparent ${
+            className={`w-full relative transition-all duration-200 text-sm rounded-xl px-3.5 py-3 flex items-center gap-3 group border ${
               isActive
-                ? "bg-red-600 text-black font-bold shadow-sm shadow-red-500/10 hover:bg-red-600"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white hover:shadow-xs hover:border-slate-200/60 hover:translate-x-0.5 font-medium"
+                ? "bg-indigo-50/80 border-indigo-100 text-indigo-700 font-bold shadow-xs shadow-indigo-100/50"
+                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 hover:translate-x-1 font-medium"
             }`}
           >
-            <Link href={item.url}>
+            <Link href={item.url} className="flex items-center gap-3 w-full">
               {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-black" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-indigo-600" />
               )}
               <item.icon
-                size={20}
+                size={18}
                 className={
                   isActive
-                    ? "text-black scale-105 transition-transform duration-200"
+                    ? "text-indigo-600 scale-105 transition-transform duration-200 stroke-[2.2]"
                     : "text-slate-400 group-hover:text-slate-900 transition-colors duration-200"
                 }
               />
-              <span>{item.title}</span>
+              <span className="tracking-tight">{item.title}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

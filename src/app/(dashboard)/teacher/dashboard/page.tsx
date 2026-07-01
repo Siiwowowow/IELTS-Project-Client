@@ -953,28 +953,33 @@ function TeacherDashboardContent() {
     <div className="flex-1 space-y-6">
       
       {/* Top Welcome & Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 p-6 md:p-8 rounded-2xl shadow-md border border-indigo-900/40 relative overflow-hidden">
+        {/* Floating gradient glow elements */}
+        <div className="absolute -top-12 -right-12 h-44 w-44 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 h-36 w-36 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <h1 className="text-3xl font-black tracking-tight text-black flex items-center gap-2">
-            <IconNotebook size={28} className="text-indigo-600" />
-            IELTS Exam Desk
+        <div className="space-y-2 flex-1 min-w-0 z-10">
+          <span className="text-[10px] font-black tracking-widest uppercase bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 px-3 py-1 rounded-full w-max block">
+            Academic Reading Creator
+          </span>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <IconNotebook size={30} className="text-indigo-400 stroke-[2.2]" />
+            <span>IELTS Academic Assembly Desk</span>
           </h1>
-          <p className="text-gray-500 font-semibold text-sm">
-            Create custom IELTS academic reading mocks with <strong className="text-indigo-600">1, 2, or 3 Passages</strong> and up to <strong className="text-indigo-600">40 Questions</strong>.
+          <p className="text-slate-300 font-medium text-xs md:text-sm leading-relaxed max-w-2xl">
+            Design dynamic CBT practice mocks configured with <strong className="text-indigo-300 font-bold">3 standard Passages</strong> and up to <strong className="text-indigo-300 font-bold">40 Questions</strong>. Direct schema compliance guaranteed.
           </p>
         </div>
 
         <Button 
           onClick={handlePublishPaper}
           disabled={isPublishing || !examTitle || Array.from({ length: passageCount }, (_, i) => i + 1).some(idx => !passages[idx as 1 | 2 | 3].title)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-200 disabled:text-gray-400 font-bold transition-all duration-200 shadow-md shadow-indigo-100 flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm shrink-0"
+          className="z-10 bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-slate-800 disabled:text-slate-500 font-extrabold transition-all duration-200 shadow-lg shadow-indigo-600/20 flex items-center gap-2 px-6 py-3 rounded-xl text-sm shrink-0 border border-indigo-500/30 hover:scale-[1.02] active:scale-98 cursor-pointer"
         >
           {isPublishing ? (
             <IconLoader2 size={16} className="animate-spin" />
           ) : (
-            <IconSparkles size={16} />
+            <IconSparkles size={16} className="animate-pulse text-indigo-200" />
           )}
           Publish Mock Exam
         </Button>
