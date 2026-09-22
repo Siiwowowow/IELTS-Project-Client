@@ -7,7 +7,7 @@ import { parseBoldText, getOptionLabel } from "@/lib/utils";
 
 function parseGroupInstruction(instruction?: string) {
   if (!instruction) {
-    return { range: "", inst1: "", inst2: "", heading: "" };
+    return { range: "", inst1: "", inst2: "", heading: "", listItems: [] as string[] };
   }
   if (instruction.includes("|||")) {
     const parts = instruction.split("|||");
@@ -16,9 +16,10 @@ function parseGroupInstruction(instruction?: string) {
       inst1: parts[1] || "",
       inst2: parts[2] || "",
       heading: parts[3] || "",
+      listItems: parts.slice(4).filter(Boolean),
     };
   }
-  return { range: "", inst1: instruction, inst2: "", heading: "" };
+  return { range: "", inst1: instruction, inst2: "", heading: "", listItems: [] as string[] };
 }
 
 function parseMatchingHeadingsConfig(passageSegment?: string) {
@@ -41,6 +42,22 @@ function parseMatchingHeadingsConfig(passageSegment?: string) {
   return { mode: "WITH_CLUES", exampleParagraph: "", exampleAnswer: "" };
 }
 
+function cleanQuestionText(text: string | undefined, questionNumber?: number): string {
+  if (!text) return "";
+  const trimmed = text.trim();
+  if (questionNumber === undefined) return trimmed;
+  // Match prefix like "8.", "8. ", "Question 8:", "8 - ", "8) "
+  const regex = new RegExp(`^(Question\\s+)?${questionNumber}\\s*[.\\-)]\\s*`, "i");
+  if (regex.test(trimmed)) {
+    return trimmed.replace(regex, "");
+  }
+  // Fallback: match any generic number prefix matching start of string
+  const fallbackRegex = new RegExp(`^${questionNumber}\\s+`);
+  if (fallbackRegex.test(trimmed)) {
+    return trimmed.replace(fallbackRegex, "");
+  }
+  return trimmed;
+}
 
 // ─── Sub-question renderers ───────────────────────────────────────────────────
 
@@ -144,7 +161,7 @@ function MCQButtons({
           <div
             key={opt}
             onClick={() => onAnswer(opt)}
-            className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium cursor-pointer ${
+            className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-normal cursor-pointer ${
               active
                 ? "text-[#1B3A6B] font-bold"
                 : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
@@ -162,7 +179,7 @@ function MCQButtons({
                 {active && <span className="w-2.5 h-2.5 rounded-full bg-[#1B3A6B]" />}
               </span>
             </span>
-            <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
+            <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-normal"}`}>
               {parseBoldText(opt)}
             </span>
           </div>
@@ -211,12 +228,13 @@ function SingleQuestion({
   onAnswer: (v: string) => void;
 }) {
   const type = group.type;
+  const text = cleanQuestionText(question.questionText ?? "", question.questionNumber);
 
   /* TRUE / FALSE / NOT GIVEN */
   if (type === "TRUE_FALSE_NOT_GIVEN") {
     return (
       <>
-        <HighlightableText text={question.questionText ?? ""} />
+        <HighlightableText text={text} />
         <TFNGButtons options={["TRUE", "FALSE", "NOT GIVEN"]} answer={answer} onAnswer={onAnswer} />
       </>
     );
@@ -226,7 +244,7 @@ function SingleQuestion({
   if (type === "YES_NO_NOT_GIVEN") {
     return (
       <>
-        <HighlightableText text={question.questionText ?? ""} />
+        <HighlightableText text={text} />
         <TFNGButtons options={["YES", "NO", "NOT GIVEN"]} answer={answer} onAnswer={onAnswer} />
       </>
     );
@@ -237,7 +255,7 @@ function SingleQuestion({
     const opts = question.options ?? group.options ?? [];
     return (
       <>
-        <HighlightableText text={question.questionText ?? ""} />
+        <HighlightableText text={text} />
         <MCQButtons opts={opts} answer={answer} onAnswer={onAnswer} />
       </>
     );
@@ -253,7 +271,7 @@ function SingleQuestion({
     type === "FLOW_CHART_COMPLETION" ||
     type === "TABLE_COMPLETION"
   ) {
-    const text = question.questionText ?? "";
+    const text = cleanQuestionText(question.questionText ?? "", question.questionNumber);
     const parts = text.split(/_{2,}/);
     const hasOptions = group.options && group.options.length > 0;
 
@@ -435,7 +453,7 @@ function SingleQuestion({
         {question.questionNumber}.
       </span>
       {cleanText && (
-        <span className="text-sm text-gray-800 font-semibold leading-relaxed">
+        <span className="text-sm text-gray-800 font-normal leading-relaxed">
           <HighlightableText text={cleanText} />
         </span>
       )}
@@ -608,7 +626,7 @@ function TableCompletion({
               {q.questionNumber}
             </span>
             <div className="flex-1">
-              <p className="text-sm text-gray-650 leading-relaxed font-normal">{q.questionText}</p>
+              <p className="text-sm text-gray-650 leading-relaxed font-normal">{parseBoldText(cleanQuestionText(q.questionText, q.questionNumber))}</p>
               <div className="mt-1 max-w-xs">
                 <TextInput value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} />
               </div>
@@ -731,7 +749,7 @@ function NotesCompletion({
               {q.questionNumber}
             </span>
             <div className="flex-grow">
-              <p className="text-sm text-gray-650 leading-relaxed font-normal">{q.questionText}</p>
+              <p className="text-sm text-gray-650 leading-relaxed font-normal">{parseBoldText(cleanQuestionText(q.questionText, q.questionNumber))}</p>
               <div className="mt-1 max-w-xs">
                 <TextInput value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} />
               </div>
@@ -811,9 +829,13 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
           !group.passageSegment.includes("|") &&
           !isNotes ? group.passageSegment : ""
         );
+        
+        // Hide singular "Question X" header since each question is wrapped in its own bordered layout
+        const showRange = finalRange && !finalRange.startsWith("Question ");
+        
         return (
           <div className="space-y-1.5 select-text mb-4">
-            {finalRange && (
+            {showRange && (
               <h2 className="text-base md:text-lg font-bold text-gray-900 leading-tight">
                 {finalRange}
               </h2>
@@ -827,6 +849,26 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
               <p className="text-xs md:text-sm text-gray-650 italic font-medium leading-relaxed">
                 {parsed.inst2}
               </p>
+            )}
+            {parsed.listItems && parsed.listItems.length > 0 && (
+              <div className="mt-3 p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1.5 max-w-2xl select-text">
+                {parsed.listItems.map((item, itemIdx) => {
+                  const firstWordMatch = item.match(/^(TRUE|FALSE|NOT GIVEN|YES|NO|TRUE\/FALSE\/NOT GIVEN|YES\/NO\/NOT GIVEN|[A-G])\s+(.*)$/i);
+                  if (firstWordMatch) {
+                    return (
+                      <div key={itemIdx} className="text-xs md:text-sm text-gray-700 leading-relaxed flex gap-2 font-medium">
+                        <span className="font-extrabold text-black shrink-0 w-24 uppercase">{firstWordMatch[1]}</span>
+                        <span className="italic text-gray-600">{firstWordMatch[2]}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={itemIdx} className="text-xs md:text-sm text-gray-650 italic font-medium leading-relaxed">
+                      {item}
+                    </div>
+                  );
+                })}
+              </div>
             )}
             {finalHeading && (
               <h3 className="text-center font-bold text-sm md:text-base text-gray-800 my-4 block select-text">
@@ -1015,9 +1057,9 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
         <div className="space-y-4 select-text pl-2">
           {/* Main prompt from the first question */}
           {group.questions[0]?.questionText && (
-            <div className="flex items-start gap-2 text-sm md:text-base font-bold text-gray-800 mb-2">
-              <span className="text-gray-900 font-bold leading-snug">
-                {group.questions[0].questionText}
+            <div className="flex items-start gap-2 text-sm md:text-base font-normal text-gray-800 mb-2">
+              <span className="text-gray-900 font-normal leading-snug">
+                {parseBoldText(group.questions[0].questionText)}
               </span>
             </div>
           )}
@@ -1055,7 +1097,7 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
                   <div
                     key={opt}
                     onClick={handleToggle}
-                    className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-medium cursor-pointer ${
+                    className={`flex items-center gap-3 w-full py-1.5 px-2.5 transition-all text-left text-sm md:text-[15px] rounded-lg font-normal cursor-pointer ${
                       active
                         ? "text-[#003580] font-bold"
                         : "text-gray-650 hover:bg-slate-100/50 hover:text-black bg-transparent"
@@ -1073,8 +1115,8 @@ export function QuestionRenderer({ group, answers, onAnswer, hideReferenceBox = 
                         {active && <span className="text-[10px] font-black leading-none">✓</span>}
                       </span>
                     </span>
-                    <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-bold" : "text-gray-700 font-medium"}`}>
-                      {opt}
+                    <span className={`flex-grow leading-relaxed ${active ? "text-gray-900 font-semibold" : "text-gray-700 font-normal"}`}>
+                      {parseBoldText(opt)}
                     </span>
                   </div>
                 );

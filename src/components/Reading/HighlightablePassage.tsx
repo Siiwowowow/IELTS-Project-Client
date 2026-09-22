@@ -1,6 +1,8 @@
 // src/components/Reading/HighlightablePassage.tsx
 "use client";
 
+import { formatPassageText } from "@/lib/utils";
+
 interface HighlightablePassageProps {
   /**
    * HTML string containing the passage content.
@@ -13,10 +15,11 @@ interface HighlightablePassageProps {
  * Highlighting is coordinated by the parent workspace's useTextHighlighter hook.
  */
 export default function HighlightablePassage({ html }: HighlightablePassageProps) {
+  const formattedHtml = formatPassageText(html);
   return (
     <div
       className="reading-passage"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: formattedHtml }}
     />
   );
 }

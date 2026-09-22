@@ -15,8 +15,7 @@ interface HighlightableTextProps {
 export default function HighlightableText({ text }: HighlightableTextProps) {
   return (
     <div
-      className="reading-passage inline-block"
-      style={{ whiteSpace: "pre-wrap" }}
+      className="reading-question-text inline-block"
     >
       {parseBoldText(text)}
     </div>

@@ -13,6 +13,7 @@ import { ExamTimer } from "@/components/Reading/ExamTimer";
 import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
+import { formatPassageText, parseBoldText } from "@/lib/utils";
 import {
   IconLoader2,
   IconSend,
@@ -391,14 +392,14 @@ export default function ExamPage({ params }: Props) {
                       <IconBook size={16} />
                     </div>
                     <h2 className="text-base font-bold text-gray-900">
-                      {passage.title}
+                      {parseBoldText(passage.title)}
                     </h2>
                   </div>
 
                   {passage.text && (
                     <div
                       className="reading-passage"
-                      dangerouslySetInnerHTML={{ __html: passage.text }}
+                      dangerouslySetInnerHTML={{ __html: formatPassageText(passage.text) }}
                     />
                   )}
 
@@ -415,7 +416,7 @@ export default function ExamPage({ params }: Props) {
 
             const questionsPanel = (
               <div
-                className={`scrollbar-hide space-y-4 ${
+                className={`scrollbar-hide space-y-4 questions-panel-container ${
                   mobileTab === "passage" ? "hidden lg:block" : "block"
                 }`}
                 style={{ height: "100%", overflowY: "auto" }}

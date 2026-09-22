@@ -10,6 +10,6 @@ export { default as NotificationsButton } from "./NotificationsButton";
 export { default as MobileDrawer } from "./MobileDrawer";
 export * from "./navConfig";
 export { default as AuthButtons } from "./AuthButtons";
-export { default as Logo } from "./Logo";
+export { default as Logo } from "../Logo/Logo";
 export type * from "./types";
 export * from "./utils";

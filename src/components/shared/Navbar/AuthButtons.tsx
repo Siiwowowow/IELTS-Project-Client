@@ -25,7 +25,10 @@ export default function AuthButtons({
       {showDashboard ? (
         <Button
           size="sm"
-          className="h-9 rounded-lg bg-white px-4 text-red-600 shadow-sm hover:bg-red-50 font-bold"
+          className={cn(
+            "h-9 rounded-full bg-neutral-950 px-4 text-xs font-semibold text-white shadow-2xs hover:bg-neutral-800 transition-all",
+            orientation === "vertical" && "w-full rounded-xl"
+          )}
           asChild
         >
           <Link href={dashboardHref} onClick={onLinkClick}>
@@ -37,7 +40,10 @@ export default function AuthButtons({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 rounded-lg px-4 font-bold text-white hover:bg-white/10"
+            className={cn(
+              "h-9 rounded-full px-3.5 text-xs font-semibold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/80 transition-all",
+              orientation === "vertical" && "w-full justify-start rounded-xl"
+            )}
             asChild
           >
             <Link href="/login" onClick={onLinkClick}>
@@ -47,7 +53,10 @@ export default function AuthButtons({
 
           <Button
             size="sm"
-            className="h-9 rounded-lg bg-white px-4 font-bold text-red-600 shadow-sm hover:bg-red-50"
+            className={cn(
+              "h-9 rounded-full bg-red-600 px-4.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700 transition-all",
+              orientation === "vertical" && "w-full rounded-xl"
+            )}
             asChild
           >
             <Link href="/register" onClick={onLinkClick}>

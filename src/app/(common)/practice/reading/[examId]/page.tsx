@@ -15,6 +15,7 @@ import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTextHighlighter } from "@/hooks/useTextHighlighter";
+import { parseBoldText } from "@/lib/utils";
 import {
  
   IconBook,
@@ -584,7 +585,7 @@ export default function ExamPage({ params }: Props) {
                       />
 
                       <span className="font-bold text-red-700 text-sm">
-                        {passage.title}
+                        {parseBoldText(passage.title)}
                       </span>
                     </div>
 
@@ -624,6 +625,7 @@ export default function ExamPage({ params }: Props) {
                     h-full
                     overflow-hidden
                     bg-[#F8FAFC]
+                    questions-panel-container
                   `}
                 >
                   <div

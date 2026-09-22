@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { AuthBrandPanel } from "./AuthBrandPanel";
 import { cn } from "@/lib/utils";
 
@@ -36,9 +37,15 @@ export function AuthSplitLayout({
               href="/"
               className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white"
             >
-              <span className="flex size-8 items-center justify-center rounded-lg bg-[#DC2626] text-xs font-bold text-white">
-                IE
-              </span>
+              <div className="flex size-8 items-center justify-center rounded-lg bg-white p-1">
+                <Image
+                  src="/logo.svg"
+                  alt="IELTS Prep Logo"
+                  width={24}
+                  height={24}
+                  className="size-5 object-contain"
+                />
+              </div>
               IELTS Prep
             </Link>
             <p className="text-lg font-bold text-white">
@@ -59,9 +66,15 @@ export function AuthSplitLayout({
               href="/"
               className="mb-8 hidden items-center gap-2.5 lg:inline-flex"
             >
-              <span className="flex size-9 items-center justify-center rounded-xl bg-[#DC2626] text-sm font-bold text-white shadow-md shadow-[#DC2626]/25">
-                IE
-              </span>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-white shadow-md shadow-neutral-200 border border-neutral-100 p-1.5">
+                <Image
+                  src="/logo.svg"
+                  alt="IELTS Prep Logo"
+                  width={28}
+                  height={28}
+                  className="size-6 object-contain"
+                />
+              </div>
               <span className="text-sm font-semibold text-neutral-800">
                 IELTS Prep
               </span>

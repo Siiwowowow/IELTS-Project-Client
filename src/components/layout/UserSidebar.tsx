@@ -105,19 +105,19 @@ export function UserSidebar() {
                       tooltip={item.title}
                       className={`w-full relative transition-all duration-200 text-base rounded-lg px-3 py-2.5 flex items-center gap-3 group border border-transparent ${
                         isActive
-                          ? "bg-red-600 text-black font-bold shadow-sm shadow-red-500/10 hover:bg-red-600"
+                          ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20 hover:bg-red-600"
                           : "text-slate-600 hover:text-slate-900 hover:bg-white hover:shadow-xs hover:border-slate-200/60 hover:translate-x-0.5 font-medium"
                       }`}
                     >
                       <Link href={item.url}>
                         {isActive && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-black" />
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-white" />
                         )}
                         <item.icon
                           size={20}
                           className={
                             isActive
-                              ? "text-black scale-105 transition-transform duration-200"
+                              ? "text-white scale-105 transition-transform duration-200"
                               : "text-slate-400 group-hover:text-slate-900 transition-colors duration-200"
                           }
                         />

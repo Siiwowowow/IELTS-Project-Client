@@ -14,7 +14,7 @@ interface Props {
   orientation?: "horizontal" | "vertical";
 }
 
-function NavUnderlineLink({
+function NavPillLink({
   label,
   href,
   active,
@@ -33,23 +33,14 @@ function NavUnderlineLink({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "nav-link-item group relative px-3.5 py-2 text-[0.8125rem] font-medium tracking-tight transition-colors",
+        "relative rounded-full px-4 py-1.5 text-xs tracking-tight transition-all duration-200",
         active
-          ? "text-white font-bold"
-          : "text-red-100 hover:text-white",
+          ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
+          : "text-neutral-600 font-medium hover:text-neutral-950 hover:bg-white/60",
         className
       )}
     >
-      <span className="relative">
-        {label}
-        <span
-          className={cn(
-            "absolute -bottom-1 left-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-out",
-            active ? "w-full" : "w-0 group-hover:w-full"
-          )}
-          aria-hidden
-        />
-      </span>
+      <span>{label}</span>
     </Link>
   );
 }
@@ -68,8 +59,8 @@ export default function NavLinks({
         aria-label="Main navigation"
         className={
           orientation === "horizontal"
-            ? "flex items-center gap-0.5"
-            : "flex flex-col gap-0.5"
+            ? "flex items-center gap-1 rounded-full bg-neutral-100/70 p-1 border border-neutral-200/60 backdrop-blur-md shadow-2xs"
+            : "flex flex-col gap-1"
         }
       >
         {links.map((link) => {
@@ -82,13 +73,13 @@ export default function NavLinks({
               onClick={onLinkClick}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition-all duration-200",
                 active
-                  ? "bg-white/10 text-white font-bold"
-                  : "text-red-100 hover:bg-white/5 hover:text-white"
+                  ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
+                  : "text-neutral-600 font-medium hover:bg-neutral-100/60 hover:text-neutral-950"
               )}
             >
-              {Icon && <Icon className="size-4 shrink-0 opacity-70" />}
+              {Icon && <Icon className={cn("size-4 shrink-0", active ? "text-white opacity-100" : "opacity-70")} />}
               {link.label}
             </Link>
           );
@@ -104,8 +95,8 @@ export default function NavLinks({
       aria-label="Main navigation"
       className={
         orientation === "horizontal"
-          ? "flex items-center justify-center gap-0.5"
-          : "flex flex-col gap-0.5"
+          ? "flex items-center justify-center gap-1 rounded-full bg-neutral-100/70 p-1 border border-neutral-200/60 backdrop-blur-md shadow-2xs"
+          : "flex flex-col gap-1"
       }
     >
       {navItems.map((item) => {
@@ -122,7 +113,7 @@ export default function NavLinks({
 
         const active = isActivePath(pathname, item.href);
         return (
-          <NavUnderlineLink
+          <NavPillLink
             key={`item-${item.href}`}
             label={item.label}
             href={item.href}

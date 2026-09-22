@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600;1,6..72,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @import "shadcn/tailwind.css";
@@ -5,7 +6,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-poppins: "Poppins", sans-serif;
+  --font-anek-bangla: var(--font-anek-bangla), "Anek Bangla", sans-serif;
+  --font-poppins: var(--font-anek-bangla), "Anek Bangla", sans-serif;
+  --font-sans: var(--font-anek-bangla), "Anek Bangla", sans-serif;
   --color-ielts-red: #dc2626;
   --color-ielts-red-dark: #b91c1c;
   --color-ielts-red-light: #fef2f2;
@@ -24,7 +27,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-anek-bangla), "Anek Bangla", sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -66,7 +69,7 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: #f8f3e9;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -290,165 +293,41 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* Homepage — premium IELTS landing */
-@keyframes hp-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-}
-
-@keyframes hp-float-slow {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(1deg);
-  }
-}
-
-@keyframes hp-glow-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-@keyframes hp-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes hp-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes hp-particle {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: translate(10px, -20px) scale(1.1);
-    opacity: 0.6;
-  }
-}
-
-.hp-float {
-  animation: hp-float 5s ease-in-out infinite;
-}
-
-.hp-float-slow {
-  animation: hp-float-slow 7s ease-in-out infinite;
-}
-
-.hp-float-delay-1 {
-  animation: hp-float 5s ease-in-out 0.8s infinite;
-}
-
-.hp-float-delay-2 {
-  animation: hp-float-slow 6s ease-in-out 1.6s infinite;
-}
-
-.hp-glow-pulse {
-  animation: hp-glow-pulse 4s ease-in-out infinite;
-}
-
-.hp-fade-up {
-  animation: hp-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.hp-glass {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 8px 32px rgba(0, 0, 0, 0.06);
-}
-
-.hp-glass-dark {
-  background: rgba(23, 23, 23, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.hp-gradient-text {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #1e40af 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hp-section {
-  scroll-margin-top: 5rem;
-}
-
-.hp-in-view {
-  opacity: 0;
-  transform: translateY(28px);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.hp-in-view.hp-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
 
 /* IELTS Reading Passage Styles */
 .reading-passage {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--color-lightColor);
-  line-height: 1.8;
-  font-size: 0.95rem;
+  line-height: 1.65;
+  font-size: 0.875rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .reading-passage h2 {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-darkColor);
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.reading-passage h3 {
-  font-size: 1.15rem;
-  font-weight: 600;
   color: var(--color-darkColor);
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
+.reading-passage h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-darkColor);
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+}
+
 .reading-passage p {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   text-align: justify;
+  text-justify: inter-word;
 }
 
 .reading-passage ul, .reading-passage ol {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   padding-left: 1.5rem;
 }
 
@@ -461,7 +340,7 @@ body {
 }
 
 .reading-passage li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .reading-passage strong, .reading-passage b {
@@ -473,10 +352,59 @@ body {
   font-style: italic;
 }
 
+/* Reading Questions Panel compact formatting */
+.questions-panel-container {
+  font-size: 0.85rem;
+}
+.questions-panel-container .text-sm,
+.questions-panel-container select,
+.questions-panel-container input,
+.questions-panel-container button,
+.questions-panel-container textarea {
+  font-size: 0.8125rem !important;
+}
+.questions-panel-container .text-base,
+.questions-panel-container h2,
+.questions-panel-container h3 {
+  font-size: 0.875rem !important;
+}
+.questions-panel-container h4 {
+  font-size: 0.8125rem !important;
+}
+.questions-panel-container .instruction-box {
+  font-size: 0.8125rem !important;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
 /* Highlighted text */
 .highlighted {
   background-color: #fdff32 !important;
   color: #000000 !important;
   cursor: pointer;
 }
+
+.reading-question-text {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: var(--color-darkColor);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.font-caveat {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', var(--font-sans), sans-serif;
+}
+
+.font-editorial {
+  font-family: 'Newsreader', Georgia, Cambria, 'Times New Roman', Times, serif;
+}
+
 

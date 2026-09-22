@@ -57,25 +57,17 @@ export default function NavDropdown({ label, href, items }: Props) {
         onClick={() => setOpen((v) => !v)}
         onKeyDown={handleKeyDown}
         className={cn(
-          "nav-link-item group flex items-center gap-1 px-3.5 py-2 text-[0.8125rem] font-medium tracking-tight transition-colors",
+          "nav-link-item group flex items-center gap-1 rounded-full px-3.5 py-1.5 text-xs tracking-tight transition-all duration-200",
           active
-            ? "text-white font-bold"
-            : "text-red-100 hover:text-white"
+            ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
+            : "text-neutral-600 font-medium hover:text-neutral-950 hover:bg-white/60"
         )}
       >
-        <span className="relative">
-          {label}
-          <span
-            className={cn(
-              "absolute -bottom-1 left-0 h-0.5 rounded-full bg-white transition-all duration-300 ease-out",
-              active ? "w-full" : "w-0 group-hover:w-full"
-            )}
-            aria-hidden
-          />
-        </span>
+        <span>{label}</span>
         <ChevronDown
           className={cn(
-            "size-3.5 opacity-60 transition-transform duration-200",
+            "size-3 transition-transform duration-200",
+            active ? "text-white opacity-100" : "opacity-60",
             open && "rotate-180"
           )}
           aria-hidden
@@ -87,7 +79,7 @@ export default function NavDropdown({ label, href, items }: Props) {
           id={menuId}
           role="menu"
           aria-labelledby={`${menuId}-trigger`}
-          className="nav-glass-dropdown absolute left-1/2 top-[calc(100%+0.5rem)] z-50 min-w-[280px] -translate-x-1/2 rounded-xl p-2 animate-in fade-in-0 zoom-in-95 duration-200"
+          className="nav-glass-dropdown absolute left-1/2 top-[calc(100%+0.5rem)] z-50 min-w-70 -translate-x-1/2 rounded-xl p-2 animate-in fade-in-0 zoom-in-95 duration-200"
         >
           <div className="mb-1 border-b border-neutral-100 px-3 py-2 dark:border-neutral-800">
             <Link

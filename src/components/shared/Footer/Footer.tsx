@@ -17,7 +17,7 @@ const footerColumns = [
       { label: "ড্যাশবোর্ড", href: "/user/dashboard" },
       { label: "মক টেস্ট", href: "/mock-tests" },
       { label: "অ্যানালিটিক্স", href: "/analytics" },
-      { label: "প্যাকেজ ও মূল্য", href: "#pricing" },
+      { label: "প্যাকেজ ও মূল্য", href: "/pricing" },
     ],
   },
   {
@@ -52,7 +52,7 @@ const footerColumns = [
     title: "সহায়তা",
     links: [
       { label: "যোগাযোগ", href: "/contact" },
-      { label: "সাধারণ জিজ্ঞাসা (FAQs)", href: "#faq" },
+      { label: "সাধারণ জিজ্ঞাসা (FAQs)", href: "/faq" },
       { label: "সিস্টেম স্ট্যাটাস", href: "/status" },
     ],
   },
@@ -74,7 +74,7 @@ const socials = [
   { icon: IconBrandYoutube, href: "#", label: "YouTube" },
 ];
 
-export function FooterSection() {
+export function Footer() {
   return (
     <footer className="bg-neutral-950 text-neutral-300">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">

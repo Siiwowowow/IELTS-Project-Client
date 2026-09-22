@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/public
+/node_modules-corrupt
 /.pnp
 .pnp.*
 .yarn/*

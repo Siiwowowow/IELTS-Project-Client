@@ -585,7 +585,7 @@ function VisualTableBuilder({ value, onChange }: VisualTableBuilderProps) {
 
 function parseGroupInstruction(instruction?: string) {
   if (!instruction) {
-    return { range: "", inst1: "", inst2: "", heading: "" };
+    return { range: "", inst1: "", inst2: "", heading: "", listItems: [] as string[] };
   }
   if (instruction.includes("|||")) {
     const parts = instruction.split("|||");
@@ -594,9 +594,10 @@ function parseGroupInstruction(instruction?: string) {
       inst1: parts[1] || "",
       inst2: parts[2] || "",
       heading: parts[3] || "",
+      listItems: parts.slice(4).filter(Boolean),
     };
   }
-  return { range: "", inst1: instruction, inst2: "", heading: "" };
+  return { range: "", inst1: instruction, inst2: "", heading: "", listItems: [] as string[] };
 }
 
 // --- Interfaces for Listening State ---
@@ -679,7 +680,7 @@ function convertMarkdownToHtml(text: string): string {
   const paragraphs = html.split(/\n\s*\n/);
   const formattedParagraphs = paragraphs.map(p => {
     const lines = p.split(/\n/);
-    return `<p class="mb-4 text-justify leading-relaxed text-gray-800">${lines.join('<br/>')}</p>`;
+    return `<p class="mb-4 text-justify leading-relaxed text-gray-800">${lines.map(l => l.trim()).filter(Boolean).join(' ')}</p>`;
   });
   return formattedParagraphs.join("");
 }
@@ -1470,6 +1471,9 @@ export default function CreateFullMockTestPage() {
   const [mcqOptC, setMcqOptC] = useState('');
   const [mcqOptD, setMcqOptD] = useState('');
   const [mcqOptE, setMcqOptE] = useState('');
+  const [mcqOptF, setMcqOptF] = useState('');
+  const [mcqOptG, setMcqOptG] = useState('');
+  const [multiMcqCorrectAnswers, setMultiMcqCorrectAnswers] = useState<string[]>([]);
 
   // Custom Matching options / list of headings (newlines)
   const [groupOptions, setGroupOptions] = useState('');
@@ -1500,6 +1504,8 @@ export default function CreateFullMockTestPage() {
   const readMcqOptCRef = useRef<HTMLTextAreaElement>(null);
   const readMcqOptDRef = useRef<HTMLTextAreaElement>(null);
   const readMcqOptERef = useRef<HTMLTextAreaElement>(null);
+  const readMcqOptFRef = useRef<HTMLTextAreaElement>(null);
+  const readMcqOptGRef = useRef<HTMLTextAreaElement>(null);
   const readExplanationRef = useRef<HTMLTextAreaElement>(null);
   const readAnswerInputRef = useRef<HTMLTextAreaElement>(null);
   const readPassageInstructionRef = useRef<HTMLTextAreaElement>(null);
@@ -1551,7 +1557,8 @@ export default function CreateFullMockTestPage() {
   // Add Question to Compiled list for active passage
   const handleAddReadingQuestion = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!questionInstruction || !correctAnswer) {
+    const isMultiMcq = selectedQuestionType === "R-MMCQ";
+    if (!questionInstruction || (!correctAnswer && !isMultiMcq)) {
       toast.error("Please fill in the required instruction and correct answer values.");
       return;
     }
@@ -1562,16 +1569,73 @@ export default function CreateFullMockTestPage() {
     // Auto-calculate or use custom question number
     const qNum = customQuestionNumber !== '' ? Number(customQuestionNumber) : readingQuestions.length + 1;
 
-    // Map correct answer and options based on MCQ or other types
+    // 1. Special Handling for MULTIPLE_CHOICE_MULTIPLE (R-MMCQ Checkboxes)
+    if (selectedTypeDetails.type === "MULTIPLE_CHOICE_MULTIPLE") {
+      if (multiMcqCorrectAnswers.length < 2) {
+        toast.error("Please select at least 2 correct options for Multiple Choice Checkbox.");
+        return;
+      }
+      
+      const generatedQs: ReadingQuestionItem[] = [];
+      const opts = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE, mcqOptF, mcqOptG].filter(Boolean);
+      
+      multiMcqCorrectAnswers.forEach((letter, i) => {
+        let ansVal = "";
+        if (letter === "A") ansVal = mcqOptA;
+        else if (letter === "B") ansVal = mcqOptB;
+        else if (letter === "C") ansVal = mcqOptC;
+        else if (letter === "D") ansVal = mcqOptD;
+        else if (letter === "E") ansVal = mcqOptE;
+        else if (letter === "F") ansVal = mcqOptF;
+        else if (letter === "G") ansVal = mcqOptG;
+        
+        generatedQs.push({
+          id: `q-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 9)}`,
+          passageIndex: activePassage,
+          type: selectedTypeDetails.title,
+          typeCode: selectedTypeDetails.type,
+          questionNumber: qNum + i,
+          text: questionText,
+          instruction: questionInstruction,
+          correctAnswer: ansVal,
+          explanation: questionExplanation,
+          options: opts.length > 0 ? opts : undefined,
+          groupImageUrl: questionImage || undefined
+        });
+      });
+      
+      setReadingQuestions([...readingQuestions, ...generatedQs].sort((a, b) => a.questionNumber - b.questionNumber));
+      
+      // Reset Form for checkboxes
+      setQuestionText('');
+      setQuestionExplanation('');
+      setMultiMcqCorrectAnswers([]);
+      setMcqOptA('');
+      setMcqOptB('');
+      setMcqOptC('');
+      setMcqOptD('');
+      setMcqOptE('');
+      setMcqOptF('');
+      setMcqOptG('');
+      setCustomQuestionNumber('');
+      setQuestionImage(null);
+      setQuestionImageName('');
+      toast.success(`Added ${generatedQs.length} questions starting from Question ${qNum}!`);
+      return;
+    }
+
+    // 2. Standard single correct answer MCQ mapping
     let finalCorrectAnswer = correctAnswer;
     let finalOptions: string[] = [];
-    if (selectedTypeDetails.type === "MULTIPLE_CHOICE" || selectedTypeDetails.type === "MULTIPLE_CHOICE_MULTIPLE") {
-      finalOptions = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE].filter(Boolean);
+    if (selectedTypeDetails.type === "MULTIPLE_CHOICE") {
+      finalOptions = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE, mcqOptF, mcqOptG].filter(Boolean);
       if (correctAnswer === "A") finalCorrectAnswer = mcqOptA;
       else if (correctAnswer === "B") finalCorrectAnswer = mcqOptB;
       else if (correctAnswer === "C") finalCorrectAnswer = mcqOptC;
       else if (correctAnswer === "D") finalCorrectAnswer = mcqOptD;
       else if (correctAnswer === "E") finalCorrectAnswer = mcqOptE;
+      else if (correctAnswer === "F") finalCorrectAnswer = mcqOptF;
+      else if (correctAnswer === "G") finalCorrectAnswer = mcqOptG;
     }
 
     let finalGroupOptions: string[] = [];
@@ -1600,7 +1664,7 @@ export default function CreateFullMockTestPage() {
             exampleParagraph: hasExample ? exampleParagraph : "",
             exampleAnswer: hasExample ? exampleAnswer : ""
           })
-        : ["TABLE_COMPLETION", "NOTES_COMPLETION", "FLOW_CHART_COMPLETION", "SUMMARY_COMPLETION_WITH_OPTIONS", "SUMMARY_COMPLETION_WITHOUT_OPTIONS", "SENTENCE_COMPLETION"].includes(selectedTypeDetails.type)
+        : ["TABLE_COMPLETION", "NOTES_COMPLETION", "FLOW_CHART_COMPLETION", "SUMMARY_COMPLETION_WITH_OPTIONS", "SUMMARY_COMPLETION_WITHOUT_OPTIONS"].includes(selectedTypeDetails.type)
         ? passageSegment
         : undefined,
       groupImageUrl: questionImage || undefined
@@ -1619,6 +1683,9 @@ export default function CreateFullMockTestPage() {
     setMcqOptC('');
     setMcqOptD('');
     setMcqOptE('');
+    setMcqOptF('');
+    setMcqOptG('');
+    setMultiMcqCorrectAnswers([]);
     setQuestionImage(null);
     setQuestionImageName('');
     toast.success(`Question ${qNum} added!`);
@@ -2087,7 +2154,7 @@ export default function CreateFullMockTestPage() {
              You should spend about 20 minutes on Questions which are based on Reading Passage ${idx} below.
            </div>`;
            
-      const titleHtml = `<h2 class="text-2xl font-extrabold text-black mb-5 mt-2 tracking-tight whitespace-pre-wrap">${p.title}</h2>`;
+      const titleHtml = `<h2 class="text-2xl font-extrabold text-black mb-5 mt-2 tracking-tight whitespace-pre-wrap">${p.title.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-black">$1</strong>')}</h2>`;
       const bodyHtml = convertMarkdownToHtml(p.body || "");
       const combinedText = `${instructionHtml}${titleHtml}${bodyHtml}`;
 
@@ -2998,24 +3065,6 @@ export default function CreateFullMockTestPage() {
                       
                       <CardContent className="pt-5 space-y-5">
                         
-                        {/* Passage Instruction Header */}
-                        <div className="space-y-1">
-                          <ReadFormatToolbar 
-                            inputRef={readPassageInstructionRef}
-                            value={passages[activePassage].instruction || ''}
-                            onChange={(val) => updatePassageField('instruction', val)}
-                            label={`Passage ${activePassage} Instructions Header`}
-                          />
-                          <textarea 
-                            ref={readPassageInstructionRef}
-                            rows={2}
-                            value={passages[activePassage].instruction || ''}
-                            onChange={(e) => updatePassageField('instruction', e.target.value)}
-                            placeholder="e.g. You should spend about 20 minutes on Questions 14-26 which are based on Reading Passage 2 below." 
-                            className="w-full text-xs font-semibold px-4.5 py-2.5 border border-gray-200 rounded-xl focus:outline-hidden focus:border-indigo-400 bg-gray-50/50 text-black placeholder:text-gray-400 resize-y"
-                          />
-                        </div>
-
                         {/* Passage Title */}
                         <div className="space-y-1">
                           <ReadFormatToolbar 
@@ -3031,6 +3080,21 @@ export default function CreateFullMockTestPage() {
                             onChange={(e) => updatePassageField('title', e.target.value)}
                             placeholder={`e.g. Passage ${activePassage}: History and Development of English Bridges`} 
                             className="w-full font-semibold text-xs text-black px-4.5 py-2.5 border border-gray-200 rounded-xl focus:outline-hidden focus:border-indigo-400 bg-gray-50/50 text-black placeholder:text-gray-400 resize-y"
+                          />
+                        </div>
+
+                        {/* Passage Description */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-1">
+                            Passage {activePassage} Description / Spent Time Instruction
+                          </label>
+                          <textarea 
+                            ref={readPassageInstructionRef}
+                            rows={2}
+                            value={passages[activePassage].instruction || ''}
+                            onChange={(e) => updatePassageField('instruction', e.target.value)}
+                            placeholder="e.g. You should spend about 20 minutes on Questions 14-26 which are based on Reading Passage 2 below." 
+                            className="w-full text-xs font-normal px-4.5 py-2.5 border border-gray-200 rounded-xl focus:outline-hidden focus:border-indigo-400 bg-gray-50/50 text-black placeholder:text-gray-400 resize-y"
                           />
                         </div>
 
@@ -3116,7 +3180,27 @@ export default function CreateFullMockTestPage() {
                               <button
                                 key={type.code}
                                 type="button"
-                                onClick={() => setSelectedQuestionType(type.code)}
+                                onClick={() => {
+                                  setSelectedQuestionType(type.code);
+                                  if (type.code === "R-MINF") {
+                                    if (!groupOptions.trim()) setGroupOptions("A\nB\nC\nD\nE\nF\nG");
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Which paragraph contains the following information?|||Write the correct letter, A–G. NB You may use any letter more than once.|||");
+                                    }
+                                  } else if (type.code === "R-TFN") {
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Do the following statements agree with the information given in Reading Passage?|||In boxes on your answer sheet, write:||||||TRUE  if the statement agrees with the information|||FALSE  if the statement contradicts the information|||NOT GIVEN  if there is no information on this");
+                                    }
+                                  } else if (type.code === "R-YNN") {
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Do the following statements agree with the claims of the writer in Reading Passage?|||In boxes on your answer sheet, write:||||||YES  if the statement agrees with the claims|||NO  if the statement contradicts the claims|||NOT GIVEN  if there is no information on this");
+                                    }
+                                  } else if (type.code === "R-MHDG") {
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Choose the correct heading for each paragraph from the list of headings below.|||Write the correct number, i–x, in boxes on your answer sheet.|||");
+                                    }
+                                  }
+                                }}
                                 className={`p-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
                                   isSelected
                                     ? 'bg-indigo-50/75 border-indigo-455 text-indigo-950 font-bold ring-2 ring-indigo-100 shadow-inner'
@@ -3149,39 +3233,6 @@ export default function CreateFullMockTestPage() {
                                 Cancel
                               </Button>
                             </div>
-
-                            {selectedQuestionType === "R-SCOMP" && (
-                              <div className="bg-white p-3 rounded-lg border border-indigo-100/55 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                                <div className="space-y-0.5">
-                                  <span className="text-xs font-bold text-gray-800">Sentence Completion Clue Type</span>
-                                  <p className="text-[10px] text-gray-450 font-semibold leading-relaxed">Decide if students get a clues box (Inline select list) or type answers directly (Free text).</p>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => setScompMode("WITHOUT_CLUES")}
-                                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-150 cursor-pointer ${
-                                      scompMode === "WITHOUT_CLUES"
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                                        : "bg-slate-50 border-gray-200 text-gray-700 hover:bg-slate-100"
-                                    }`}
-                                  >
-                                    Without Clues
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setScompMode("WITH_CLUES")}
-                                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-150 cursor-pointer ${
-                                      scompMode === "WITH_CLUES"
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
-                                        : "bg-slate-50 border-gray-200 text-gray-700 hover:bg-slate-100"
-                                    }`}
-                                  >
-                                    With Clues
-                                  </button>
-                                </div>
-                              </div>
-                            )}
 
                             {selectedQuestionType === "R-MHDG" && (
                               <div className="bg-white p-4 rounded-xl border border-indigo-100/55 space-y-4 shadow-xs animate-fadeIn">
@@ -3330,16 +3381,40 @@ export default function CreateFullMockTestPage() {
                               
                               {(() => {
                                 const parsed = parseGroupInstruction(questionInstruction);
+                                
                                 const updateField = (field: "range" | "inst1" | "inst2" | "heading", val: string) => {
                                   const next = { ...parsed, [field]: val };
-                                  const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}`;
+                                  const listItemsJoined = (next.listItems || []).join("|||");
+                                  const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}${
+                                    listItemsJoined ? "|||" + listItemsJoined : ""
+                                  }`;
+                                  setQuestionInstruction(serialized);
+                                };
+
+                                const handleAddListItem = () => {
+                                  const currentItems = parsed.listItems || [];
+                                  const nextItems = [...currentItems, ""];
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}|||${nextItems.join("|||")}`;
+                                  setQuestionInstruction(serialized);
+                                };
+
+                                const handleUpdateListItem = (index: number, val: string) => {
+                                  const nextItems = [...(parsed.listItems || [])];
+                                  nextItems[index] = val;
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}|||${nextItems.join("|||")}`;
+                                  setQuestionInstruction(serialized);
+                                };
+
+                                const handleRemoveListItem = (index: number) => {
+                                  const nextItems = (parsed.listItems || []).filter((_, idx) => idx !== index);
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}${nextItems.length > 0 ? "|||" + nextItems.join("|||") : ""}`;
                                   setQuestionInstruction(serialized);
                                 };
 
                                 return (
-                                  <div className="sm:col-span-3 space-y-3 bg-slate-50 p-4 rounded-xl border border-indigo-100">
+                                  <div className="sm:col-span-3 space-y-4 bg-slate-50 p-4 rounded-xl border border-indigo-100">
                                     <span className="text-[10px] font-extrabold uppercase text-indigo-900 tracking-wider block mb-1 font-bold">
-                                      IELTS Block Header Configuration (4 Header Fields)
+                                      IELTS Block Header Configuration
                                     </span>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                       <div className="space-y-1">
@@ -3351,7 +3426,7 @@ export default function CreateFullMockTestPage() {
                                         />
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-505 uppercase">2. Question Title/Heading (Centered)</label>
+                                        <label className="text-[9px] font-black text-gray-500 uppercase">2. Question Title/Heading (Centered)</label>
                                         <ReadIeltsHeaderInput
                                           value={parsed.heading}
                                           onChange={(val) => updateField("heading", val)}
@@ -3359,7 +3434,7 @@ export default function CreateFullMockTestPage() {
                                         />
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-505 uppercase">3. Instruction Line 1 (Italic)</label>
+                                        <label className="text-[9px] font-black text-gray-500 uppercase">3. Instruction Line 1 (Italic)</label>
                                         <ReadIeltsHeaderInput
                                           value={parsed.inst1}
                                           onChange={(val) => updateField("inst1", val)}
@@ -3367,12 +3442,49 @@ export default function CreateFullMockTestPage() {
                                         />
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-505 uppercase">4. Instruction Line 2 (Italic)</label>
+                                        <label className="text-[9px] font-black text-gray-500 uppercase">4. Instruction Line 2 (Italic)</label>
                                         <ReadIeltsHeaderInput
                                           value={parsed.inst2}
                                           onChange={(val) => updateField("inst2", val)}
                                           placeholder="e.g. Write the correct letter..."
                                         />
+                                      </div>
+                                    </div>
+
+                                    {/* Dynamic list items block */}
+                                    <div className="border-t border-indigo-100/60 pt-3 space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-[9px] font-bold uppercase text-indigo-900 tracking-wider block">
+                                          Custom Instruction List Box (e.g. TRUE/FALSE Keys)
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={handleAddListItem}
+                                          className="text-[9px] font-extrabold uppercase px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                                        >
+                                          + Add Instruction Line
+                                        </button>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        {(parsed.listItems || []).map((item, itemIdx) => (
+                                          <div key={itemIdx} className="flex gap-2 items-center">
+                                            <input
+                                              type="text"
+                                              value={item}
+                                              onChange={(e) => handleUpdateListItem(itemIdx, e.target.value)}
+                                              placeholder="e.g. TRUE  if the statement agrees with the information"
+                                              className="flex-grow text-xs px-2.5 py-1.5 border border-indigo-100 rounded bg-white text-black placeholder:text-gray-400 focus:outline-none focus:border-indigo-400 font-semibold"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveListItem(itemIdx)}
+                                              className="text-[10px] font-bold text-red-500 hover:text-red-750 px-2 py-1"
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
                                   </div>
@@ -3381,7 +3493,7 @@ export default function CreateFullMockTestPage() {
                             </div>
 
                             {/* Conditional input: Matching Options */}
-                            {(["R-MHDG", "R-MINF", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) || (selectedQuestionType === "R-SCOMP" && scompMode === "WITH_CLUES")) && (
+                            {["R-MHDG", "R-MINF", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) && (
                               <div className="space-y-1">
                                 <ReadFormatToolbar 
                                   inputRef={readGroupOptionsRef}
@@ -3395,7 +3507,7 @@ export default function CreateFullMockTestPage() {
                                   value={groupOptions}
                                   onChange={(e) => setGroupOptions(e.target.value)}
                                   placeholder={
-                                    selectedQuestionType === "R-SCO" || selectedQuestionType === "R-SCOMP"
+                                    selectedQuestionType === "R-SCO"
                                       ? `e.g.\nA  constant conflict\nB  additional evidence\nC  different locations\nD  experimental subjects`
                                       : `e.g.\ni   Heading 1\nii  Heading 2\niii Heading 3`
                                   } 
@@ -3407,7 +3519,7 @@ export default function CreateFullMockTestPage() {
                             )}
 
                             {/* Conditional input: Table / Flow-chart / Notes / Summary Template */}
-                            {["R-TABLE", "R-FLOW", "R-NCOMP", "R-SCO", "R-SCWO", "R-SCOMP"].includes(selectedQuestionType) && (
+                            {["R-TABLE", "R-FLOW", "R-NCOMP", "R-SCO", "R-SCWO"].includes(selectedQuestionType) && (
                               <div className="space-y-1">
                                 {selectedQuestionType === "R-TABLE" ? (
                                   <>
@@ -3528,15 +3640,24 @@ export default function CreateFullMockTestPage() {
                                     placeholder="Option D text"
                                     required
                                   />
-                                  {selectedQuestionType === "R-MMCQ" && (
-                                    <ReadFormatInput 
-                                      inputRef={readMcqOptERef}
-                                      value={mcqOptE}
-                                      onChange={setMcqOptE}
-                                      placeholder="Option E text (Required for check)"
-                                      required
-                                    />
-                                  )}
+                                  <ReadFormatInput 
+                                    inputRef={readMcqOptERef}
+                                    value={mcqOptE}
+                                    onChange={setMcqOptE}
+                                    placeholder="Option E text (Optional)"
+                                  />
+                                  <ReadFormatInput 
+                                    inputRef={readMcqOptFRef}
+                                    value={mcqOptF}
+                                    onChange={setMcqOptF}
+                                    placeholder="Option F text (Optional)"
+                                  />
+                                  <ReadFormatInput 
+                                    inputRef={readMcqOptGRef}
+                                    value={mcqOptG}
+                                    onChange={setMcqOptG}
+                                    placeholder="Option G text (Optional)"
+                                  />
                                 </div>
                               </div>
                             )}
@@ -3545,7 +3666,35 @@ export default function CreateFullMockTestPage() {
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block font-bold">Correct Answer Value <span className="text-rose-500">*</span></label>
-                                {(selectedQuestionType === "R-MCQ" || selectedQuestionType === "R-MMCQ") ? (
+                                {selectedQuestionType === "R-MMCQ" ? (
+                                  <div className="space-y-2 py-1">
+                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                      {["A", "B", "C", "D", "E", "F", "G"].map((letter) => {
+                                        const optVal = letter === "A" ? mcqOptA : letter === "B" ? mcqOptB : letter === "C" ? mcqOptC : letter === "D" ? mcqOptD : letter === "E" ? mcqOptE : letter === "F" ? mcqOptF : mcqOptG;
+                                        if (!optVal.trim()) return null;
+                                        const isChecked = multiMcqCorrectAnswers.includes(letter);
+                                        const handleCheck = () => {
+                                          if (isChecked) {
+                                            setMultiMcqCorrectAnswers(multiMcqCorrectAnswers.filter(item => item !== letter));
+                                          } else {
+                                            setMultiMcqCorrectAnswers([...multiMcqCorrectAnswers, letter]);
+                                          }
+                                        };
+                                        return (
+                                          <label key={letter} className="flex items-center gap-1.5 text-xs text-black font-semibold cursor-pointer font-sans">
+                                            <input 
+                                              type="checkbox" 
+                                              checked={isChecked} 
+                                              onChange={handleCheck} 
+                                              className="rounded border-indigo-100 text-indigo-650 focus:ring-indigo-500 h-4 w-4"
+                                            />
+                                            <span>Option {letter} ({optVal})</span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : selectedQuestionType === "R-MCQ" ? (
                                   <select 
                                     value={correctAnswer}
                                     onChange={(e) => setCorrectAnswer(e.target.value)}
@@ -3557,7 +3706,9 @@ export default function CreateFullMockTestPage() {
                                     <option value="B">Option B</option>
                                     <option value="C">Option C</option>
                                     <option value="D">Option D</option>
-                                    {selectedQuestionType === "R-MMCQ" && <option value="E">Option E</option>}
+                                    {mcqOptE && <option value="E">Option E</option>}
+                                    {mcqOptF && <option value="F">Option F</option>}
+                                    {mcqOptG && <option value="G">Option G</option>}
                                   </select>
                                 ) : selectedQuestionType === "R-TFN" ? (
                                   <select 

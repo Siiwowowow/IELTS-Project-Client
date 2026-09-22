@@ -33,17 +33,20 @@ export default function SearchBar({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex items-center gap-2 rounded-xl border px-3 transition-all duration-200",
-        compact ? "h-9 max-w-[200px]" : "h-10 w-full max-w-[240px]",
+        "flex items-center gap-2 rounded-full border transition-all duration-200",
+        compact ? "h-9 w-44 xl:w-52 px-3" : "h-9.5 w-full max-w-60 px-3.5",
         focused
-          ? "border-white bg-white shadow-sm ring-2 ring-white/20"
-          : "border-white/30 bg-white/10 hover:border-white/50",
+          ? "border-neutral-400 bg-white shadow-xs ring-2 ring-neutral-900/5"
+          : "border-neutral-200/80 bg-neutral-50/80 hover:bg-neutral-100/60 hover:border-neutral-300",
         className
       )}
     >
       <Search
-        className={cn("size-4 shrink-0", focused ? "text-red-600" : "text-red-200")}
-        strokeWidth={1.75}
+        className={cn(
+          "size-3.5 shrink-0 transition-colors",
+          focused ? "text-neutral-900" : "text-neutral-400"
+        )}
+        strokeWidth={2}
         aria-hidden
       />
       <input
@@ -54,10 +57,7 @@ export default function SearchBar({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
-        className={cn(
-          "min-w-0 flex-1 bg-transparent text-sm outline-none transition-colors",
-          focused ? "text-neutral-900 placeholder:text-neutral-400" : "text-white placeholder:text-red-200"
-        )}
+        className="min-w-0 flex-1 bg-transparent text-xs text-neutral-900 placeholder:text-neutral-400 outline-none"
         aria-label="Search platform"
       />
       {query && (
@@ -65,9 +65,9 @@ export default function SearchBar({
           type="button"
           onClick={handleClear}
           aria-label="Clear search"
-          className={cn("rounded-md p-0.5 transition-colors", focused ? "text-neutral-400 hover:text-neutral-600" : "text-red-200 hover:text-white")}
+          className="rounded-full p-0.5 text-neutral-400 hover:text-neutral-700 transition-colors"
         >
-          <X className="size-3.5" />
+          <X className="size-3" />
         </button>
       )}
     </form>

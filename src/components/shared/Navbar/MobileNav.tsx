@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
-import Logo from "./Logo";
+import Logo from "../Logo/Logo";
 import UserAvatar from "./UserAvatar";
 
 interface Props {
@@ -25,7 +25,7 @@ export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
         ) : (
           <Button
             size="sm"
-            className="h-9 rounded-lg bg-white px-4 text-sm font-bold text-red-600 shadow-sm hover:bg-red-50"
+            className="h-8.5 rounded-full bg-red-600 px-3.5 text-xs font-semibold text-white shadow-2xs hover:bg-red-700 transition-all"
             asChild
           >
             <Link href="/register">Sign up</Link>
@@ -38,9 +38,9 @@ export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
           aria-label="Open navigation menu"
           aria-expanded={drawerOpen}
           aria-controls="nav-mobile-drawer"
-          className="flex size-10 items-center justify-center rounded-xl border border-white/30 text-white transition-colors hover:bg-white/10"
+          className="flex size-9 items-center justify-center rounded-xl border border-neutral-200/80 bg-neutral-50/60 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
         >
-          <Menu className="size-5" strokeWidth={1.75} />
+          <Menu className="size-4.5" strokeWidth={2} />
         </button>
       </div>
     </div>

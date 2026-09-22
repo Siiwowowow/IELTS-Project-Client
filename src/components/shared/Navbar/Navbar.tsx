@@ -33,10 +33,10 @@ export default function Navbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full bg-red-600 transition-shadow duration-300",
+        "sticky top-0 z-50 w-full bg-[#f8f3e9]/90 backdrop-blur-md transition-all duration-300",
         showScrolled
-          ? "shadow-md shadow-red-900/10"
-          : "shadow-none border-b border-red-700"
+          ? "border-b border-stone-300/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)]"
+          : "border-b border-stone-200/50"
       )}
     >
   

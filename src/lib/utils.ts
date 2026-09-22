@@ -30,3 +30,18 @@ export function getOptionLabel(opt: string): string {
   }
   return opt; // Fallback to full option text
 }
+
+export function formatPassageText(text: string): string {
+  if (!text) return "";
+  // Check if it already has common HTML tags
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(text);
+  if (hasHtml) {
+    // Replace hard line breaks inside paragraphs with a space to merge fragmented text lines
+    return text.replace(/<br\s*\/?>/gi, " ");
+  }
+  // Replace double newlines with paragraphs, and single newlines inside paragraphs with space
+  return text
+    .split(/\n\s*\n/)
+    .map((para) => `<p>${para.trim().replace(/\n/g, " ").replace(/\s+/g, " ")}</p>`)
+    .join("");
+}

@@ -1,3 +1,5 @@
+/* eslint-disable react/no-children-prop */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -36,13 +38,13 @@ function DrawerNavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "mx-3 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+        "mx-3 flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors",
         active
-          ? "bg-ielts-red-light text-ielts-red"
-          : "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+          ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
+          : "text-neutral-700 font-medium hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
       )}
     >
-      {Icon && <Icon className="size-4 shrink-0 opacity-70" />}
+      {Icon && <Icon className={cn("size-4 shrink-0", active ? "text-white opacity-100" : "opacity-70")} />}
       {label}
     </Link>
   );
@@ -128,12 +130,12 @@ function CollapsibleSection({
                   className={cn(
                     "mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                     active
-                      ? "bg-ielts-red-light font-medium text-ielts-red"
-                      : "text-neutral-600 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
+                      ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
+                      : "text-neutral-600 font-medium hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
                   )}
                 >
                   {ChildIcon && (
-                    <ChildIcon className="size-4 shrink-0 opacity-70" />
+                    <ChildIcon className={cn("size-4 shrink-0", active ? "text-white opacity-100" : "opacity-70")} />
                   )}
                   {child.label}
                 </Link>

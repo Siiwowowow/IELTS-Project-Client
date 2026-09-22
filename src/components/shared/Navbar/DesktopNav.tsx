@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
-import { LayoutDashboard } from "lucide-react";
-import Logo from "./Logo";
 import AuthButtons from "./AuthButtons";
 import UserAvatar from "./UserAvatar";
 import SearchBar from "./SearchBar";
@@ -12,7 +9,8 @@ import NavLinks from "./Navlinks ";
 import { getDashboardRoute } from "./utils";
 import { desktopNavItems } from "./navConfig";
 import type { NavItem } from "./types";
-import { Button } from "@/components/ui/button";
+import Logo from "../Logo/Logo";
+
 
 interface Props {
   showSearch?: boolean;
@@ -36,7 +34,7 @@ export default function DesktopNav({
 
   return (
     <div className="hidden lg:block w-full">
-      <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center gap-6 px-6 xl:px-8">
+      <div className="mx-auto flex h-17 max-w-7xl items-center gap-6 px-6 xl:px-8">
         {/* Left: Logo */}
         <Logo />
 

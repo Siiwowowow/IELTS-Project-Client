@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
-import Logo from "./Logo";
+import Logo from "../Logo/Logo";
 import NotificationsButton from "./NotificationsButton";
 import UserAvatar from "./UserAvatar";
 import AuthButtons from "./AuthButtons";
@@ -46,7 +46,7 @@ export default function TabletNav({
               <UserAvatar />
               <Link
                 href={dashboardRoute}
-                className="hidden rounded-lg bg-white px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 sm:inline-block"
+                className="hidden rounded-full bg-neutral-950 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800 sm:inline-block shadow-2xs transition-all"
               >
                 Dashboard
               </Link>
@@ -62,9 +62,9 @@ export default function TabletNav({
             aria-label="Open navigation menu"
             aria-expanded={drawerOpen}
             aria-controls="nav-mobile-drawer"
-            className="flex size-10 items-center justify-center rounded-xl border border-white/30 text-white transition-colors hover:bg-white/10 hover:border-white"
+            className="flex size-9 items-center justify-center rounded-xl border border-neutral-200/80 bg-neutral-50/60 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
           >
-            <Menu className="size-5" strokeWidth={1.75} />
+            <Menu className="size-4.5" strokeWidth={2} />
           </button>
         </div>
       </div>
