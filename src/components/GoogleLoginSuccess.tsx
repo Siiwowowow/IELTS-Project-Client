@@ -1,4 +1,3 @@
-//src/components/GoogleLoginSuccess.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -7,66 +6,91 @@ import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
 import { getUserInfo } from "@/services/auth.services";
 import { setTokenInCookies } from "@/lib/tokenUtils";
+import { authDebug } from "@/lib/authDebug";
 
 export function GoogleLoginSuccess() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setUser } = useUser(); // ✅ ADD THIS
-  const shownRef = useRef(false);
+  const { setUser } = useUser();
+  const handledRef = useRef(false);
 
   useEffect(() => {
-    if (shownRef.current) return;
-    shownRef.current = true;
+    if (handledRef.current) return;
+    handledRef.current = true;
 
     const loginStatus = searchParams.get("login");
     const accessToken = searchParams.get("accessToken");
     const refreshToken = searchParams.get("refreshToken");
     const sessionToken = searchParams.get("sessionToken");
 
-    const storeTokensAndFetchUser = async () => {
+    const storeTokensAndFetchUser = async (): Promise<boolean> => {
+      authDebug.info("GOOGLE_CALLBACK_RECEIVED", {
+        hasAccessToken: Boolean(accessToken),
+        hasRefreshToken: Boolean(refreshToken),
+        hasSessionToken: Boolean(sessionToken),
+      });
+
+      if (!accessToken || !refreshToken) {
+        authDebug.error("GOOGLE_CALLBACK_MISSING_TOKENS", {
+          hasAccessToken: Boolean(accessToken),
+          hasRefreshToken: Boolean(refreshToken),
+        });
+        return false;
+      }
+
       try {
         const threeDays = 3 * 24 * 60 * 60;
-        
-        // 1. Store tokens in frontend domain cookies
-        if (accessToken) {
-          await setTokenInCookies("accessToken", accessToken, 24 * 60 * 60, threeDays);
-        }
-        if (refreshToken) {
-          await setTokenInCookies("refreshToken", refreshToken, 24 * 60 * 60, threeDays);
-        }
+        await setTokenInCookies("accessToken", accessToken, 24 * 60 * 60, threeDays);
+        await setTokenInCookies("refreshToken", refreshToken, 24 * 60 * 60, threeDays);
         if (sessionToken) {
-          await setTokenInCookies("better-auth.session_token", sessionToken, 24 * 60 * 60, threeDays);
+          await setTokenInCookies(
+            "better-auth.session_token",
+            sessionToken,
+            24 * 60 * 60,
+            threeDays
+          );
         }
 
-        // 2. Fetch user details from backend using the now-accessible cookies
         const userData = await getUserInfo();
-        if (userData) {
-          setUser(userData); // 🔥 THIS FIXES EVERYTHING
+        if (!userData) {
+          authDebug.error("GOOGLE_USER_FETCH_FAILED", {
+            reason: "Tokens were stored but /auth/me returned no user",
+          });
+          return false;
         }
-      } catch (err) {
-        console.error("Error storing tokens or fetching user:", err);
+
+        setUser(userData);
+        authDebug.info("GOOGLE_SESSION_READY", { role: userData.role });
+        return true;
+      } catch (error) {
+        authDebug.error("GOOGLE_LOGIN_FAILED", {
+          message:
+            error instanceof Error ? error.message : "Unknown Google login error",
+          errorType: error instanceof Error ? error.name : typeof error,
+        });
+        return false;
       }
     };
 
-    if (loginStatus === "success") {
-      setTimeout(() => {
-        toast.success("Logged in successfully! 🎉", {
-          duration: 2500,
+    const completeGoogleLogin = async () => {
+      if (loginStatus === "success") {
+        const success = await storeTokensAndFetchUser();
+        if (success) {
+          toast.success("Logged in successfully!", { duration: 2500 });
+        } else {
+          toast.error("Google login session could not be created.");
+        }
+      } else if (loginStatus === "error") {
+        authDebug.error("GOOGLE_PROVIDER_REJECTED_LOGIN", {
+          reason: searchParams.get("reason") || "No reason supplied",
         });
-      }, 100);
+        toast.error("Login failed. Please try again.", { duration: 2500 });
+      }
 
-      storeTokensAndFetchUser(); // 🔥 STORE TOKENS & REFRESH USER HERE
-    }
+      router.replace("/");
+    };
 
-    if (loginStatus === "error") {
-      setTimeout(() => {
-        toast.error("Login failed. Please try again.", {
-          duration: 2500,
-        });
-      }, 100);
-    }
-
-    router.replace("/");
+    void completeGoogleLogin();
   }, [searchParams, router, setUser]);
 
   return null;

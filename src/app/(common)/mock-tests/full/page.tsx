@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { mockTestService } from "@/services/mocktest.services";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -14,25 +14,25 @@ import {
   IconMoodSad,
   IconClock,
   IconSparkles,
-  IconLock,
   IconCrown,
   IconSearch,
-  IconFilter,
   IconBook,
   IconHeadphones,
   IconPencil,
   IconMicrophone,
-  IconCircleCheck,
 } from "@tabler/icons-react";
-import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
+import SamplePaymentModal from "@/components/MockTest/SamplePaymentModal";
 
 export default function PublicFullMockTestsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [startingId, setStartingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "FREE" | "PREMIUM">("ALL");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedMockTestForPayment, setSelectedMockTestForPayment] = useState<any>(null);
 
   // Fetch all published mock tests
   const {
@@ -319,13 +319,21 @@ export default function PublicFullMockTestsPage() {
                   {/* Action Row - Full Width CTA */}
                   <div className="mt-6 pt-4 border-t border-neutral-100 w-full">
                     {isLocked ? (
-                      <Link
-                        href="/pricing"
-                        className="w-full inline-flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-sm shadow-md shadow-amber-200 active:scale-[0.98] transition-all duration-350"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!user) {
+                            router.push("/login");
+                            return;
+                          }
+                          setSelectedMockTestForPayment(mockTest);
+                          setPaymentModalOpen(true);
+                        }}
+                        className="w-full inline-flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-sm shadow-md shadow-amber-200 active:scale-[0.98] transition-all duration-300 cursor-pointer"
                       >
-                        <IconCrown size={14} className="fill-white" />
+                        <IconCrown size={15} className="fill-white" />
                         <span>Unlock Premium Test</span>
-                      </Link>
+                      </button>
                     ) : (
                       <button
                         onClick={() => handleStartTest(mockTest.id)}
@@ -352,6 +360,19 @@ export default function PublicFullMockTestsPage() {
           </div>
         )}
       </section>
+
+      {/* Sample Payment Modal for Demo Checkout */}
+      <SamplePaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedMockTestForPayment(null);
+        }}
+        mockTestTitle={selectedMockTestForPayment?.title}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["public-mock-tests"] });
+        }}
+      />
     </div>
   );
 }

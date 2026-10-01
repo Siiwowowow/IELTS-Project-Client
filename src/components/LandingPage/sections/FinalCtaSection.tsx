@@ -12,7 +12,7 @@ export function FinalCtaSection() {
             alt="Students learning and reaching their goals"
             fill
             sizes="100vw"
-            className="pointer-events-none hidden select-none object-cover object-center lg:block"
+            className="premium-illustration-drift pointer-events-none hidden select-none object-cover object-center lg:block"
           />
 
           <div className="relative z-10 grid gap-8 px-7 pb-9 pt-10 sm:px-10 sm:pb-11 sm:pt-12 lg:min-h-88 lg:grid-cols-[1.05fr_0.88fr_0.72fr] lg:items-center lg:gap-10 lg:px-[18%] lg:py-10 lg:pr-[12%]">
@@ -67,7 +67,7 @@ export function FinalCtaSection() {
               alt=""
               fill
               sizes="100vw"
-              className="pointer-events-none select-none object-cover object-center"
+              className="premium-illustration-drift pointer-events-none select-none object-cover object-center"
               aria-hidden="true"
             />
           </div>

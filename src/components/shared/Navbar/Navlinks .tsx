@@ -36,7 +36,7 @@ function NavPillLink({
         "relative rounded-full px-4 py-1.5 text-xs tracking-tight transition-all duration-200",
         active
           ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
-          : "text-neutral-600 font-medium hover:text-neutral-950 hover:bg-white/60",
+          : "text-neutral-900 font-semibold hover:text-red-600 hover:bg-neutral-200/60",
         className
       )}
     >
@@ -76,7 +76,7 @@ export default function NavLinks({
                 "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition-all duration-200",
                 active
                   ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
-                  : "text-neutral-600 font-medium hover:bg-neutral-100/60 hover:text-neutral-950"
+                  : "text-neutral-900 font-semibold hover:bg-neutral-100 hover:text-red-600"
               )}
             >
               {Icon && <Icon className={cn("size-4 shrink-0", active ? "text-white opacity-100" : "opacity-70")} />}

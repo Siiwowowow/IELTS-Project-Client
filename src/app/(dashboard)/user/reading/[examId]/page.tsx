@@ -13,7 +13,7 @@ import { ExamTimer } from "@/components/Reading/ExamTimer";
 import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
-import { formatPassageText, parseBoldText } from "@/lib/utils";
+import { formatPassageText, parseBoldText, mergeQuestionGroups } from "@/lib/utils";
 import {
   IconLoader2,
   IconSend,
@@ -185,20 +185,7 @@ export default function ExamPage({ params }: Props) {
     }));
   };
 
-  const passageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const goToNextPassage = (index: number) => {
-    if (index < (exam?.passages?.length ?? 0) - 1) {
-      passageRefs.current[index + 1]?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const goToPreviousPassage = (index: number) => {
-    if (index > 0) {
-      passageRefs.current[index - 1]?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
 
   const scrollToQuestion = (qId: string) => {
     setActiveQuestionId(qId);
@@ -219,16 +206,20 @@ export default function ExamPage({ params }: Props) {
   const processedPassages = useMemo(() => {
     let currentNum = 1;
     if (!exam?.passages) return [];
-    return exam.passages.map((p) => ({
-      ...p,
-      questionGroups: (p.questionGroups ?? []).map((g) => ({
+    return exam.passages.map((p) => {
+      const rawGroups = (p.questionGroups ?? []).map((g) => ({
         ...g,
         questions: (g.questions ?? []).map((q) => ({
           ...q,
           questionNumber: currentNum++,
         })),
-      })),
-    }));
+      }));
+
+      return {
+        ...p,
+        questionGroups: mergeQuestionGroups(rawGroups),
+      };
+    });
   }, [exam?.passages]);
 
   const allQuestions = useMemo(() => {
@@ -275,11 +266,11 @@ export default function ExamPage({ params }: Props) {
     <>
       <div className="flex flex-col h-screen bg-white text-gray-800 select-none relative font-sans -mt-4 -mx-4">
       {/* 1. CANDIDATE TOP HEADER */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-40 select-none font-sans shadow-sm">
+      <header className="fixed top-0 left-0 right-0 h-12 bg-white border-b-2 border-black flex items-center justify-between px-4 z-40 select-none font-sans">
         {/* LEFT: Logo and Candidate Details */}
         <div className="flex items-center">
-          <span className="font-extrabold text-base md:text-lg text-red-750 tracking-tight">
-            IELTS Reading Assessment
+          <span className="border border-black px-3 py-1 font-bold text-sm md:text-base text-black tracking-tight">
+            Reading Exam
           </span>
           
           <div className="hidden sm:flex items-center gap-4 border-l border-gray-200 pl-4 ml-4 text-xs md:text-sm font-medium text-gray-500">
@@ -299,14 +290,14 @@ export default function ExamPage({ params }: Props) {
         <div className="flex items-center gap-4">
           {/* TIMER PILL */}
           <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md border text-sm font-bold font-mono transition-colors shadow-sm bg-gray-50 text-red-700 border-gray-200"
+            className="flex items-center gap-1.5 px-3 py-1 border text-sm font-bold font-mono bg-white text-black border-black"
             title="Time Remaining"
           >
-            <IconClock size={16} className="text-red-500 animate-pulse" />
+            <IconClock size={15} className="text-black" />
             <ExamTimer
               durationMinutes={exam.duration}
               onTimeUp={handleTimeUp}
-              className="text-red-700 font-mono text-sm font-bold"
+              className="text-black font-mono text-sm font-bold"
             />
           </div>
 
@@ -339,12 +330,12 @@ export default function ExamPage({ params }: Props) {
       </header>
 
       {/* WORKSPACE AREA */}
-      <div className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
+      <div className="mt-12 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-14 bg-white">
         
         {/* PROGRESS */}
-        <div className="h-1 bg-red-950 shrink-0">
+        <div className="h-0.5 bg-gray-200 shrink-0">
           <div
-            className="h-full transition-all duration-500 bg-red-650"
+            className="h-full transition-all duration-500 bg-black"
             style={{
               width: `${totalCount ? (answeredCount / totalCount) * 100 : 0}%`
             }}
@@ -379,6 +370,8 @@ export default function ExamPage({ params }: Props) {
         {/* MAIN */}
         <div className="grow flex-1 min-h-0 overflow-hidden">
           {processedPassages.map((passage, idx) => {
+            if (idx !== currentPassageIndex) return null;
+
             const passagePanel = (
               <div
                 className={`scrollbar-hide ${
@@ -386,9 +379,9 @@ export default function ExamPage({ params }: Props) {
                 }`}
                 style={{ height: "100%", overflowY: "auto" }}
               >
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 h-full">
-                  <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <div className="bg-white border border-black p-4 h-full">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-black">
+                    <div className="h-7 w-7 border border-black text-black flex items-center justify-center">
                       <IconBook size={16} />
                     </div>
                     <h2 className="text-base font-bold text-gray-900">
@@ -416,24 +409,17 @@ export default function ExamPage({ params }: Props) {
 
             const questionsPanel = (
               <div
-                className={`scrollbar-hide space-y-4 questions-panel-container ${
+                className={`scrollbar-hide space-y-3 questions-panel-container ${
                   mobileTab === "passage" ? "hidden lg:block" : "block"
                 }`}
                 style={{ height: "100%", overflowY: "auto" }}
               >
-                {passage.questionGroups.map((group, groupIdx) => (
+                {passage.questionGroups.map((group) => (
                   <div
                     key={group.id}
-                    className="bg-white border border-gray-200 rounded-2xl p-5"
+                    className="bg-white border border-black p-3"
                   >
-                    {/* Group header */}
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <div className="h-6 w-6 rounded-full bg-[#B91C1C] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                        {groupIdx + 1}
-                      </div>
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-                        {formatGroupType(group.type)}
-                      </h3>
+                    <div className="hidden">
                       {group.questions.length > 0 && (
                         <span className="ml-auto text-xs text-gray-400">
                           Q{group.questions[0].questionNumber}
@@ -456,7 +442,7 @@ export default function ExamPage({ params }: Props) {
                 <button
                   onClick={handleSubmitClick}
                   disabled={mutation.isPending || submittedRef.current}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-red-700 hover:bg-red-800 text-white font-semibold rounded-2xl disabled:opacity-60 transition-all shadow-md shadow-red-700/20 text-sm animate-fade-in"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-black hover:bg-gray-800 text-white font-semibold disabled:opacity-60 transition-all text-sm animate-fade-in"
                 >
                   {mutation.isPending ? (
                     <IconLoader2 size={16} className="animate-spin" />
@@ -471,11 +457,11 @@ export default function ExamPage({ params }: Props) {
             return (
               <div key={passage.id} className="flex-1 min-h-0 overflow-hidden">
                 {isDesktop ? (
-                  <ResizablePanelGroup orientation="horizontal" className="h-[calc(100vh-14rem)] w-full">
+                  <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
                     <ResizablePanel defaultSize={50} minSize={30}>
                       {passagePanel}
                     </ResizablePanel>
-                    <ResizableHandle withHandle className="w-2 bg-gray-200 hover:bg-red-750 transition-all cursor-col-resize shrink-0 h-full mx-2 rounded-lg" />
+                    <ResizableHandle withHandle className="w-1.5 bg-gray-200 hover:bg-black transition-all cursor-col-resize shrink-0 h-full mx-1" />
                     <ResizablePanel defaultSize={50} minSize={30}>
                       {questionsPanel}
                     </ResizablePanel>
@@ -492,15 +478,12 @@ export default function ExamPage({ params }: Props) {
         </div>
 
         {/* 4. PERSISTENT NAVIGATION BAR */}
-        <footer className="fixed bottom-0 left-0 right-0 h-16 bg-[#F8FAFC] border-t border-gray-200 flex items-center justify-between px-6 z-40 select-none shadow-md font-sans">
+        <footer className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t-2 border-black flex items-center justify-between px-4 z-40 select-none font-sans">
           {/* LEFT: BACK / NEXT PASSAGE */}
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => {
-                goToPreviousPassage(currentPassageIndex);
-                setCurrentPassageIndex((i) => i - 1);
-              }}
+              onClick={() => setCurrentPassageIndex((i) => Math.max(0, i - 1))}
               disabled={currentPassageIndex === 0}
               className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none ${
                 currentPassageIndex === 0
@@ -514,15 +497,16 @@ export default function ExamPage({ params }: Props) {
 
             <button
               type="button"
-              onClick={() => {
-                goToNextPassage(currentPassageIndex);
-                setCurrentPassageIndex((i) => i + 1);
-              }}
+              onClick={() =>
+                setCurrentPassageIndex((i) =>
+                  Math.min((exam?.passages?.length ?? 1) - 1, i + 1)
+                )
+              }
               disabled={currentPassageIndex >= (exam?.passages?.length ?? 0) - 1}
               className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none text-white ${
                 currentPassageIndex >= (exam?.passages?.length ?? 0) - 1
                   ? "bg-gray-300 border-gray-300 text-gray-400 cursor-not-allowed"
-                  : "bg-red-700 hover:bg-red-800 border-red-700 cursor-pointer"
+                  : "bg-black hover:bg-gray-800 border-black cursor-pointer"
               }`}
             >
               <span>NEXT PASSAGE</span>
@@ -541,9 +525,9 @@ export default function ExamPage({ params }: Props) {
               // Box color selection
               let boxStyle = "border-gray-300 text-gray-700 bg-white hover:bg-gray-50";
               if (isActive) {
-                boxStyle = "bg-red-700 border-red-700 text-white font-bold";
+                boxStyle = "bg-black border-black text-white font-bold";
               } else if (isAnswered) {
-                boxStyle = "bg-red-700/5 border-red-700 text-red-700 font-bold";
+                boxStyle = "bg-gray-100 border-black text-black font-bold";
               }
 
               return (
@@ -581,7 +565,7 @@ export default function ExamPage({ params }: Props) {
               disabled={mutation.isPending}
               className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-black border transition-all select-none shadow-sm ${
                 !mutation.isPending
-                  ? "bg-red-700 border-red-700 hover:bg-red-800 text-white cursor-pointer"
+                  ? "bg-black border-black hover:bg-gray-800 text-white cursor-pointer"
                   : "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >

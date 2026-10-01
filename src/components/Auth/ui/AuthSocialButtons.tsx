@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 function GoogleIcon() {
   return (
@@ -50,10 +51,7 @@ export function AuthSocialButtons({ mode = "login", className }: AuthSocialButto
   };
 
   const handleGitHub = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
-    console.log("handleGitHub called, baseUrl:", baseUrl);
-    const redirect = encodeURIComponent("/");
-    window.location.href = `${baseUrl}/auth/login/github?redirect=${redirect}`;
+    toast.error("GitHub sign-in is not available yet. Please use Google or email.");
   };
 
   return (
@@ -68,7 +66,7 @@ export function AuthSocialButtons({ mode = "login", className }: AuthSocialButto
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
         <Button
           type="button"
           variant="outline"

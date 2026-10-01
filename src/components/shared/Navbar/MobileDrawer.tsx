@@ -13,6 +13,8 @@ import { isActivePath, getDashboardRoute } from "./utils";
 import { getDrawerNavItems } from "./navConfig";
 import type { NavItem } from "./types";
 import { Button } from "@/components/ui/button";
+import Logo from "../Logo/Logo";
+import AccountLoadingState from "./AccountLoadingState";
 
 interface Props {
   open: boolean;
@@ -41,7 +43,7 @@ function DrawerNavLink({
         "mx-3 flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors",
         active
           ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
-          : "text-neutral-700 font-medium hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+          : "text-neutral-900 font-semibold hover:bg-neutral-100"
       )}
     >
       {Icon && <Icon className={cn("size-4 shrink-0", active ? "text-white opacity-100" : "opacity-70")} />}
@@ -67,7 +69,7 @@ function CollapsibleSection({
 }) {
   const pathname = usePathname();
   const sectionActive =
-    isActivePath(pathname, href) ||
+    pathname === href ||
     children.some((c) => isActivePath(pathname, c.href));
   const [expanded, setExpanded] = useState(sectionActive);
 
@@ -83,10 +85,10 @@ function CollapsibleSection({
         aria-expanded={expanded}
         aria-controls={`drawer-section-${id}`}
         className={cn(
-          "flex w-full items-center justify-between px-4 py-3.5 text-left text-sm font-medium transition-colors",
+          "flex w-full items-center justify-between px-4 py-3.5 text-left text-sm font-semibold transition-colors",
           sectionActive
-            ? "text-ielts-red"
-            : "text-neutral-800 dark:text-neutral-200"
+            ? "text-red-600 font-bold"
+            : "text-neutral-900 hover:text-black"
         )}
       >
         <span className="flex items-center gap-3">
@@ -131,7 +133,7 @@ function CollapsibleSection({
                     "mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                     active
                       ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20"
-                      : "text-neutral-600 font-medium hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
+                      : "text-neutral-900 font-semibold hover:bg-neutral-100"
                   )}
                 >
                   {ChildIcon && (
@@ -187,7 +189,7 @@ function DrawerNavItem({
 }
 
 export default function MobileDrawer({ open, onClose }: Props) {
-  const { user, logout } = useUser();
+  const { user, logout, isLoading } = useUser();
   const pathname = usePathname();
   const dashboardRoute = getDashboardRoute(user?.role);
   const navItems = getDrawerNavItems(user, dashboardRoute);
@@ -234,7 +236,7 @@ export default function MobileDrawer({ open, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] lg:hidden"
+      className="fixed inset-0 z-100 lg:hidden"
       role="dialog"
       aria-modal="true"
       aria-label="Navigation menu"
@@ -248,20 +250,18 @@ export default function MobileDrawer({ open, onClose }: Props) {
 
       <aside
         id="nav-mobile-drawer"
-        className="absolute inset-y-0 right-0 flex w-[min(320px,88vw)] flex-col border-l border-neutral-100 bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.08)] dark:border-neutral-800 dark:bg-neutral-950"
+        className="absolute inset-y-0 right-0 flex w-[min(320px,88vw)] flex-col border-l border-neutral-200 bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.08)]"
         style={{
           animation: "nav-drawer-in 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-4 dark:border-neutral-800">
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Menu
-          </span>
+        <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 bg-white">
+          <Logo compact />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close navigation"
-            className="flex size-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800"
+            className="flex size-9 items-center justify-center rounded-lg text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-950 cursor-pointer"
           >
             <X className="size-5" />
           </button>
@@ -271,9 +271,17 @@ export default function MobileDrawer({ open, onClose }: Props) {
           className="flex-1 overflow-y-auto overscroll-contain py-2"
           aria-label="Mobile navigation"
         >
-          {navItems.map((item) => (
-            <DrawerNavItem key={item.href} item={item} onNavigate={onClose} />
-          ))}
+          {isLoading ? (
+            <div className="space-y-2 px-4 py-2" aria-label="Loading navigation" role="status">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="h-10 animate-pulse rounded-lg bg-neutral-100" />
+              ))}
+            </div>
+          ) : (
+            navItems.map((item) => (
+              <DrawerNavItem key={item.href} item={item} onNavigate={onClose} />
+            ))
+          )}
 
           {user && (
             <button
@@ -288,7 +296,9 @@ export default function MobileDrawer({ open, onClose }: Props) {
         </nav>
 
         <div className="border-t border-neutral-100 p-4 dark:border-neutral-800">
-          {user ? (
+          {isLoading ? (
+            <AccountLoadingState vertical />
+          ) : user ? (
             <Button
               className="h-11 w-full rounded-xl bg-ielts-red font-medium text-white hover:bg-ielts-red-dark"
               asChild

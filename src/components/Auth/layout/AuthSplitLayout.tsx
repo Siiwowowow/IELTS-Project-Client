@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
 import { AuthBrandPanel } from "./AuthBrandPanel";
+import { AuthLogo } from "./AuthLogo";
 import { cn } from "@/lib/utils";
 
 type AuthSplitLayoutProps = {
@@ -23,69 +22,40 @@ export function AuthSplitLayout({
   compact = false,
 }: AuthSplitLayoutProps) {
   return (
-    <div className="auth-page fixed inset-0 z-[100] flex min-h-[100dvh] flex-col overflow-hidden bg-white">
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="relative hidden w-[45%] shrink-0 lg:block xl:w-[48%]">
+    <div className="auth-page fixed inset-0 z-[100] flex min-h-[100dvh] w-full min-w-0 flex-col overflow-x-hidden bg-[#f7f7f5]">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <aside className="relative hidden h-full min-w-0 w-[44%] shrink-0 overflow-hidden lg:block xl:w-[46%]">
           <AuthBrandPanel />
         </aside>
 
-        <div className="auth-mobile-brand relative shrink-0 overflow-hidden lg:hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e] to-[#16213e]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#DC2626]/30 to-transparent" />
-          <div className="relative z-10 px-6 py-8">
-            <Link
-              href="/"
-              className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white"
-            >
-              <div className="flex size-8 items-center justify-center rounded-lg bg-white p-1">
-                <Image
-                  src="/logo.svg"
-                  alt="IELTS Prep Logo"
-                  width={24}
-                  height={24}
-                  className="size-5 object-contain"
-                />
-              </div>
-              IELTS Prep
-            </Link>
-            <p className="text-lg font-bold text-white">
-              Practice IELTS Like the Real Exam
-            </p>
+        <div className="relative shrink-0 border-b border-slate-200/70 bg-white px-5 py-4 lg:hidden">
+          <div className="mx-auto flex max-w-[460px] items-center justify-between">
+            <AuthLogo />
+            <span className="rounded-full bg-red-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-[#d92129]">
+              CBT Practice
+            </span>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain">
+          <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-red-100/55 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 left-10 size-72 rounded-full bg-amber-100/55 blur-3xl" />
           <div
             className={cn(
-              "mx-auto flex w-full max-w-[440px] flex-1 flex-col px-5 py-8 sm:px-8 lg:max-w-[480px] lg:py-12",
-              compact && "lg:py-10",
+              "relative mx-auto my-auto flex w-full max-w-[500px] shrink-0 flex-col px-5 py-7 sm:px-8 lg:px-10 lg:py-10",
+              compact && "my-0 xl:my-auto",
               className
             )}
           >
-            <Link
-              href="/"
-              className="mb-8 hidden items-center gap-2.5 lg:inline-flex"
-            >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white shadow-md shadow-neutral-200 border border-neutral-100 p-1.5">
-                <Image
-                  src="/logo.svg"
-                  alt="IELTS Prep Logo"
-                  width={28}
-                  height={28}
-                  className="size-6 object-contain"
-                />
-              </div>
-              <span className="text-sm font-semibold text-neutral-800">
-                IELTS Prep
-              </span>
-            </Link>
+            <div className="mb-8 hidden lg:block"><AuthLogo /></div>
 
-            <header className="mb-8">
-              <h2 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.75rem]">
+            <header className="mb-6">
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#d92129]">Your IELTS workspace</p>
+              <h1 className="text-[1.75rem] font-black tracking-[-0.045em] text-slate-950 sm:text-[2rem]">
                 {title}
-              </h2>
+              </h1>
               {subtitle && (
-                <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
                   {subtitle}
                 </p>
               )}
@@ -94,7 +64,7 @@ export function AuthSplitLayout({
             <div className="flex-1">{children}</div>
 
             {footer && (
-              <footer className="mt-8 border-t border-neutral-100 pt-6 text-center text-sm text-neutral-500">
+              <footer className="mt-6 text-center text-sm text-slate-500">
                 {footer}
               </footer>
             )}
@@ -102,7 +72,7 @@ export function AuthSplitLayout({
         </div>
       </div>
 
-      <div className="auth-sticky-cta pointer-events-none fixed inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-white to-transparent lg:hidden" />
+      <div className="auth-sticky-cta pointer-events-none fixed inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-[#f7f7f5] to-transparent lg:hidden" />
     </div>
   );
 }

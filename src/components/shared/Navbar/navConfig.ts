@@ -41,12 +41,6 @@ export const practiceMenuItems = [
     description: "Part 1, 2 & 3 IELTS simulations",
     icon: Mic,
   },
-  {
-    label: "Vocabulary",
-    href: "/practice/vocabulary",
-    description: "Topic-based vocabulary database",
-    icon: Library,
-  },
 ];
 
 export const mockTestsMenuItems = [
@@ -81,6 +75,12 @@ export const desktopNavItems: NavItem[] = [
     label: "Mock Tests",
     href: "/mock-tests",
     children: mockTestsMenuItems,
+  },
+  {
+    label: "Vocabulary",
+    href: "/practice/vocabulary",
+    requiresAuth: true,
+    icon: Library,
   },
   { label: "Pricing", href: "/pricing" },
   { label: "Blog", href: "/blog" },
@@ -129,7 +129,6 @@ export const mobileStandaloneSkills = [
   { label: "Reading", href: "/practice/reading", icon: BookOpen },
   { label: "Writing", href: "/practice/writing", icon: FileText },
   { label: "Speaking", href: "/practice/speaking", icon: Mic },
-  { label: "Vocabulary", href: "/practice/vocabulary", icon: Library },
 ];
 
 /** All routes shown in the mobile/tablet drawer (mirrors desktop nav + extras). */

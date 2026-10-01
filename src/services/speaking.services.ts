@@ -48,4 +48,26 @@ export const speakingService = {
   /** GET /speaking/exams/history – Student's list of speaking attempts */
   getStudentAttemptHistory: () =>
     httpClient.get<any>('/speaking/exams/history'),
+
+  /** POST /api/speaking-assessment – Transcribe audio & assess with AI */
+  assessQuestion: async (payload: {
+    questionId: string;
+    answerId: string;
+    audioUrl?: string | null;
+    partNumber: number;
+    partTitle: string;
+    questionText: string;
+    instruction?: string | null;
+  }) => {
+    const res = await fetch('/api/speaking-assessment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(data?.message || 'Speaking AI assessment failed.');
+    }
+    return data.assessment;
+  },
 };

@@ -1,393 +1,329 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  IconChevronDown,
+  IconChevronUp,
+  IconBold,
+  IconItalic,
+  IconPalette,
+  IconEye,
+  IconIndentDecrease,
+  IconIndentIncrease,
+  IconList,
   IconPlus,
   IconTrash,
-  IconChevronUp,
-  IconChevronDown,
-  IconIndentIncrease,
-  IconIndentDecrease,
-  IconInfoCircle,
-  IconList,
+  IconUnderline,
 } from "@tabler/icons-react";
+import { parseBoldText } from "@/lib/utils";
 
 interface VisualNotesBuilderProps {
   value: string;
-  onChange: (val: string) => void;
+  onChange: (value: string) => void;
   questions?: { questionNumber: number }[];
 }
 
 interface NotesItem {
   id: string;
-  type: "title" | "heading" | "note";
+  type: "title" | "heading" | "example" | "divider" | "note";
   text: string;
-  indentLevel: number; // 0, 1, or 2
+  indentLevel: number;
 }
 
-function parseMarkdownToNotes(markdown: string): NotesItem[] {
-  if (!markdown.trim()) {
-    return [
-      { id: "1", type: "title", text: "Notes Title", indentLevel: 0 },
-      { id: "2", type: "heading", text: "Section Heading", indentLevel: 0 },
-      { id: "3", type: "note", text: "Area: [1] hectares", indentLevel: 0 },
-      { id: "4", type: "note", text: "Habitats: wetland, grassland and woodland", indentLevel: 0 },
-      { id: "5", type: "note", text: "Wetland: lakes, ponds and a [2]", indentLevel: 1 },
-    ];
-  }
+let itemSequence = 0;
 
-  const lines = markdown.split("\n");
-  const items: NotesItem[] = [];
+function createItemId() {
+  itemSequence += 1;
+  return `note-item-${itemSequence}`;
+}
 
-  lines.forEach((line, index) => {
+function createWildfiresTemplate(start = 1): NotesItem[] {
+  const q = (offset: number) => `[${start + offset}]`;
+  return [
+    { id: createItemId(), type: "title", text: "Wildfires", indentLevel: 0 },
+    { id: createItemId(), type: "note", text: "Characteristics of wildfires and wildfire conditions today compared to the past:", indentLevel: 0 },
+    { id: createItemId(), type: "note", text: "occurrence: more frequent", indentLevel: 1 },
+    { id: createItemId(), type: "note", text: "temperature: hotter", indentLevel: 1 },
+    { id: createItemId(), type: "note", text: "speed: faster", indentLevel: 1 },
+    { id: createItemId(), type: "note", text: `movement: ${q(0)} more unpredictably`, indentLevel: 1 },
+    { id: createItemId(), type: "note", text: `size of fires: ${q(1)} greater on average than two decades ago`, indentLevel: 1 },
+    { id: createItemId(), type: "note", text: "Reasons wildfires cause more damage today compared to the past:", indentLevel: 0 },
+    { id: createItemId(), type: "note", text: `rainfall: ${q(2)} average`, indentLevel: 1 },
+    { id: createItemId(), type: "note", text: `more brush to act as ${q(3)}`, indentLevel: 1 },
+    { id: createItemId(), type: "note", text: "increase in yearly temperature", indentLevel: 1 },
+    { id: createItemId(), type: "note", text: `extended fire ${q(4)}`, indentLevel: 1 },
+    { id: createItemId(), type: "note", text: `more building of ${q(5)} in vulnerable places`, indentLevel: 1 },
+  ];
+}
+
+function parseMarkdownToNotes(markdown: string, start = 1): NotesItem[] {
+  if (!markdown.trim()) return createWildfiresTemplate(start);
+
+  return markdown.split("\n").reduce<NotesItem[]>((parsedItems, line) => {
     const trimmed = line.trim();
-    if (!trimmed) return;
+    if (!trimmed) return parsedItems;
 
-    // Detect indentation level of the raw line
-    const leadingSpaces = line.match(/^\s*/)?.[0].length ?? 0;
-    let indentLevel = 0;
-    if (leadingSpaces >= 4) {
-      indentLevel = 2;
-    } else if (leadingSpaces >= 2) {
-      indentLevel = 1;
+    const spaces = line.match(/^\s*/)?.[0].length ?? 0;
+    const indentLevel = spaces >= 4 ? 2 : spaces >= 2 ? 1 : 0;
+
+    if (trimmed.startsWith(">")) {
+      parsedItems.push({ id: createItemId(), type: "example", text: trimmed.replace(/^>\s*/, ""), indentLevel: 0 });
+      return parsedItems;
     }
 
-    const id = `${index}-${Date.now()}-${Math.random()}`;
+    if (trimmed === "---") {
+      parsedItems.push({ id: createItemId(), type: "divider", text: "", indentLevel: 0 });
+      return parsedItems;
+    }
 
     if (trimmed.startsWith("#")) {
-      const hashCount = (trimmed.match(/^#+/) || ["#"])[0].length;
-      const text = trimmed.replace(/^#+\s*/, "");
-      items.push({
-        id,
-        type: hashCount <= 3 ? "title" : "heading",
-        text,
+      const hashes = (trimmed.match(/^#+/) || ["#"])[0].length;
+      parsedItems.push({
+        id: createItemId(),
+        type: hashes <= 3 ? "title" : "heading",
+        text: trimmed.replace(/^#+\s*/, ""),
         indentLevel: 0,
       });
-    } else if (trimmed.startsWith("-") || trimmed.startsWith("*") || trimmed.startsWith("+")) {
-      const text = trimmed.replace(/^[-*+]\s*/, "");
-      items.push({
-        id,
-        type: "note",
-        text,
-        indentLevel,
-      });
-    } else if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
-      const text = trimmed.substring(2, trimmed.length - 2);
-      items.push({
-        id,
-        type: "heading",
-        text,
-        indentLevel: 0,
-      });
-    } else {
-      items.push({
-        id,
-        type: "note",
-        text: trimmed,
-        indentLevel,
-      });
+      return parsedItems;
     }
-  });
 
-  return items;
+    if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
+      parsedItems.push({ id: createItemId(), type: "heading", text: trimmed.slice(2, -2), indentLevel: 0 });
+      return parsedItems;
+    }
+
+    parsedItems.push({
+      id: createItemId(),
+      type: "note",
+      text: trimmed.replace(/^[-*+]\s*/, ""),
+      indentLevel,
+    });
+    return parsedItems;
+  }, []);
 }
 
-function compileNotesToMarkdown(items: NotesItem[]): string {
-  return items
-    .map((item) => {
-      if (item.type === "title") {
-        return `### ${item.text}`;
-      }
-      if (item.type === "heading") {
-        return `#### ${item.text}`;
-      }
-      const spaces = "  ".repeat(item.indentLevel);
-      return `${spaces}- ${item.text}`;
-    })
-    .join("\n");
+function compileNotes(items: NotesItem[]) {
+  return items.map((item) => {
+    if (item.type === "title") return `### ${item.text}`;
+    if (item.type === "heading") return `#### ${item.text}`;
+    if (item.type === "example") return `> ${item.text}`;
+    if (item.type === "divider") return "---";
+    return `${"  ".repeat(item.indentLevel)}- ${item.text}`;
+  }).join("\n");
+}
+
+function PreviewText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\[\d+\])/g).map((part, index) => {
+        const questionNumber = part.match(/^\[(\d+)\]$/)?.[1];
+        if (!questionNumber) return <React.Fragment key={index}>{parseBoldText(part)}</React.Fragment>;
+        return (
+          <span key={index} className="mx-1 inline-flex items-end gap-1 align-baseline">
+            <strong className="text-[11px]">{questionNumber}</strong>
+            <span className="inline-block w-24 border-b border-black" />
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export default function VisualNotesBuilder({ value, onChange, questions = [] }: VisualNotesBuilderProps) {
-  const [items, setItems] = useState<NotesItem[]>(() => parseMarkdownToNotes(value));
+  const firstQuestionNumber = questions[0]?.questionNumber || 1;
+  const [items, setItems] = useState<NotesItem[]>(() => parseMarkdownToNotes(value, firstQuestionNumber));
   const [isRaw, setIsRaw] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const lastCompiledValue = useRef(compileNotes(items));
+  const initialValue = useRef(value);
+  const initialOnChange = useRef(onChange);
 
-  // Sync from parent if value changes from outside
   useEffect(() => {
-    const compiled = compileNotesToMarkdown(items);
-    if (value.trim() !== compiled.trim()) {
-      setItems(parseMarkdownToNotes(value));
+    if (!initialValue.current.trim()) {
+      initialOnChange.current(lastCompiledValue.current);
     }
-  }, [value]);
+  }, []);
 
-  const updateParent = (newItems: NotesItem[]) => {
-    setItems(newItems);
-    onChange(compileNotesToMarkdown(newItems));
+  useEffect(() => {
+    if (value.trim() !== lastCompiledValue.current.trim()) {
+      const parsed = parseMarkdownToNotes(value, firstQuestionNumber);
+      lastCompiledValue.current = compileNotes(parsed);
+      const timeoutId = window.setTimeout(() => setItems(parsed), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [firstQuestionNumber, value]);
+
+  const questionNumbers = useMemo(() => Array.from(new Set([
+    ...questions.map((question) => question.questionNumber),
+    ...Array.from(value.matchAll(/\[(\d+)\]/g), (match) => Number(match[1])),
+  ])).sort((a, b) => a - b), [questions, value]);
+
+  const updateItems = (nextItems: NotesItem[]) => {
+    const compiled = compileNotes(nextItems);
+    setItems(nextItems);
+    lastCompiledValue.current = compiled;
+    onChange(compiled);
   };
 
-  const handleItemChange = (index: number, field: keyof NotesItem, val: any) => {
-    const next = items.map((item, idx) => {
-      if (idx === index) {
-        const updated = { ...item, [field]: val };
-        // Titles and Headings cannot be indented
-        if (field === "type" && val !== "note") {
-          updated.indentLevel = 0;
-        }
-        return updated;
-      }
-      return item;
-    });
-    updateParent(next);
+  const updateItem = (index: number, patch: Partial<NotesItem>) => {
+    updateItems(items.map((item, itemIndex) => itemIndex === index
+      ? { ...item, ...patch, indentLevel: patch.type && patch.type !== "note" ? 0 : item.indentLevel }
+      : item));
   };
 
-  const addRow = (type: "title" | "heading" | "note") => {
-    const newItem: NotesItem = {
-      id: `${Date.now()}-${Math.random()}`,
+  const addItem = (type: NotesItem["type"]) => {
+    updateItems([...items, {
+      id: createItemId(),
       type,
-      text: type === "title" ? "New Notes Title" : type === "heading" ? "New Heading" : "Note description [blank]",
+      text: type === "title" ? "Notes title" : type === "heading" ? "Section heading" : type === "example" ? "Example" : type === "divider" ? "" : "Write note text here",
       indentLevel: 0,
-    };
-    updateParent([...items, newItem]);
+    }]);
   };
 
-  const removeItem = (index: number) => {
-    if (items.length <= 1) return;
-    updateParent(items.filter((_, idx) => idx !== index));
+  const moveItem = (index: number, offset: -1 | 1) => {
+    const target = index + offset;
+    if (target < 0 || target >= items.length) return;
+    const nextItems = [...items];
+    [nextItems[index], nextItems[target]] = [nextItems[target], nextItems[index]];
+    updateItems(nextItems);
   };
 
-  const moveItem = (index: number, direction: "up" | "down") => {
-    if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === items.length - 1) return;
-
-    const next = [...items];
-    const targetIdx = direction === "up" ? index - 1 : index + 1;
-    const temp = next[index];
-    next[index] = next[targetIdx];
-    next[targetIdx] = temp;
-
-    updateParent(next);
+  const insertBlank = (index: number, questionNumber: number) => {
+    const input = document.getElementById(`notes-input-${index}`) as HTMLTextAreaElement | null;
+    const start = input?.selectionStart ?? items[index].text.length;
+    const end = input?.selectionEnd ?? start;
+    const insertion = `${start > 0 && items[index].text[start - 1] !== " " ? " " : ""}[${questionNumber}]`;
+    updateItem(index, { text: `${items[index].text.slice(0, start)}${insertion}${items[index].text.slice(end)}` });
+    requestAnimationFrame(() => input?.focus());
   };
 
-  const changeIndent = (index: number, delta: number) => {
-    const next = items.map((item, idx) => {
-      if (idx === index && item.type === "note") {
-        const nextLevel = Math.max(0, Math.min(2, item.indentLevel + delta));
-        return { ...item, indentLevel: nextLevel };
-      }
-      return item;
-    });
-    updateParent(next);
+  const formatSelection = (index: number, format: "bold" | "italic" | "underline" | "color", color?: string) => {
+    const input = document.getElementById(`notes-input-${index}`) as HTMLTextAreaElement | null;
+    if (!input) return;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? start;
+    const selectedText = items[index].text.slice(start, end);
+    if (!selectedText) return;
+    const [prefix, suffix] = format === "bold"
+      ? ["**", "**"]
+      : format === "italic"
+        ? ["*", "*"]
+        : format === "underline"
+          ? ["__", "__"]
+          : [`{color:${color || "#000000"}}`, "{/color}"];
+    updateItem(index, { text: `${items[index].text.slice(0, start)}${prefix}${selectedText}${suffix}${items[index].text.slice(end)}` });
+    requestAnimationFrame(() => input.focus());
   };
-
-  const insertBlankAtCursor = (index: number, qNum: number) => {
-    const inputEl = document.getElementById(`notes-input-${index}`) as HTMLInputElement;
-    if (!inputEl) {
-      const item = items[index];
-      const newText = item.text + ` [${qNum}]`;
-      handleItemChange(index, "text", newText);
-      return;
-    }
-
-    const start = inputEl.selectionStart ?? 0;
-    const end = inputEl.selectionEnd ?? 0;
-    const val = inputEl.value;
-    const insertion = ` [${qNum}]`;
-    const newText = val.substring(0, start) + insertion + val.substring(end);
-
-    const next = items.map((item, idx) =>
-      idx === index ? { ...item, text: newText } : item
-    );
-    updateParent(next);
-
-    setTimeout(() => {
-      inputEl.focus();
-      const newPos = start + insertion.length;
-      inputEl.setSelectionRange(newPos, newPos);
-    }, 0);
-  };
-
-  const questionNumbers = React.useMemo(() => {
-    return questions.map((q) => q.questionNumber).sort((a, b) => a - b);
-  }, [questions]);
 
   return (
-    <div className="space-y-3 p-4 bg-slate-50 border border-indigo-100 rounded-xl w-full font-sans">
-      {/* Visual Editor Header Controls */}
-      <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-150">
-        <div className="flex items-center gap-2">
-          <IconList className="text-indigo-600 shrink-0" size={18} />
-          <span className="text-xs font-bold text-gray-800">Visual Notes Outline Editor</span>
+    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 p-4">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+            <IconList size={18} /> Note Completion Builder
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500">Add rows, then click a question number to place its answer blank.</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setIsRaw(!isRaw)}
-            className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-200 transition cursor-pointer"
-          >
-            {isRaw ? "Visual Mode" : "Markdown Mode"}
-          </button>
-          {!isRaw && (
-            <>
-              <button
-                type="button"
-                onClick={() => addRow("note")}
-                className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#003580] rounded-lg border border-blue-100 hover:bg-blue-100/70 transition cursor-pointer"
-              >
-                + Note Line
-              </button>
-              <button
-                type="button"
-                onClick={() => addRow("heading")}
-                className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#003580] rounded-lg border border-blue-100 hover:bg-blue-100/70 transition cursor-pointer"
-              >
-                + Section Heading
-              </button>
-              <button
-                type="button"
-                onClick={() => addRow("title")}
-                className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#003580] rounded-lg border border-blue-100 hover:bg-blue-100/70 transition cursor-pointer"
-              >
-                + Title
-              </button>
-            </>
-          )}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => updateItems(createWildfiresTemplate(questionNumbers[0] || 1))} className="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-bold text-indigo-800">Load Wildfires example</button>
+          <button type="button" onClick={() => addItem("title")} className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700">+ Title</button>
+          <button type="button" onClick={() => addItem("heading")} className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700">+ Heading</button>
+          <button type="button" onClick={() => addItem("example")} className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold italic text-slate-700">+ Example</button>
+          <button type="button" onClick={() => addItem("divider")} className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700">+ Divider Line</button>
+          <button type="button" onClick={() => addItem("note")} className="flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-white"><IconPlus size={13} /> Note line</button>
         </div>
       </div>
 
-      {isRaw ? (
-        <textarea
-          rows={7}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="### Notes Title&#10;#### Section Heading&#10;- Note line [1]&#10;  - Indented Note [2]"
-          className="w-full text-xs font-semibold px-3.5 py-2.5 border border-indigo-100 rounded-lg bg-white focus:outline-none focus:border-indigo-400 text-black font-mono resize-y"
-        />
-      ) : (
-        <div className="space-y-2.5 w-full">
-          {items.map((item, idx) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-150 shadow-sm hover:border-indigo-200 transition"
-            >
-              {/* Reorder controls */}
-              <div className="flex flex-col gap-0.5 shrink-0 select-none">
-                <button
-                  type="button"
-                  onClick={() => moveItem(idx, "up")}
-                  disabled={idx === 0}
-                  className="p-0.5 hover:bg-slate-100 rounded disabled:opacity-35 transition text-gray-500 hover:text-black cursor-pointer"
-                  title="Move Up"
-                >
-                  <IconChevronUp size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveItem(idx, "down")}
-                  disabled={idx === items.length - 1}
-                  className="p-0.5 hover:bg-slate-100 rounded disabled:opacity-35 transition text-gray-500 hover:text-black cursor-pointer"
-                  title="Move Down"
-                >
-                  <IconChevronDown size={14} />
-                </button>
-              </div>
+      <div>
+        <div className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Question content</p>
+            <button type="button" onClick={() => setIsRaw(!isRaw)} className="text-[10px] font-bold text-slate-600 underline underline-offset-2">
+              {isRaw ? "Use easy editor" : "Edit raw text"}
+            </button>
+          </div>
 
-              {/* Type Select */}
-              <select
-                value={item.type}
-                onChange={(e) => handleItemChange(idx, "type", e.target.value as any)}
-                className="h-8 px-1 text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 cursor-pointer focus:outline-none shrink-0"
-              >
-                <option value="title">Title</option>
-                <option value="heading">Heading</option>
-                <option value="note">Note</option>
-              </select>
-
-              {/* Indentation buttons (only for note type) */}
-              {item.type === "note" ? (
-                <div className="flex gap-0.5 shrink-0 border border-gray-250 rounded p-0.5 bg-slate-50">
-                  <button
-                    type="button"
-                    onClick={() => changeIndent(idx, -1)}
-                    disabled={item.indentLevel === 0}
-                    className="p-1 hover:bg-white rounded disabled:opacity-30 transition text-gray-600 cursor-pointer"
-                    title="Decrease Indent"
-                  >
-                    <IconIndentDecrease size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changeIndent(idx, 1)}
-                    disabled={item.indentLevel === 2}
-                    className="p-1 hover:bg-white rounded disabled:opacity-30 transition text-gray-600 cursor-pointer"
-                    title="Increase Indent"
-                  >
-                    <IconIndentIncrease size={12} />
-                  </button>
-                </div>
-              ) : (
-                <div className="w-[50px] shrink-0" />
-              )}
-
-              {/* Bullet level helper visual prefix */}
-              <span
-                className="text-gray-400 font-extrabold shrink-0 text-xs text-center min-w-[20px]"
-                style={{ marginLeft: `${item.indentLevel * 12}px` }}
-              >
-                {item.type === "title" ? "T" : item.type === "heading" ? "H" : "•"}
-              </span>
-
-              {/* Text Input & Badge list */}
-              <div className="flex-grow flex flex-col gap-1 min-w-0">
-                <input
-                  id={`notes-input-${idx}`}
-                  type="text"
-                  value={item.text}
-                  onChange={(e) => handleItemChange(idx, "text", e.target.value)}
-                  placeholder={
-                    item.type === "title"
-                      ? "Enter main notes title..."
-                      : item.type === "heading"
-                      ? "Enter section heading..."
-                      : "Enter note line (e.g. Area: [1] hectares)..."
-                  }
-                  className="w-full h-8 px-2.5 border border-gray-300 rounded text-xs font-semibold bg-white focus:outline-none focus:border-indigo-400 text-black placeholder:font-normal placeholder:text-gray-400"
-                />
-
-                {item.type === "note" && questionNumbers.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap select-none">
-                    <span className="text-[9px] text-gray-400 font-medium">Insert:</span>
-                    {questionNumbers.map((qNum) => (
-                      <button
-                        key={qNum}
-                        type="button"
-                        onClick={() => insertBlankAtCursor(idx, qNum)}
-                        className="px-1.5 py-0.5 bg-blue-50 border border-blue-150 rounded text-[9px] font-bold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition shrink-0 cursor-pointer animate-fadeIn"
-                      >
-                        [{qNum}]
-                      </button>
-                    ))}
+          {isRaw ? (
+            <textarea
+              rows={12}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              className="w-full resize-y rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-black outline-none focus:border-slate-600"
+              placeholder="### Notes title\n#### Heading\n- Note line [1]"
+            />
+          ) : (
+            <div className="space-y-2">
+              {items.map((item, index) => (
+                <div key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="grid grid-cols-[20px_minmax(0,1fr)_28px] items-start gap-2">
+                    <div className="flex shrink-0 flex-col">
+                      <button type="button" onClick={() => moveItem(index, -1)} disabled={index === 0} className="text-slate-500 disabled:opacity-20"><IconChevronUp size={16} /></button>
+                      <button type="button" onClick={() => moveItem(index, 1)} disabled={index === items.length - 1} className="text-slate-500 disabled:opacity-20"><IconChevronDown size={16} /></button>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                      <select value={item.type} onChange={(event) => updateItem(index, { type: event.target.value as NotesItem["type"] })} className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-black">
+                        <option value="title">Main title</option>
+                        <option value="heading">Section heading</option>
+                        <option value="example">Example line</option>
+                        <option value="divider">Full-width line</option>
+                        <option value="note">Note / bullet</option>
+                      </select>
+                      {item.type === "divider" ? (
+                        <div className="flex h-9 w-full items-center px-1"><span className="w-full border-t border-black" /></div>
+                      ) : (
+                        <textarea id={`notes-input-${index}`} rows={2} value={item.text} onChange={(event) => updateItem(index, { text: event.target.value })} className="min-h-14 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-black outline-none focus:border-slate-700" placeholder="Type what students will see" />
+                      )}
+                    </div>
+                    <button type="button" onClick={() => updateItems(items.filter((_, itemIndex) => itemIndex !== index))} disabled={items.length === 1} className="p-2 text-slate-400 hover:text-red-600 disabled:opacity-20" title="Delete row"><IconTrash size={16} /></button>
                   </div>
-                )}
-              </div>
 
-              {/* Remove Action */}
-              <button
-                type="button"
-                onClick={() => removeItem(idx)}
-                disabled={items.length <= 1}
-                className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded transition shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Delete Row"
-              >
-                <IconTrash size={14} />
-              </button>
+                  {item.type !== "divider" && <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-semibold text-slate-500">Select text, then:</span>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatSelection(index, "bold")} className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-black"><IconBold size={13} /> Bold</button>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatSelection(index, "italic")} className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-black"><IconItalic size={13} /> Italic</button>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => formatSelection(index, "underline")} className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-black"><IconUnderline size={13} /> Underline</button>
+                    <label className="flex cursor-pointer items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-black">
+                      <IconPalette size={13} /> Color
+                      <input type="color" defaultValue="#000000" onChange={(event) => formatSelection(index, "color", event.target.value)} className="h-4 w-4 cursor-pointer border-0 p-0" />
+                    </label>
+                  </div>}
+
+                  {item.type === "note" && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button type="button" onClick={() => updateItem(index, { indentLevel: Math.max(0, item.indentLevel - 1) })} disabled={item.indentLevel === 0} className="rounded border border-slate-200 bg-white p-1 text-slate-500 disabled:opacity-25" title="Move left"><IconIndentDecrease size={14} /></button>
+                      <button type="button" onClick={() => updateItem(index, { indentLevel: Math.min(2, item.indentLevel + 1) })} disabled={item.indentLevel === 2} className="rounded border border-slate-200 bg-white p-1 text-slate-500 disabled:opacity-25" title="Move right"><IconIndentIncrease size={14} /></button>
+                      <span className="ml-1 text-[10px] font-semibold text-slate-500">Insert answer blank:</span>
+                      {questionNumbers.length > 0 ? questionNumbers.map((questionNumber) => (
+                        <button key={questionNumber} type="button" onClick={() => insertBlank(index, questionNumber)} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px] font-black text-black hover:bg-slate-100">Q{questionNumber}</button>
+                      )) : <span className="text-[10px] text-amber-700">Add questions below first.</span>}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
 
-      {/* Helper Info Footer */}
-      <div className="text-[10px] text-gray-500 bg-white p-2.5 rounded-lg border border-gray-150 flex items-center gap-1.5 font-medium leading-relaxed select-none shadow-sm">
-        <IconInfoCircle size={15} className="text-indigo-500 shrink-0" />
-        <span>Create notes with titles, headers and list bullets. Write placeholders like <strong>[1]</strong>, <strong>[2]</strong> to inline dynamic question inputs.</span>
+        <div className="hidden border-t border-slate-200 bg-slate-100 p-4 xl:border-l xl:border-t-0">
+          <button type="button" onClick={() => setShowPreview(!showPreview)} className="mb-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600"><IconEye size={15} /> {showPreview ? "Hide" : "Show"} student preview</button>
+          {showPreview && (
+            <div className="overflow-hidden border border-[#dddddd] bg-white p-5 font-[Arial,sans-serif] text-black shadow-sm">
+              {items.map((item) => item.type === "title" ? (
+                <h3 key={item.id} className="-mx-5 -mt-5 mb-2 border-b border-[#e5e5e5] px-5 py-3 text-center text-sm font-bold uppercase"><PreviewText text={item.text} /></h3>
+              ) : item.type === "heading" ? (
+                <h4 key={item.id} className="mb-2 mt-4 text-xs font-bold"><PreviewText text={item.text} /></h4>
+              ) : item.type === "example" ? (
+                <p key={item.id} className="my-3 text-[11px] italic"><PreviewText text={item.text} /></p>
+              ) : item.type === "divider" ? (
+                <hr key={item.id} className="-mx-5 my-3 border-0 border-t border-[#e5e5e5]" />
+              ) : (
+                <div key={item.id} className="my-2 flex gap-2 text-[11px] leading-5" style={{ paddingLeft: `${item.indentLevel * 20}px` }}>
+                  <span>{item.indentLevel > 0 ? "•" : ""}</span><span><PreviewText text={item.text} /></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

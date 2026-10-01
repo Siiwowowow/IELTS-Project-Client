@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Footer } from "@/components/shared/Footer";
 import { cn } from "@/lib/utils";
 
 const plans = [
@@ -179,8 +178,6 @@ export default function PricingPage() {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

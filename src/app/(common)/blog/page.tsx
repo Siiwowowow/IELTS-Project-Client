@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Search, Calendar, Clock, ArrowRight, BookOpen, User, Sparkles } from "lucide-react";
-import { Footer } from "@/components/shared/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -306,8 +305,6 @@ export default function BlogPage() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

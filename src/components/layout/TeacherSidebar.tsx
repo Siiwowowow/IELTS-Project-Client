@@ -4,13 +4,13 @@ import * as React from "react";
 import {
   
   IconLogout,
-  IconAward,
   IconUser,
   IconFilePlus,
   IconNotebook,
   IconWriting,
   IconMicrophone,
   IconTrophy,
+  IconBook2,
 } from "@tabler/icons-react";
 
 import {
@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "../shared/Logo/Logo";
 
 const menuItems = [
   {
@@ -75,6 +76,11 @@ const menuItems = [
     url: "/teacher/mock-tests",
     icon: IconTrophy,
   },
+  {
+    title: "Vocabulary",
+    url: "/teacher/vocabulary",
+    icon: IconBook2,
+  },
 ];
 
 export function TeacherSidebar() {
@@ -119,23 +125,8 @@ export function TeacherSidebar() {
   return (
     <Sidebar className="border-r border-slate-200/60 bg-linear-to-b from-slate-50/90 to-white/95 backdrop-blur-xl shadow-xs text-black">
       {/* Premium Header */}
-      <SidebarHeader className="p-4 border-b border-slate-200/50 bg-slate-50/40">
-        <Link
-          href="/"
-          className="flex items-center gap-2.5 font-bold hover:opacity-80 transition-opacity group"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-200/50 ring-1 ring-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <IconAward size={20} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-black tracking-wider uppercase text-slate-900">
-              IELTS Prep
-            </span>
-            <span className="text-[10px] text-indigo-600 font-semibold tracking-widest uppercase -mt-0.5">
-              Instructor Portal
-            </span>
-          </div>
-        </Link>
+      <SidebarHeader className="p-4 border-b border-slate-200/50 bg-white">
+        <Logo compact />
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3 space-y-4">

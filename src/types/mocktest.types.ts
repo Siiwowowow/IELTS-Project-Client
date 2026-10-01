@@ -21,6 +21,16 @@ export interface IMockTest {
   createdAt: string;
   updatedAt: string;
   creatorEmail?: string | null;
+  attempts?: IUserMockAttempt[];
+  _count?: {
+    attempts?: number;
+  };
+}
+
+interface IMockModuleAttempt {
+  id: string;
+  status: "IN_PROGRESS" | "SUBMITTED" | "GRADED" | string;
+  bandScore?: number | null;
 }
 
 export interface IUserMockAttempt {
@@ -37,11 +47,42 @@ export interface IUserMockAttempt {
   updatedAt: string;
 
   // Rich response fields calculated on the backend
-  readingAttempt?: any | null;
-  listeningAttempt?: any | null;
-  writingAttempt?: any | null;
-  speakingAttempt?: any | null;
+  readingAttempt?: IMockModuleAttempt | null;
+  listeningAttempt?: IMockModuleAttempt | null;
+  writingAttempt?: IMockModuleAttempt | null;
+  speakingAttempt?: IMockModuleAttempt | null;
   allSectionsCompleted?: boolean;
   allSectionsGraded?: boolean;
   overallBandScore?: number | null;
+}
+
+export type DashboardModule = "reading" | "listening" | "writing" | "speaking";
+
+export interface IStudentDashboard {
+  overview: {
+    mockTestsStarted: number;
+    mockTestsCompleted: number;
+    practiceAttempts: number;
+    overallBandScore: number | null;
+  };
+  moduleStats: Array<{
+    module: DashboardModule;
+    totalAttempts: number;
+    completedAttempts: number;
+    averageBandScore: number | null;
+    latestBandScore: number | null;
+    change: number | null;
+  }>;
+  mockHistory: Array<{
+    id: string;
+    mockTestId: string;
+    title: string;
+    status: "IN_PROGRESS" | "SUBMITTED";
+    startedAt: string;
+    completedAt: string | null;
+    overallBandScore: number | null;
+    sectionScores: Record<DashboardModule, number | null>;
+    gradedSections: number;
+    expectedSections: number;
+  }>;
 }

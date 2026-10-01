@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Award, Star, Quote, ChevronRight } from "lucide-react";
+import { Award, Star, Quote } from "lucide-react";
+import { AuthLogo } from "./AuthLogo";
 
 const stats = [
   { value: "50K+", label: "Active learners" },
@@ -11,33 +12,34 @@ const stats = [
 
 export function AuthBrandPanel() {
   return (
-    <div className="relative flex h-full min-h-[500px] flex-col justify-between overflow-hidden p-8 lg:p-12">
+    <div className="relative flex h-full min-h-0 flex-col justify-between overflow-hidden p-8 lg:p-8 xl:p-12">
       {/* Background Student Image */}
       <div className="absolute inset-0 pointer-events-none">
         <Image
-          src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000&auto=format&fit=crop"
+          src="/img/hero_student.jpg"
           alt="Focused student preparing for computer-based IELTS test"
           fill
           className="object-cover"
           priority
         />
         {/* Dark mask overlay */}
-        <div className="absolute inset-0 bg-slate-950/80 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-slate-950/75 mix-blend-multiply" />
         {/* Gradient brand overlay */}
         <div className="absolute inset-0 bg-linear-to-t from-red-950/50 via-slate-950/20 to-slate-950/60" />
       </div>
 
       {/* Top Section */}
       <div className="relative z-10">
+        <div className="mb-10"><AuthLogo inverse /></div>
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-white/95 backdrop-blur-md">
           <Award className="size-3.5 text-red-400" />
-          Official CBT IELTS Simulation
+          Real computer-based exam practice
         </div>
         <h1 className="max-w-md text-3xl font-black leading-tight tracking-tight text-white lg:text-4xl xl:text-[2.75rem]">
-          Practice IELTS Like the <span className="text-red-500">Real Exam</span>
+          Your target band starts with <span className="text-red-400">better practice.</span>
         </h1>
         <p className="mt-4 max-w-sm text-sm leading-relaxed text-neutral-300 lg:text-base">
-          Unlock realistic full mock tests, section-specific practices, and instant AI analytics designed to elevate your band score.
+          Train all four skills in a focused workspace built to feel like the real IELTS exam.
         </p>
       </div>
 

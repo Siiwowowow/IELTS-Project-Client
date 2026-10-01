@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -82,7 +80,6 @@ export const SkillsSection: React.FC = () => {
                   alt="4 Skills 1 Goal"
                   width={470}
                   height={180}
-                  priority
                   className="pointer-events-none h-auto w-20 select-none object-contain drop-shadow-md sm:w-26 lg:w-30"
                 />
               </div>
@@ -98,7 +95,6 @@ export const SkillsSection: React.FC = () => {
               alt=""
               width={1536}
               height={1024}
-              priority
               aria-hidden="true"
               className="h-auto w-full object-contain object-bottom-left"
             />
@@ -112,7 +108,7 @@ export const SkillsSection: React.FC = () => {
             - Level baseline at the bottom with the illustration
         ======================================================== */}
         <div className="relative z-20 grid w-full flex-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-3.5 xl:gap-4 lg:ml-0">
-          {modules.map((item, index) => (
+          {modules.map((item) => (
             <Link
               key={item.number}
               href={item.href}
@@ -123,7 +119,6 @@ export const SkillsSection: React.FC = () => {
                 src={item.image}
                 alt={item.title}
                 fill
-                priority={index < 4}
                 sizes="(max-width: 640px) 48vw, (max-width: 1024px) 24vw, 215px"
                 className="pointer-events-none select-none object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />

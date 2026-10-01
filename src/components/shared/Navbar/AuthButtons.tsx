@@ -41,7 +41,7 @@ export default function AuthButtons({
             variant="ghost"
             size="sm"
             className={cn(
-              "h-9 rounded-full px-3.5 text-xs font-semibold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100/80 transition-all",
+              "h-9 rounded-full px-3.5 text-xs font-bold text-neutral-900 hover:text-black hover:bg-neutral-100 transition-all cursor-pointer",
               orientation === "vertical" && "w-full justify-start rounded-xl"
             )}
             asChild

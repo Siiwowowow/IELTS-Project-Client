@@ -15,7 +15,7 @@ import { QuestionRenderer } from "@/components/Reading/QuestionRenderer";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTextHighlighter } from "@/hooks/useTextHighlighter";
-import { parseBoldText } from "@/lib/utils";
+import { parseBoldText, mergeQuestionGroups, areInstructionsCompatible } from "@/lib/utils";
 import {
  
   IconBook,
@@ -34,16 +34,57 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { ExamSubmissionOverlay } from "@/components/shared/ExamSubmissionOverlay";
 
 interface Props {
   params: Promise<{ examId: string }>;
 }
 
-function formatGroupType(type: string) {
-  return type
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+function GroupInstructionBlock({
+  instruction,
+  questions,
+}: {
+  instruction?: string;
+  questions?: Array<{ questionNumber?: number }>;
+}) {
+  if (!instruction) return null;
+  const parts = instruction.includes("|||") ? instruction.split("|||") : ["", instruction];
+  let range = parts[0]?.trim();
+  if (questions && questions.length > 0) {
+    const qStart = questions[0].questionNumber;
+    const qEnd = questions[questions.length - 1].questionNumber;
+    if (qStart !== undefined && qEnd !== undefined) {
+      range = qStart === qEnd ? `Question ${qStart}` : `Questions ${qStart}–${qEnd}`;
+    }
+  }
+  const primary = parts[1]?.trim();
+  const secondary = parts[2]?.trim();
+  const heading = parts[3]?.trim();
+  const items = parts.slice(4).map((item) => item.trim()).filter(Boolean);
+
+  return (
+    <div className="mx-3 mt-3 space-y-2 rounded-md border border-slate-200 border-l-4 border-l-slate-400 bg-slate-50/70 px-4 py-3 text-black">
+      {range && <h4 className="text-sm font-bold text-slate-900">{parseBoldText(range)}</h4>}
+      {primary && <p className="text-xs font-medium leading-relaxed">{parseBoldText(primary)}</p>}
+      {secondary && <p className="text-xs leading-relaxed">{parseBoldText(secondary)}</p>}
+      {heading && <p className="pt-1 text-xs font-bold">{parseBoldText(heading)}</p>}
+      {items.length > 0 && (
+        <div className="mt-2 space-y-1.5 rounded border border-slate-200 bg-white/80 p-3">
+          {items.map((item, index) => {
+            const definition = item.match(/^(TRUE|FALSE|NOT GIVEN|YES|NO|NB)\s+(.*)$/i);
+            return definition ? (
+              <div key={index} className="grid grid-cols-[88px_1fr] gap-2 text-xs leading-relaxed">
+                <strong className="uppercase">{definition[1]}</strong>
+                <span>{parseBoldText(definition[2])}</span>
+              </div>
+            ) : (
+              <p key={index} className="text-xs leading-relaxed">{parseBoldText(item)}</p>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ExamPage({ params }: Props) {
@@ -117,20 +158,6 @@ export default function ExamPage({ params }: Props) {
   }, []);
 
   const submittedRef = useRef(false);
-
-  const passageRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  const goToNextPassage = (index: number) => {
-    if (index < (exam?.passages?.length ?? 0) - 1) {
-      passageRefs.current[index + 1]?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const goToPreviousPassage = (index: number) => {
-    if (index > 0) {
-      passageRefs.current[index - 1]?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
 
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -255,16 +282,20 @@ export default function ExamPage({ params }: Props) {
   const processedPassages = useMemo(() => {
     let currentNum = 1;
     if (!exam?.passages) return [];
-    return exam.passages.map((p) => ({
-      ...p,
-      questionGroups: (p.questionGroups ?? []).map((g) => ({
+    return exam.passages.map((p) => {
+      const rawGroups = (p.questionGroups ?? []).map((g) => ({
         ...g,
         questions: (g.questions ?? []).map((q) => ({
           ...q,
           questionNumber: currentNum++,
         })),
-      })),
-    }));
+      }));
+
+      return {
+        ...p,
+        questionGroups: mergeQuestionGroups(rawGroups),
+      };
+    });
   }, [exam?.passages]);
 
   const allQuestions = useMemo(() => {
@@ -331,6 +362,7 @@ export default function ExamPage({ params }: Props) {
 
   return (
     <>
+      <ExamSubmissionOverlay visible={mutation.isPending} />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
@@ -373,13 +405,14 @@ export default function ExamPage({ params }: Props) {
         }
 
         .instruction-box {
-          background: #EFF6FF;
-          border-left: 4px solid #003580;
-          padding: 12px 16px;
-          border-radius: 0 8px 8px 0;
-          font-size: 13px;
-          color: #1E3A5F;
-          line-height: 1.7;
+          background: #fff;
+          border: 1px solid #b8b8b8;
+          border-left: 4px solid #111;
+          padding: 8px 10px;
+          border-radius: 0;
+          font-size: 12px;
+          color: #111;
+          line-height: 1.45;
         }
 
         .q-pill {
@@ -453,16 +486,16 @@ export default function ExamPage({ params }: Props) {
           cursor: pointer;
         }
       `}</style>
-      <div className="flex flex-col h-screen bg-white text-gray-800 relative font-sans">
+      <div className="relative flex h-screen min-h-0 flex-col bg-white font-sans text-gray-800 supports-[height:100dvh]:h-dvh">
         {/* 1. CANDIDATE TOP HEADER */}
-        <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-40 select-none font-sans shadow-sm">
+        <header className="fixed top-0 left-0 right-0 h-12 bg-white border-b-2 border-black flex items-center justify-between px-2 sm:px-4 z-40 select-none font-sans">
           {/* LEFT: Logo and Candidate Details */}
           <div className="flex items-center">
-            <span className="font-extrabold text-base md:text-lg text-red-700 tracking-tight">
-              IELTS Reading Assessment
+            <span className="whitespace-nowrap border border-black px-2 py-1 text-[11px] font-bold tracking-tight text-black sm:px-3 sm:text-sm md:text-base">
+              Reading Exam
             </span>
             
-            <div className="hidden sm:flex items-center gap-4 border-l border-gray-200 pl-4 ml-4 text-xs md:text-sm font-medium text-gray-500">
+            <div className="hidden sm:flex items-center gap-4 border-l border-gray-300 pl-4 ml-4 text-xs font-medium text-gray-600">
               <span>
                 Candidate: <strong className="text-gray-800">{user?.name || "Student"}</strong>
               </span>
@@ -476,40 +509,40 @@ export default function ExamPage({ params }: Props) {
           </div>
 
           {/* RIGHT: Countdown timer and utility icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4">
             {/* TIMER PILL */}
             <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md border text-sm font-bold font-mono transition-colors shadow-sm bg-gray-50 text-red-700 border-gray-200"
+              className="flex items-center gap-1 px-2 py-1 border text-xs font-bold font-mono bg-white text-black border-black sm:gap-1.5 sm:px-3 sm:text-sm"
               title="Time Remaining"
             >
-              <IconClock size={16} className="text-red-500 animate-pulse" />
+              <IconClock size={15} className="text-black" />
               <ExamTimer
                 durationMinutes={exam.duration}
                 onTimeUp={handleTimeUp}
-                className="text-red-700 font-mono text-sm font-bold"
+                className="text-black font-mono text-sm font-bold"
               />
             </div>
 
             {/* UTILITIES */}
-            <div className="flex items-center gap-2.5 text-gray-400">
+            <div className="hidden items-center gap-2.5 text-gray-400 sm:flex">
               <button
                 type="button"
                 onClick={toggleKioskFullscreen}
-                className="hover:text-red-700 transition-colors p-1"
+                className="hover:text-black transition-colors p-1"
                 title={isFullscreen ? "Exit Fullscreen" : "Simulate Kiosk Fullscreen"}
               >
                 {isFullscreen ? <IconMinimize size={20} /> : <IconMaximize size={20} />}
               </button>
               <button
                 type="button"
-                className="hover:text-red-700 transition-colors p-1"
+                className="hover:text-black transition-colors p-1"
                 title="Assessment Information"
               >
                 <IconInfoCircle size={20} />
               </button>
               <button
                 type="button"
-                className="hover:text-red-700 transition-colors p-1"
+                className="hover:text-black transition-colors p-1"
                 title="Candidate Profile"
               >
                 <IconUserCircle size={20} />
@@ -519,12 +552,12 @@ export default function ExamPage({ params }: Props) {
         </header>
 
         {/* WORKSPACE AREA */}
-        <div ref={workspaceRef} className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
+        <div ref={workspaceRef} className="mt-12 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-14 bg-white">
           
           {/* PROGRESS */}
-          <div className="h-1 bg-red-950 shrink-0">
+          <div className="h-0.5 bg-gray-200 shrink-0">
             <div
-              className="h-full transition-all duration-500 bg-red-600"
+              className="h-full transition-all duration-500 bg-black"
               style={{
                 width: `${totalCount ? (answeredCount / totalCount) * 100 : 0}%`
               }}
@@ -537,7 +570,7 @@ export default function ExamPage({ params }: Props) {
               onClick={() => setMobileTab("passage")}
               className={`flex-1 py-3 text-sm font-semibold ${
                 mobileTab === "passage"
-                  ? "bg-red-700 text-white"
+                  ? "bg-black text-white"
                   : "bg-white text-gray-500"
               }`}
             >
@@ -548,7 +581,7 @@ export default function ExamPage({ params }: Props) {
               onClick={() => setMobileTab("questions")}
               className={`flex-1 py-3 text-sm font-semibold ${
                 mobileTab === "questions"
-                  ? "bg-red-700 text-white"
+                  ? "bg-black text-white"
                   : "bg-white text-gray-500"
               }`}
             >
@@ -559,6 +592,8 @@ export default function ExamPage({ params }: Props) {
           {/* MAIN */}
           <div className="flex-1 min-h-0 overflow-hidden">
             {processedPassages.map((passage, idx) => {
+              if (idx !== currentPassageIndex) return null;
+
               const passagePanel = (
                 <div
                   className={`
@@ -572,7 +607,7 @@ export default function ExamPage({ params }: Props) {
                   `}
                 >
                   <div
-                    className="sticky top-0 z-20 px-6 py-4 flex items-center shrink-0"
+                    className="sticky top-0 z-20 px-4 py-2 flex items-center shrink-0"
                     style={{
                       background: "#F8FAFC",
                       borderBottom: "1px solid #E2E8F0",
@@ -581,23 +616,23 @@ export default function ExamPage({ params }: Props) {
                     <div className="flex items-center gap-2">
                       <IconBook
                         size={16}
-                        className="text-red-700"
+                        className="text-black"
                       />
 
-                      <span className="font-bold text-red-700 text-sm">
+                      <span className="font-bold text-black text-sm">
                         {parseBoldText(passage.title)}
                       </span>
                     </div>
 
                     <button
                       onClick={() => setMobileTab("questions")}
-                      className="ml-auto lg:hidden bg-red-700 text-white px-3 py-1 rounded text-xs"
+                      className="ml-auto lg:hidden bg-black text-white px-3 py-1 text-xs"
                     >
                       Questions
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto panel-scroll px-8 py-6">
+                  <div className="flex-1 overflow-y-auto panel-scroll px-6 py-4">
                     <div className="passage-text">
                       {passage.text && (
                         <HighlightablePassage
@@ -624,18 +659,18 @@ export default function ExamPage({ params }: Props) {
                     flex-col
                     h-full
                     overflow-hidden
-                    bg-[#F8FAFC]
+                    bg-white
                     questions-panel-container
                   `}
                 >
                   <div
-                    className="sticky top-0 z-20 px-6 py-4 flex items-center shrink-0"
+                    className="sticky top-0 z-20 px-4 py-2 flex items-center shrink-0"
                     style={{
                       background: "#FFFFFF",
                       borderBottom: "1px solid #E2E8F0",
                     }}
                   >
-                    <span className="font-bold text-red-700 text-sm">
+                    <span className="font-bold text-black text-sm">
                       Questions
                     </span>
 
@@ -645,68 +680,70 @@ export default function ExamPage({ params }: Props) {
 
                     <button
                       onClick={() => setMobileTab("passage")}
-                      className="ml-3 lg:hidden bg-red-700 text-white px-3 py-1 rounded text-xs"
+                      className="ml-3 lg:hidden bg-black text-white px-3 py-1 text-xs"
                     >
                       Passage
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto panel-scroll p-5">
-                    <div className="space-y-5">
-                      {passage.questionGroups.map((group, groupIdx) => (
+                  <div className="flex-1 overflow-y-auto overscroll-contain panel-scroll p-3 pb-20 md:pb-3">
+                    <div className="space-y-3">
+                      {passage.questionGroups.map((group, groupIdx) => {
+                        const prevGroup = groupIdx > 0 ? passage.questionGroups[groupIdx - 1] : null;
+                        const isDuplicateInstruction =
+                          !!(prevGroup &&
+                          prevGroup.instruction &&
+                          group.instruction &&
+                          areInstructionsCompatible(prevGroup.instruction, group.instruction));
+
+                        return (
                         <div
-                          key={group.id}
-                          className="bg-white rounded-xl border border-gray-200 shadow-sm"
+                          key={group.id || groupIdx}
+                          className="bg-white border border-black"
                         >
-                          {/* HEADER */}
-                          <div
-                            className="px-5 py-4 flex items-center gap-3"
-                            style={{
-                              background: "#B91C1C",
-                              borderRadius:
-                                "12px 12px 0 0",
-                            }}
-                          >
-                            <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                              style={{
-                                background: "#C8993A",
-                              }}
-                            >
-                              {groupIdx + 1}
-                            </div>
-
-                            <span className="text-white text-xs font-bold uppercase tracking-wider">
-                              {formatGroupType(group.type)}
-                            </span>
-                          </div>
-
                           {/* SINGLE INSTRUCTION */}
-                          {group.instruction && (
-                            <div className="instruction-box mx-4 mt-4">
-                              {group.instruction}
-                            </div>
+                          {!isDuplicateInstruction && group.instruction && !["MATCHING_HEADINGS", "MATCHING_INFORMATION"].includes(group.type) && (
+                            <GroupInstructionBlock instruction={group.instruction} questions={group.questions} />
                           )}
 
                           {/* QUESTIONS */}
-                          <div className="p-5 space-y-5">
-                            {group.type !== "TABLE_COMPLETION" && (!group.passageSegment || !/\[\d+\]/.test(group.passageSegment)) && group.options && group.options.length > 0 && (
+                          <div className="p-3 space-y-3">
+                            {group.type !== "TABLE_COMPLETION" && (!group.passageSegment || !/\[\d+\]/.test(group.passageSegment)) && (
+                              ["MATCHING_HEADINGS", "MATCHING_INFORMATION"].includes(group.type) ||
+                              (group.type !== "MATCHING_SENTENCE_ENDINGS" && group.type !== "MULTIPLE_CHOICE_MULTIPLE" && group.options && group.options.length > 0)
+                            ) && (
                               <QuestionRenderer
                                 group={{
                                   ...group,
-                                  instruction: "",
+                                  instruction: ["MATCHING_HEADINGS", "MATCHING_INFORMATION"].includes(group.type)
+                                    ? group.instruction
+                                    : "",
                                 }}
                                 answers={answers}
                                 onAnswer={handleAnswer}
+                                referenceOnly
                               />
                             )}
 
-                            {group.type === "TABLE_COMPLETION" ? (
+                            {group.type === "TABLE_COMPLETION" ||
+                            group.type === "MATCHING_SENTENCE_ENDINGS" ||
+                            group.type === "MULTIPLE_CHOICE_MULTIPLE" ||
+                            (group.passageSegment && /\[\d+\]/.test(group.passageSegment)) ? (
                               <div
-                                className="rounded-xl p-5 border border-gray-200 bg-white shadow-sm"
+                                ref={(el) => {
+                                  group.questions.forEach((q) => {
+                                    if (el) questionRefs.current[q.id] = el;
+                                  });
+                                }}
+                                className="p-3 border transition-all bg-white"
+                                style={{
+                                  border: group.questions.some((q) => q.id === activeQuestionId)
+                                    ? "2px solid #111111"
+                                    : "1px solid #B8B8B8",
+                                }}
                               >
                                 <QuestionRenderer
-                                  group={group}
+                                  group={{ ...group, instruction: "" }}
                                   answers={answers}
                                   onAnswer={handleAnswer}
                                 />
@@ -738,22 +775,22 @@ export default function ExamPage({ params }: Props) {
                                       if (sel && !sel.isCollapsed) return;
                                       setActiveQuestionId(question.id);
                                     }}
-                                    className="rounded-xl p-4 transition-all"
+                                    className="p-3 transition-all"
                                     style={{
                                       border: isQuestionActive
-                                        ? "2px solid #B91C1C"
+                                        ? "2px solid #111111"
                                         : isQuestionFlagged
                                         ? "2px solid #F59E0B"
-                                        : "2px solid #E2E8F0",
+                                        : "1px solid #B8B8B8",
 
                                       background: isQuestionActive
-                                        ? "#FEF2F2"
+                                        ? "#FFFFFF"
                                         : isQuestionFlagged
                                         ? "#FFFBEB"
                                         : "#FFFFFF",
                                     }}
                                   >
-                                    <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center gap-2">
                                         {isQuestionAnswered && (
                                           <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-2 py-1 rounded">
@@ -800,6 +837,7 @@ export default function ExamPage({ params }: Props) {
                                       group={{
                                         ...group,
                                         instruction: "",
+                                        passageSegment: "",
                                         questions: [
                                           question,
                                         ],
@@ -807,14 +845,16 @@ export default function ExamPage({ params }: Props) {
                                       answers={answers}
                                       onAnswer={handleAnswer}
                                       hideReferenceBox={true}
+                                      hideHeaderBlock={true}
                                     />
                                   </div>
                                 );
                               })
                             )}
                           </div>
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -823,7 +863,6 @@ export default function ExamPage({ params }: Props) {
               return (
                 <div
                   key={passage.id}
-                  ref={(el) => { passageRefs.current[idx] = el; }}
                   className="h-full flex flex-col overflow-hidden"
                 >
                   {isDesktop ? (
@@ -831,17 +870,17 @@ export default function ExamPage({ params }: Props) {
                       <ResizablePanel defaultSize={50} minSize={30}>
                         {passagePanel}
                       </ResizablePanel>
-                      <ResizableHandle withHandle className="w-2 bg-gray-200 hover:bg-red-700 hover:w-2.5 transition-all cursor-col-resize shrink-0 h-full" />
+                      <ResizableHandle withHandle className="w-1.5 bg-gray-200 hover:bg-black transition-all cursor-col-resize shrink-0 h-full" />
                       <ResizablePanel defaultSize={50} minSize={30}>
                         {questionsPanel}
                       </ResizablePanel>
                     </ResizablePanelGroup>
                   ) : (
                     <div className="h-full flex flex-col lg:flex-row overflow-hidden">
-                      <div className={`${mobileTab === "questions" ? "hidden lg:flex" : "flex"} flex-col h-[50vh] lg:h-full lg:w-1/2 overflow-hidden`}>
+                    <div className={`${mobileTab === "questions" ? "hidden lg:flex" : "flex"} flex-col h-full lg:w-1/2 overflow-hidden`}>
                         {passagePanel}
                       </div>
-                      <div className={`${mobileTab === "passage" ? "hidden lg:flex" : "flex"} flex-col h-[50vh] lg:h-full lg:w-1/2 overflow-hidden`}>
+                      <div className={`${mobileTab === "passage" ? "hidden lg:flex" : "flex"} flex-col h-full lg:w-1/2 overflow-hidden`}>
                         {questionsPanel}
                       </div>
                     </div>
@@ -852,17 +891,14 @@ export default function ExamPage({ params }: Props) {
           </div>
 
           {/* 4. PERSISTENT NAVIGATION BAR */}
-          <footer className="fixed bottom-0 left-0 right-0 h-16 bg-[#F8FAFC] border-t border-gray-200 flex items-center justify-between px-6 z-40 select-none shadow-md font-sans">
+          <footer className="fixed bottom-0 left-0 right-0 z-40 grid h-14 grid-cols-4 items-stretch border-t-2 border-black bg-white px-1 select-none font-sans md:flex md:items-center md:justify-between md:px-4">
             {/* LEFT: BACK / NEXT PASSAGE */}
-            <div className="flex items-center gap-3">
+            <div className="contents md:flex md:items-center md:gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  goToPreviousPassage(currentPassageIndex);
-                  setCurrentPassageIndex((i) => i - 1);
-                }}
+                onClick={() => setCurrentPassageIndex((i) => Math.max(0, i - 1))}
                 disabled={currentPassageIndex === 0}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 border-r px-1 text-[9px] font-bold transition-colors select-none md:flex-row md:gap-1.5 md:border md:px-4 md:py-2 md:text-sm ${
                   currentPassageIndex === 0
                     ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
                     : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
@@ -874,18 +910,19 @@ export default function ExamPage({ params }: Props) {
 
               <button
                 type="button"
-                onClick={() => {
-                  goToNextPassage(currentPassageIndex);
-                  setCurrentPassageIndex((i) => i + 1);
-                }}
+                onClick={() =>
+                  setCurrentPassageIndex((i) =>
+                    Math.min((exam?.passages?.length ?? 1) - 1, i + 1)
+                  )
+                }
                 disabled={currentPassageIndex >= (exam?.passages?.length ?? 0) - 1}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none text-white ${
+                className={`flex min-w-0 flex-col-reverse items-center justify-center gap-0.5 border-0 border-r px-1 text-[9px] font-bold transition-colors select-none text-white md:flex-row md:gap-1.5 md:border md:px-4 md:py-2 md:text-sm ${
                   currentPassageIndex >= (exam?.passages?.length ?? 0) - 1
                     ? "bg-gray-300 border-gray-300 text-gray-400 cursor-not-allowed"
-                    : "bg-red-700 hover:bg-red-800 border-red-700 cursor-pointer"
+                    : "bg-black hover:bg-gray-800 border-black cursor-pointer"
                 }`}
               >
-                <span>NEXT PASSAGE</span>
+                <span className="leading-none">NEXT <span className="hidden sm:inline">PASSAGE</span></span>
                 <IconArrowRight size={16} />
               </button>
             </div>
@@ -901,9 +938,9 @@ export default function ExamPage({ params }: Props) {
                 // Box color selection
                 let boxStyle = "border-gray-300 text-gray-700 bg-white hover:bg-gray-50";
                 if (isActive) {
-                  boxStyle = "bg-red-700 border-red-700 text-white font-bold";
+                  boxStyle = "bg-black border-black text-white font-bold";
                 } else if (isAnswered) {
-                  boxStyle = "bg-red-700/5 border-red-700 text-red-700 font-bold";
+                  boxStyle = "bg-gray-100 border-black text-black font-bold";
                 }
 
                 return (
@@ -925,28 +962,28 @@ export default function ExamPage({ params }: Props) {
             </div>
 
             {/* RIGHT: REVIEW ALL & SUBMIT TEST */}
-            <div className="flex items-center gap-3">
+            <div className="contents md:flex md:items-center md:gap-3">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer select-none"
+                className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 border-r border-gray-200 bg-white px-1 text-[9px] font-bold text-gray-700 transition-colors select-none cursor-pointer hover:bg-gray-50 md:flex-row md:gap-1.5 md:border md:border-gray-300 md:px-4 md:py-2 md:text-sm md:shadow-sm"
               >
                 <IconLayoutGrid size={16} />
-                <span>REVIEW ALL</span>
+                <span className="leading-none">REVIEW <span className="hidden sm:inline">ALL</span></span>
               </button>
 
               <button
                 type="button"
                 onClick={handleSubmitClick}
                 disabled={mutation.isPending}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-black border transition-all select-none shadow-sm ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 px-1 text-[9px] font-black transition-all select-none md:flex-row md:gap-1.5 md:border md:px-4 md:py-2 md:text-sm md:shadow-sm ${
                   !mutation.isPending
-                    ? "bg-red-700 border-red-700 hover:bg-red-800 text-white cursor-pointer"
+                    ? "bg-black border-black hover:bg-gray-800 text-white cursor-pointer"
                     : "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <IconUpload size={16} />
-                <span>SUBMIT TEST</span>
+                <span className="leading-none">SUBMIT <span className="hidden sm:inline">TEST</span></span>
               </button>
             </div>
           </footer>

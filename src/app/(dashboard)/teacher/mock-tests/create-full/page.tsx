@@ -4,9 +4,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { mockTestService } from "@/services/mocktest.services";
+import { getNextMockTestTitle } from "@/lib/mockTestNaming";
 import { listeningService } from "@/services/listening.services";
 import { readingService } from "@/services/reading.services";
 import { writingService } from "@/services/writing.services";
@@ -46,23 +47,47 @@ import {
   IconCloudUpload,
   IconChartBar,
   IconWriting,
+  IconCrown,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import VisualNotesBuilder from "@/components/shared/VisualNotesBuilder";
+import VisualTableBuilder from "@/components/shared/VisualTableBuilder";
+import { parseGroupInstruction, areInstructionsCompatible, mergeQuestionGroups } from "@/lib/utils";
+import WritingTask1Form from "@/components/Writing/WritingTask1Form";
+import WritingTask2Form from "@/components/Writing/WritingTask2Form";
+import { SpeakingQuestionPaper } from "@/components/Speaking/SpeakingQuestionPaper";
+import { SpeakingCueCardBuilder } from "@/components/Speaking/SpeakingCueCardBuilder";
+import { FullMockTestPreview, type MockPreviewMode } from "@/components/MockTest/FullMockTestPreview";
+import { ReadingSectionTabs } from "@/components/Reading/ReadingSectionTabs";
+import { FloatingSelectionToolbar } from "@/components/shared/FloatingSelectionToolbar";
+import { ListeningCreatorWorkspace } from "@/app/(dashboard)/teacher/listening/create/page";
+import { ReadingCreatorWorkspace } from "@/app/(dashboard)/teacher/dashboard/page";
 
 // --- Types ---
 type TabType = "listening" | "reading" | "writing" | "speaking";
 
+function getNumberWord(n: number): string {
+  const words: Record<number, string> = {
+    1: "ONE",
+    2: "TWO",
+    3: "THREE",
+    4: "FOUR",
+    5: "FIVE",
+  };
+  return words[n] || String(n);
+}
+
 // --- IELTS Reading Question Types ---
 const readingQuestionTypes = [
-  { code: "R-MCQ", title: "Multiple Choice Questions (MCQ)", desc: "Select correct answers from list options.", type: "MULTIPLE_CHOICE" },
-  { code: "R-MMCQ", title: "Multiple Choice (Checkbox)", desc: "Select multiple correct answers from list options.", type: "MULTIPLE_CHOICE_MULTIPLE" },
+  { code: "R-MCQ", title: "Multiple Choice (Single Answer — Choose 1)", desc: "Standard MCQ with one single correct answer.", type: "MULTIPLE_CHOICE" },
+  { code: "R-MMCQ", title: "Multiple Choice (Choose 2 or 3 Letters)", desc: "Choose TWO or THREE correct answers from list options (e.g. A–E or A–G).", type: "MULTIPLE_CHOICE_MULTIPLE" },
   { code: "R-TFN", title: "True / False / Not Given", desc: "Identify if statements agree with factual passage details.", type: "TRUE_FALSE_NOT_GIVEN" },
   { code: "R-YNN", title: "Yes / No / Not Given", desc: "Identify if statements agree with the writer's opinions/views.", type: "YES_NO_NOT_GIVEN" },
-  { code: "R-MHDG", title: "Matching Headings", desc: "Match headers from a list to paragraph or section letters.", type: "MATCHING_HEADINGS" },
+  { code: "R-MHDG", title: "List of Headings", desc: "Add a heading list, then choose the correct heading for each paragraph.", type: "MATCHING_HEADINGS" },
   { code: "R-MINF", title: "Matching Information", desc: "Decide which paragraph/section contains specific details.", type: "MATCHING_INFORMATION" },
+  { code: "R-NMATCH", title: "Name Matching", desc: "Match each statement with the correct person or people from a named list.", type: "MATCHING_FEATURES" },
   { code: "R-MFT", title: "Matching Features", desc: "Match options/names with details or findings.", type: "MATCHING_FEATURES" },
   { code: "R-MSE", title: "Matching Sentence Endings", desc: "Complete sentences by matching with correct endings.", type: "MATCHING_SENTENCE_ENDINGS" },
   { code: "R-SCOMP", title: "Sentence Completion", desc: "Fill in blanks at the end of sentences.", type: "SENTENCE_COMPLETION" },
@@ -357,247 +382,18 @@ function ReadIeltsHeaderInput({ value, onChange, placeholder, className }: ReadI
   );
 }
 
-// --- Visual Table Builder ---
-interface VisualTableBuilderProps {
-  value: string;
-  onChange: (val: string) => void;
-}
 
-function VisualTableBuilder({ value, onChange }: VisualTableBuilderProps) {
-  const initialGrid = React.useMemo(() => {
-    if (!value.trim()) {
-      return [
-        ["Header 1", "Header 2", "Header 3"],
-        ["Text Details", "Restored in [1]", "Steps [2]"],
-        ["Row 2 Col 1", "Row 2 Col 2", "Row 2 Col 3"]
-      ];
-    }
-    const lines = value.trim().split("\n");
-    const grid: string[][] = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
-        const cells = trimmed
-          .split("|")
-          .slice(1, -1)
-          .map((cell) => cell.trim());
-        const isSeparator = cells.every((cell) => /^[-:\s]+$/.test(cell));
-        if (!isSeparator) {
-          grid.push(cells);
-        }
-      }
-    }
-    if (grid.length === 0) {
-      return [["Header 1"], [""]];
-    }
-    return grid;
-  }, [value]);
 
-  const [grid, setGrid] = useState<string[][]>(initialGrid);
-  const [isRaw, setIsRaw] = useState(false);
 
-  useEffect(() => {
-    setGrid(initialGrid);
-  }, [initialGrid]);
-
-  const updateMarkdown = (newGrid: string[][]) => {
-    if (newGrid.length === 0) {
-      onChange("");
-      return;
-    }
-    const headers = newGrid[0];
-    const separator = headers.map(() => "---");
-    const rows = newGrid.slice(1);
-    
-    const mdLines = [
-      `| ${headers.join(" | ")} |`,
-      `| ${separator.join(" | ")} |`,
-      ...rows.map((row) => `| ${row.join(" | ")} |`)
-    ];
-    onChange(mdLines.join("\n"));
-  };
-
-  const handleCellChange = (rIdx: number, cIdx: number, val: string) => {
-    const next = grid.map((row, r) => 
-      row.map((cell, c) => (r === rIdx && c === cIdx ? val : cell))
-    );
-    setGrid(next);
-    updateMarkdown(next);
-  };
-
-  const addColumn = () => {
-    const next = grid.map((row, rIdx) => [...row, rIdx === 0 ? `Header ${row.length + 1}` : ""]);
-    setGrid(next);
-    updateMarkdown(next);
-  };
-
-  const removeColumn = (cIdx: number) => {
-    if (grid[0].length <= 1) return;
-    const next = grid.map((row) => row.filter((_, c) => c !== cIdx));
-    setGrid(next);
-    updateMarkdown(next);
-  };
-
-  const addRow = () => {
-    const numCols = grid[0].length;
-    const next = [...grid, Array(numCols).fill("")];
-    setGrid(next);
-    updateMarkdown(next);
-  };
-
-  const removeRow = (rIdx: number) => {
-    if (grid.length <= 2) return;
-    const next = grid.filter((_, r) => r !== rIdx);
-    setGrid(next);
-    updateMarkdown(next);
-  };
-
-  const resetTable = () => {
-    const defaultGrid = [
-      ["Header 1", "Header 2", "Header 3"],
-      ["", "", ""],
-      ["", "", ""]
-    ];
-    setGrid(defaultGrid);
-    updateMarkdown(defaultGrid);
-  };
-
-  return (
-    <div className="space-y-3 p-4 bg-slate-50 border border-indigo-100 rounded-xl w-full">
-      <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-150">
-        <div className="flex items-center gap-2">
-          <IconTable className="text-blue-600 shrink-0" size={18} />
-          <span className="text-xs font-bold text-gray-800">Visual Table Editor</span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setIsRaw(!isRaw)}
-            className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-200 transition cursor-pointer"
-          >
-            {isRaw ? "Visual Mode" : "Markdown Mode"}
-          </button>
-          {!isRaw && (
-            <>
-              <button
-                type="button"
-                onClick={addColumn}
-                className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#1B3A6B] rounded-lg border border-blue-100 hover:bg-blue-100/70 transition cursor-pointer"
-              >
-                + Col
-              </button>
-              <button
-                type="button"
-                onClick={addRow}
-                className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#1B3A6B] rounded-lg border border-blue-100 hover:bg-blue-100/70 transition cursor-pointer"
-              >
-                + Row
-              </button>
-              <button
-                type="button"
-                onClick={resetTable}
-                className="px-2.5 py-1 text-[11px] font-bold bg-rose-50 text-rose-600 rounded-lg border border-rose-100 hover:bg-rose-100/70 transition cursor-pointer"
-              >
-                Reset
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {isRaw ? (
-        <textarea
-          rows={5}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="| Column 1 | Column 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |"
-          className="w-full text-xs font-semibold px-3.5 py-2 border border-blue-100 rounded-lg bg-white focus:outline-hidden focus:border-blue-400 text-black font-mono resize-y"
-        />
-      ) : (
-        <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-xs w-full">
-          <table className="min-w-full divide-y divide-gray-200 text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/70">
-                {grid[0].map((headerVal, cIdx) => (
-                  <th key={cIdx} className="p-2 border-r border-gray-200 last:border-r-0 min-w-[125px]">
-                    <div className="flex items-center gap-1 bg-white border border-gray-250 rounded px-1.5 py-0.5">
-                      <input
-                        type="text"
-                        value={headerVal}
-                        onChange={(e) => handleCellChange(0, cIdx, e.target.value)}
-                        className="w-full text-xs font-bold text-gray-800 bg-transparent focus:outline-hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeColumn(cIdx)}
-                        disabled={grid[0].length <= 1}
-                        className="text-gray-400 hover:text-red-500 disabled:opacity-35 font-bold text-xs shrink-0"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </th>
-                ))}
-                <th className="p-2 w-8"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {grid.slice(1).map((row, rIdx) => {
-                const actualRowIdx = rIdx + 1;
-                return (
-                  <tr key={rIdx} className="hover:bg-slate-50/50">
-                    {row.map((cellVal, cIdx) => (
-                      <td key={cIdx} className="p-2 border-r border-gray-200 last:border-r-0">
-                        <input
-                          type="text"
-                          value={cellVal}
-                          onChange={(e) => handleCellChange(actualRowIdx, cIdx, e.target.value)}
-                          placeholder="e.g. text [1]"
-                          className="w-full text-xs bg-transparent focus:outline-hidden focus:bg-white px-2 py-1 border border-transparent focus:border-blue-300 rounded text-black font-semibold placeholder:text-gray-300 placeholder:font-normal"
-                        />
-                      </td>
-                    ))}
-                    <td className="p-2 text-center w-8">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(actualRowIdx)}
-                        disabled={grid.length <= 2}
-                        className="text-gray-400 hover:text-red-500 disabled:opacity-35 text-xs"
-                      >
-                        <IconTrash size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <p className="text-[10px] text-gray-500 bg-white p-2 rounded-lg border border-gray-150 flex items-center gap-1 font-medium leading-relaxed">
-        <IconInfoCircle size={14} className="text-blue-500 shrink-0" />
-        <span>Type text into any cell. Write <strong>[1]</strong>, <strong>[2]</strong>, etc., to insert blank input boxes matching the question numbers.</span>
-      </p>
-    </div>
-  );
-}
-
-function parseGroupInstruction(instruction?: string) {
-  if (!instruction) {
-    return { range: "", inst1: "", inst2: "", heading: "", listItems: [] as string[] };
+function getPlaceholderNumbers(value: string): number[] {
+  const matches: number[] = [];
+  const regex = /(?:\[\s*(\d+)\s*\]|\b(\d+)\s*(?:\.{3,}|_{2,}))/g;
+  let match;
+  while ((match = regex.exec(value)) !== null) {
+    const num = Number(match[1] || match[2]);
+    if (!isNaN(num)) matches.push(num);
   }
-  if (instruction.includes("|||")) {
-    const parts = instruction.split("|||");
-    return {
-      range: parts[0] || "",
-      inst1: parts[1] || "",
-      inst2: parts[2] || "",
-      heading: parts[3] || "",
-      listItems: parts.slice(4).filter(Boolean),
-    };
-  }
-  return { range: "", inst1: instruction, inst2: "", heading: "", listItems: [] as string[] };
+  return Array.from(new Set(matches)).sort((a, b) => a - b);
 }
 
 // --- Interfaces for Listening State ---
@@ -683,6 +479,18 @@ function convertMarkdownToHtml(text: string): string {
     return `<p class="mb-4 text-justify leading-relaxed text-gray-800">${lines.map(l => l.trim()).filter(Boolean).join(' ')}</p>`;
   });
   return formattedParagraphs.join("");
+}
+
+function htmlPassageToEditableText(value: string): string {
+  if (!value || !/<\/?[a-z][\s\S]*>/i.test(value) || typeof window === "undefined") return value;
+  const documentNode = new DOMParser().parseFromString(value, "text/html");
+  documentNode.body.querySelectorAll("br").forEach((lineBreak) => lineBreak.replaceWith("\n"));
+  const blocks = Array.from(documentNode.body.children)
+    .map((element) => element.textContent?.replace(/\u00a0/g, " ").trim() || "")
+    .filter(Boolean);
+  return (blocks.length > 0 ? blocks.join("\n\n") : documentNode.body.textContent || "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 // --- Demo Template Data ---
@@ -1175,23 +983,89 @@ function WriteTaskPanel({
   );
 }
 
+const FULL_MOCK_DRAFT_KEY = "ielts-full-mock-creator-draft-v1";
+
+interface FullMockDraftState {
+  mockTitle: string;
+  mockDescription: string;
+  isPublished: boolean;
+  isPremium?: boolean;
+  activeTab: TabType;
+  sharedListeningExam: any;
+  sharedReadingExam: any;
+  writeTitle: string;
+  writeDesc: string;
+  writeExamType: "ACADEMIC" | "GENERAL_TRAINING";
+  writeDuration: number;
+  writingTasks: any[];
+  speakTitle: string;
+  speakDesc: string;
+  speakDuration: number;
+  speakingParts: any[];
+}
+
+function isFullMockDraftEmpty(draft: Partial<FullMockDraftState>): boolean {
+  if (!draft) return true;
+  const hasCustomTitle = Boolean(draft.mockTitle?.trim());
+  const hasCustomDesc = Boolean(
+    draft.mockDescription?.trim() &&
+    draft.mockDescription.trim() !==
+      "A complete Cambridge IELTS-style Academic mock test combining Listening, Reading, Writing, and Speaking modules under realistic exam conditions."
+  );
+  const hasListening = Boolean(draft.sharedListeningExam);
+  const hasReading = Boolean(draft.sharedReadingExam);
+  const hasWritingContent = Boolean(
+    draft.writingTasks &&
+      draft.writingTasks.some(
+        (t) => Boolean(t?.instruction?.trim() || t?.imageUrl || t?.pdfUrl || t?.modelAnswer?.trim())
+      )
+  );
+  const hasSpeakingContent = Boolean(
+    draft.speakingParts &&
+      draft.speakingParts.some(
+        (p) =>
+          Boolean(
+            p?.questions &&
+              p.questions.some(
+                (q: any) =>
+                  Boolean(q?.questionText?.trim() && q.questionText !== "Cue Card Long Turn Response")
+              )
+          )
+      )
+  );
+
+  return !hasCustomTitle && !hasCustomDesc && !hasListening && !hasReading && !hasWritingContent && !hasSpeakingContent;
+}
+
 export default function CreateFullMockTestPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabType>("listening");
+  const [mockPreviewMode, setMockPreviewMode] = useState<MockPreviewMode | null>(null);
+  const [sharedListeningExam, setSharedListeningExam] = useState<any>(null);
+  const [sharedReadingExam, setSharedReadingExam] = useState<any>(null);
+  const showLegacyModuleBuilders = false;
 
   // Global Mock Test Meta
   const [mockTitle, setMockTitle] = useState("");
-  const [mockDescription, setMockDescription] = useState("");
+  const [mockDescription, setMockDescription] = useState("A complete Cambridge IELTS-style Academic mock test combining Listening, Reading, Writing, and Speaking modules under realistic exam conditions.");
   const [isPublished, setIsPublished] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
+
+  const existingMockTestsQuery = useQuery({
+    queryKey: ["mock-tests-for-next-title"],
+    queryFn: () => mockTestService.getAllMockTests(),
+  });
+
+  const resolvedMockTitle = mockTitle || getNextMockTestTitle(existingMockTestsQuery.data?.data ?? []);
 
   // ==========================================================
   // 1. Listening States & Handlers (Exactly like standalone)
   // ==========================================================
   const [listeningFormState, setListeningFormState] = useState<ListeningExamForm>({
-    title: "Listening Exam Component",
-    description: "",
+    title: "Cambridge IELTS Academic Listening Practice Test 1",
+    description: "A Cambridge IELTS-style Listening test with four sections and realistic computer-based question types.",
     duration: 30,
     isPublished: false,
     audioUrl: "",
@@ -1417,8 +1291,8 @@ export default function CreateFullMockTestPage() {
   const [selectedQuestionType, setSelectedQuestionType] = useState<string | null>(null);
   
   // Exam metadata states
-  const [readTitle, setReadTitle] = useState("Reading Exam Component");
-  const [readDesc, setReadDesc] = useState("");
+  const [readTitle, setReadTitle] = useState("Cambridge IELTS Academic Reading Practice Test 1");
+  const [readDesc, setReadDesc] = useState("A Cambridge IELTS-style Academic Reading test with three passages and realistic question types.");
   const [readDuration, setReadDuration] = useState(60);
   const [passageCount, setPassageCount] = useState<1 | 2 | 3>(3);
 
@@ -1474,15 +1348,21 @@ export default function CreateFullMockTestPage() {
   const [mcqOptF, setMcqOptF] = useState('');
   const [mcqOptG, setMcqOptG] = useState('');
   const [multiMcqCorrectAnswers, setMultiMcqCorrectAnswers] = useState<string[]>([]);
+  const [multiMcqAnswerCount, setMultiMcqAnswerCount] = useState<number>(2);
 
   // Custom Matching options / list of headings (newlines)
   const [groupOptions, setGroupOptions] = useState('');
 
   // Custom Table completion segment markdown
   const [passageSegment, setPassageSegment] = useState('');
+  const [noteAnswers, setNoteAnswers] = useState<Record<number, string>>({});
 
   // Sentence Completion mode: With Clues vs Without Clues
   const [scompMode, setScompMode] = useState<'WITH_CLUES' | 'WITHOUT_CLUES'>('WITHOUT_CLUES');
+  const [scompAltAnswer1, setScompAltAnswer1] = useState('');
+  const [scompAltAnswer2, setScompAltAnswer2] = useState('');
+  const scompAlt1Ref = useRef<HTMLInputElement>(null);
+  const scompAlt2Ref = useRef<HTMLInputElement>(null);
 
   // Matching Headings Configurations
   const [mhdgMode, setMhdgMode] = useState<'WITH_CLUES' | 'WITHOUT_CLUES'>('WITH_CLUES');
@@ -1558,37 +1438,67 @@ export default function CreateFullMockTestPage() {
   const handleAddReadingQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     const isMultiMcq = selectedQuestionType === "R-MMCQ";
-    if (!questionInstruction || (!correctAnswer && !isMultiMcq)) {
+    const selectedTypeDetails = readingQuestionTypes.find(t => t.code === selectedQuestionType);
+    if (!selectedTypeDetails) return;
+    const notePlaceholderNumbers = selectedTypeDetails.type === "NOTES_COMPLETION"
+      ? getPlaceholderNumbers(passageSegment)
+      : [];
+    const isBulkNotes = notePlaceholderNumbers.length > 0;
+    if (!questionInstruction || (!correctAnswer && !isMultiMcq && !isBulkNotes)) {
       toast.error("Please fill in the required instruction and correct answer values.");
       return;
     }
 
-    const selectedTypeDetails = readingQuestionTypes.find(t => t.code === selectedQuestionType);
-    if (!selectedTypeDetails) return;
+    const tablePlaceholderNumbers = selectedTypeDetails.type === "TABLE_COMPLETION"
+      ? getPlaceholderNumbers(passageSegment)
+      : [];
+    const firstUnansweredTableNumber = tablePlaceholderNumbers.find((questionNumber) => {
+      const existingQuestion = readingQuestions.find(
+        (question) => question.passageIndex === activePassage && question.questionNumber === questionNumber
+      );
+      return !existingQuestion?.correctAnswer.trim();
+    });
+    const firstUnansweredNoteNumber = notePlaceholderNumbers.find((questionNumber) => {
+      const existingQuestion = readingQuestions.find(
+        (question) => question.passageIndex === activePassage && question.questionNumber === questionNumber
+      );
+      return !existingQuestion?.correctAnswer.trim();
+    });
 
-    // Auto-calculate or use custom question number
-    const qNum = customQuestionNumber !== '' ? Number(customQuestionNumber) : readingQuestions.length + 1;
+    // Table answers are entered sequentially, including placeholder records created earlier.
+    const qNum = customQuestionNumber !== ''
+      ? Number(customQuestionNumber)
+      : firstUnansweredTableNumber ?? firstUnansweredNoteNumber ?? readingQuestions.length + 1;
 
     // 1. Special Handling for MULTIPLE_CHOICE_MULTIPLE (R-MMCQ Checkboxes)
     if (selectedTypeDetails.type === "MULTIPLE_CHOICE_MULTIPLE") {
-      if (multiMcqCorrectAnswers.length < 2) {
-        toast.error("Please select at least 2 correct options for Multiple Choice Checkbox.");
+      if (multiMcqCorrectAnswers.length !== multiMcqAnswerCount) {
+        toast.error(`Select exactly ${multiMcqAnswerCount} correct answers.`);
         return;
       }
       
       const generatedQs: ReadingQuestionItem[] = [];
       const opts = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE, mcqOptF, mcqOptG].filter(Boolean);
       
-      multiMcqCorrectAnswers.forEach((letter, i) => {
-        let ansVal = "";
-        if (letter === "A") ansVal = mcqOptA;
-        else if (letter === "B") ansVal = mcqOptB;
-        else if (letter === "C") ansVal = mcqOptC;
-        else if (letter === "D") ansVal = mcqOptD;
-        else if (letter === "E") ansVal = mcqOptE;
-        else if (letter === "F") ansVal = mcqOptF;
-        else if (letter === "G") ansVal = mcqOptG;
-        
+      const lastLetter = String.fromCharCode(64 + Math.max(opts.length, multiMcqAnswerCount + 2, 5));
+      const countWord = getNumberWord(multiMcqAnswerCount);
+      const effectiveInstruction = `Questions ${qNum}–${qNum + multiMcqAnswerCount - 1}|||Choose ${countWord} letters, A–${lastLetter}.|||Write the correct letters in boxes ${qNum}–${qNum + multiMcqAnswerCount - 1} on your answer sheet.|||`;
+
+      const letterAnswers = multiMcqCorrectAnswers;
+      const textAnswers = letterAnswers.map((l) => {
+        if (l === "A") return mcqOptA;
+        if (l === "B") return mcqOptB;
+        if (l === "C") return mcqOptC;
+        if (l === "D") return mcqOptD;
+        if (l === "E") return mcqOptE;
+        if (l === "F") return mcqOptF;
+        if (l === "G") return mcqOptG;
+        return "";
+      }).filter(Boolean);
+
+      const combinedAnswerKey = Array.from(new Set([...letterAnswers, ...textAnswers])).join(" / ");
+
+      for (let i = 0; i < multiMcqAnswerCount; i++) {
         generatedQs.push({
           id: `q-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 9)}`,
           passageIndex: activePassage,
@@ -1596,13 +1506,13 @@ export default function CreateFullMockTestPage() {
           typeCode: selectedTypeDetails.type,
           questionNumber: qNum + i,
           text: questionText,
-          instruction: questionInstruction,
-          correctAnswer: ansVal,
+          instruction: effectiveInstruction,
+          correctAnswer: combinedAnswerKey,
           explanation: questionExplanation,
           options: opts.length > 0 ? opts : undefined,
           groupImageUrl: questionImage || undefined
         });
-      });
+      }
       
       setReadingQuestions([...readingQuestions, ...generatedQs].sort((a, b) => a.questionNumber - b.questionNumber));
       
@@ -1629,13 +1539,34 @@ export default function CreateFullMockTestPage() {
     let finalOptions: string[] = [];
     if (selectedTypeDetails.type === "MULTIPLE_CHOICE") {
       finalOptions = [mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE, mcqOptF, mcqOptG].filter(Boolean);
-      if (correctAnswer === "A") finalCorrectAnswer = mcqOptA;
-      else if (correctAnswer === "B") finalCorrectAnswer = mcqOptB;
-      else if (correctAnswer === "C") finalCorrectAnswer = mcqOptC;
-      else if (correctAnswer === "D") finalCorrectAnswer = mcqOptD;
-      else if (correctAnswer === "E") finalCorrectAnswer = mcqOptE;
-      else if (correctAnswer === "F") finalCorrectAnswer = mcqOptF;
-      else if (correctAnswer === "G") finalCorrectAnswer = mcqOptG;
+      let letterText = "";
+      if (correctAnswer === "A") letterText = mcqOptA;
+      else if (correctAnswer === "B") letterText = mcqOptB;
+      else if (correctAnswer === "C") letterText = mcqOptC;
+      else if (correctAnswer === "D") letterText = mcqOptD;
+      else if (correctAnswer === "E") letterText = mcqOptE;
+      else if (correctAnswer === "F") letterText = mcqOptF;
+      else if (correctAnswer === "G") letterText = mcqOptG;
+      finalCorrectAnswer = Array.from(new Set([correctAnswer, letterText].filter(Boolean))).join(" / ");
+    } else if (selectedQuestionType === "R-SCOMP" && scompMode !== "WITH_CLUES") {
+      const deduped: string[] = [];
+      const seen = new Set<string>();
+      for (const raw of [correctAnswer, scompAltAnswer1, scompAltAnswer2]) {
+        if (!raw) continue;
+        const segments = raw.split("/").map((s) => s.trim()).filter(Boolean);
+        for (const seg of segments) {
+          const lower = seg.toLowerCase();
+          if (!seen.has(lower)) {
+            seen.add(lower);
+            deduped.push(seg);
+          }
+        }
+      }
+      if (deduped.length === 0) {
+        toast.error("Please enter at least one correct answer for Sentence Completion.");
+        return;
+      }
+      finalCorrectAnswer = deduped.join(" / ");
     }
 
     let finalGroupOptions: string[] = [];
@@ -1664,19 +1595,93 @@ export default function CreateFullMockTestPage() {
             exampleParagraph: hasExample ? exampleParagraph : "",
             exampleAnswer: hasExample ? exampleAnswer : ""
           })
+        : selectedQuestionType === "R-NMATCH"
+        ? JSON.stringify({ variant: "NAME_MATCHING" })
         : ["TABLE_COMPLETION", "NOTES_COMPLETION", "FLOW_CHART_COMPLETION", "SUMMARY_COMPLETION_WITH_OPTIONS", "SUMMARY_COMPLETION_WITHOUT_OPTIONS"].includes(selectedTypeDetails.type)
         ? passageSegment
         : undefined,
       groupImageUrl: questionImage || undefined
     };
 
-    // Sort questions by question number
-    setReadingQuestions([...readingQuestions, newQ].sort((a, b) => a.questionNumber - b.questionNumber));
+    if (selectedTypeDetails.type === "NOTES_COMPLETION" && notePlaceholderNumbers.length > 0) {
+      const answersByNumber = new Map(notePlaceholderNumbers.map((questionNumber) => {
+        const savedAnswer = readingQuestions.find(
+          (question) => question.passageIndex === activePassage && question.questionNumber === questionNumber
+        )?.correctAnswer ?? "";
+        return [questionNumber, (noteAnswers[questionNumber] ?? savedAnswer).trim()] as const;
+      }));
+      const missingAnswer = notePlaceholderNumbers.find((questionNumber) => !answersByNumber.get(questionNumber));
+      if (missingAnswer !== undefined) {
+        toast.error(`Please enter the answer for Question ${missingAnswer}.`);
+        return;
+      }
+
+      const existingNumbers = new Set(readingQuestions
+        .filter((question) => question.passageIndex === activePassage)
+        .map((question) => question.questionNumber));
+      const updatedQuestions = readingQuestions.map((question) =>
+        question.passageIndex === activePassage && answersByNumber.has(question.questionNumber)
+          ? { ...question, type: selectedTypeDetails.title, typeCode: selectedTypeDetails.type, passageSegment, instruction: questionInstruction, correctAnswer: answersByNumber.get(question.questionNumber) ?? "" }
+          : question
+      );
+      const missingQuestions = notePlaceholderNumbers
+        .filter((questionNumber) => !existingNumbers.has(questionNumber))
+        .map((questionNumber, index) => ({
+          ...newQ,
+          id: `q-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
+          questionNumber,
+          correctAnswer: answersByNumber.get(questionNumber) ?? "",
+        }));
+      setReadingQuestions([...updatedQuestions, ...missingQuestions].sort((a, b) => a.questionNumber - b.questionNumber));
+      setNoteAnswers({});
+      setCorrectAnswer("");
+      setQuestionText("");
+      setQuestionExplanation("");
+      setCustomQuestionNumber("");
+      toast.success(`Note answers for Questions ${notePlaceholderNumbers.join(", ")} saved successfully!`);
+      return;
+    }
+
+    const existingQuestionNumbers = new Set(
+      readingQuestions
+        .filter((question) => question.passageIndex === activePassage)
+        .map((question) => question.questionNumber)
+    );
+    const questionsToAdd: ReadingQuestionItem[] = tablePlaceholderNumbers.length > 0
+      ? tablePlaceholderNumbers
+        .filter((questionNumber) => !existingQuestionNumbers.has(questionNumber))
+        .map((questionNumber, index) => ({
+          ...newQ,
+          id: index === 0 ? newQ.id : `q-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
+          questionNumber,
+          correctAnswer: questionNumber === qNum ? newQ.correctAnswer : "",
+        }))
+      : [newQ];
+
+    const updatedQuestions = readingQuestions.map((question) =>
+      selectedTypeDetails.type === "TABLE_COMPLETION" &&
+      question.passageIndex === activePassage &&
+      question.questionNumber === qNum
+        ? {
+            ...question,
+            text: newQ.text,
+            correctAnswer: newQ.correctAnswer,
+            explanation: newQ.explanation,
+            options: newQ.options,
+            groupOptions: newQ.groupOptions ?? question.groupOptions,
+          }
+        : question
+    );
+
+    // Create missing placeholders once; subsequent submissions update their answers in order.
+    setReadingQuestions([...updatedQuestions, ...questionsToAdd].sort((a, b) => a.questionNumber - b.questionNumber));
     
     // Reset Form
     setQuestionText('');
     setQuestionExplanation('');
     setCorrectAnswer('');
+    setScompAltAnswer1('');
+    setScompAltAnswer2('');
     setCustomQuestionNumber('');
     setMcqOptA('');
     setMcqOptB('');
@@ -1696,19 +1701,13 @@ export default function CreateFullMockTestPage() {
     setReadingQuestions(readingQuestions.filter(q => q.id !== id));
   };
 
-  // Helper to count questions by passage index
-  const getQuestionCountForPassage = (idx: 1 | 2 | 3) => {
-    return readingQuestions.filter(q => q.passageIndex === idx).length;
-  };
-
   // ==========================================
   // 3. Writing States & Handlers
   // ==========================================
-  const [writeTitle, setWriteTitle] = useState("Writing Exam Component");
-  const [writeDesc, setWriteDesc] = useState("");
+  const [writeTitle, setWriteTitle] = useState("Cambridge IELTS Academic Writing Practice Test 1");
+  const [writeDesc, setWriteDesc] = useState("A Cambridge IELTS-style Academic Writing test featuring Task 1 and Task 2.");
   const [writeDuration, setWriteDuration] = useState(60);
   const [writeExamType, setWriteExamType] = useState<"ACADEMIC" | "GENERAL_TRAINING">("ACADEMIC");
-  const [writeIsPublished, setWriteIsPublished] = useState(false);
   const [activeWritingTaskIdx, setActiveWritingTaskIdx] = useState<0 | 1>(0); // 0 = Task 1, 1 = Task 2
   const [uploadingWritingImage, setUploadingWritingImage] = useState<number | null>(null); // task index
   const [uploadingWritingPdf, setUploadingWritingPdf] = useState<number | null>(null);
@@ -1787,29 +1786,29 @@ export default function CreateFullMockTestPage() {
   // ==========================================
   // 4. Speaking States & Handlers
   // ==========================================
-  const [speakTitle, setSpeakTitle] = useState("Speaking Exam Component");
-  const [speakDesc, setSpeakDesc] = useState("");
+  const [speakTitle, setSpeakTitle] = useState("Cambridge IELTS Speaking Practice Test 1");
+  const [speakDesc, setSpeakDesc] = useState("A Cambridge IELTS-style Speaking test covering Part 1, Part 2, and Part 3.");
   const [speakDuration, setSpeakDuration] = useState(15);
-  const [speakIsPublished, setSpeakIsPublished] = useState(false);
   const [activeSpeakingTab, setActiveSpeakingTab] = useState(1); // 1, 2, 3
   
   const [speakingParts, setSpeakingParts] = useState<any[]>([
     {
       partNumber: 1,
       title: "Part 1: Introduction and Interview",
-      instruction: "The examiner will ask you general questions about yourself, your home, family, studies, or interests.",
+      instruction: "The examiner asks the candidate about him/herself, his/her home, work or studies and other familiar topics.<p><strong>School</strong></p>",
       preparationTime: 0,
       speakingTime: 60,
       order: 1,
       questions: [
-        { questionText: "Can you tell me about your hometown?", order: 1 },
-        { questionText: "What do you like most about your studies or job?", order: 2 },
+        { questionText: "Did you go to secondary/high school near to where you lived? Why/Why not?", order: 1 },
+        { questionText: "What did you like about your secondary/high school? Why?", order: 2 },
+        { questionText: "How do you think your school could be improved?", order: 3 },
       ],
     },
     {
       partNumber: 2,
       title: "Part 2: Individual Long Turn (Cue Card)",
-      instruction: "Describe a book you read recently that made a strong impression on you.\n\nYou should say:\n- What the book was about\n- When you read it\n- Why you chose to read it\n- And explain why it impressed you so much.",
+      instruction: "<p class=\"cue-topic\"><strong>Describe a shop near where you live that you sometimes use.</strong></p><p class=\"cue-label\"><strong>You should say:</strong></p><ul class=\"cue-points\"><li>what sorts of products or services it sells</li><li>what the shop looks like</li><li>where it is located</li></ul><p class=\"cue-final\">and explain why you use this shop.</p>",
       preparationTime: 60,
       speakingTime: 120,
       order: 2,
@@ -1820,16 +1819,192 @@ export default function CreateFullMockTestPage() {
     {
       partNumber: 3,
       title: "Part 3: Two-way Discussion",
-      instruction: "The examiner will ask you further questions related to the topic in Part 2.",
+      instruction: "<strong>Local shops and shopping habits</strong>",
       preparationTime: 0,
       speakingTime: 60,
       order: 3,
       questions: [
-        { questionText: "Do you think children should be encouraged to read more books?", order: 1 },
-        { questionText: "How has the internet changed the reading habits of people?", order: 2 },
+        { questionText: "What kinds of local shops are popular in your country?", order: 1 },
+        { questionText: "Why do some people prefer small shops to large stores?", order: 2 },
+        { questionText: "How might shopping habits change in the future?", order: 3 },
       ],
     },
   ]);
+
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
+  const [isDraftHydrated, setIsDraftHydrated] = useState(false);
+  const restoredDraftRef = useRef(false);
+  const latestDraftRef = useRef<FullMockDraftState | null>(null);
+
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(FULL_MOCK_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { draft: FullMockDraftState; savedAt: string };
+        const draft = parsed?.draft;
+        if (draft && !isFullMockDraftEmpty(draft)) {
+          if (draft.mockTitle !== undefined) setMockTitle(draft.mockTitle);
+          if (draft.mockDescription !== undefined) setMockDescription(draft.mockDescription);
+          if (draft.isPublished !== undefined) setIsPublished(draft.isPublished);
+          if (draft.isPremium !== undefined) setIsPremium(draft.isPremium);
+          if (draft.activeTab) setActiveTab(draft.activeTab);
+          if (draft.sharedListeningExam) setSharedListeningExam(draft.sharedListeningExam);
+          if (draft.sharedReadingExam) setSharedReadingExam(draft.sharedReadingExam);
+          if (draft.writeTitle !== undefined) setWriteTitle(draft.writeTitle);
+          if (draft.writeDesc !== undefined) setWriteDesc(draft.writeDesc);
+          if (draft.writeExamType !== undefined) setWriteExamType(draft.writeExamType);
+          if (draft.writeDuration !== undefined) setWriteDuration(draft.writeDuration);
+          if (draft.writingTasks) setWritingTasks(draft.writingTasks);
+          if (draft.speakTitle !== undefined) setSpeakTitle(draft.speakTitle);
+          if (draft.speakDesc !== undefined) setSpeakDesc(draft.speakDesc);
+          if (draft.speakDuration !== undefined) setSpeakDuration(draft.speakDuration);
+          if (draft.speakingParts) setSpeakingParts(draft.speakingParts);
+
+          setLastDraftSavedAt(parsed.savedAt || null);
+          restoredDraftRef.current = true;
+          toast.info("Your unfinished Full Mock Test draft has been restored.");
+        } else {
+          window.localStorage.removeItem(FULL_MOCK_DRAFT_KEY);
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(FULL_MOCK_DRAFT_KEY);
+    }
+    setIsDraftHydrated(true);
+  }, []);
+
+  // Update latest draft ref
+  useEffect(() => {
+    latestDraftRef.current = {
+      mockTitle,
+      mockDescription,
+      isPublished,
+      isPremium,
+      activeTab,
+      sharedListeningExam,
+      sharedReadingExam,
+      writeTitle,
+      writeDesc,
+      writeExamType,
+      writeDuration,
+      writingTasks,
+      speakTitle,
+      speakDesc,
+      speakDuration,
+      speakingParts,
+    };
+  }, [
+    mockTitle,
+    mockDescription,
+    isPublished,
+    isPremium,
+    activeTab,
+    sharedListeningExam,
+    sharedReadingExam,
+    writeTitle,
+    writeDesc,
+    writeExamType,
+    writeDuration,
+    writingTasks,
+    speakTitle,
+    speakDesc,
+    speakDuration,
+    speakingParts,
+  ]);
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (!isDraftHydrated) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const currentDraft = latestDraftRef.current;
+      if (!currentDraft) return;
+
+      if (isFullMockDraftEmpty(currentDraft)) {
+        try {
+          window.localStorage.removeItem(FULL_MOCK_DRAFT_KEY);
+          setLastDraftSavedAt(null);
+        } catch {}
+        return;
+      }
+
+      const savedAt = new Date().toISOString();
+      try {
+        window.localStorage.setItem(
+          FULL_MOCK_DRAFT_KEY,
+          JSON.stringify({ draft: currentDraft, savedAt })
+        );
+        setLastDraftSavedAt(savedAt);
+      } catch {}
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    isDraftHydrated,
+    mockTitle,
+    mockDescription,
+    isPublished,
+    activeTab,
+    sharedListeningExam,
+    sharedReadingExam,
+    writeTitle,
+    writeDesc,
+    writeExamType,
+    writeDuration,
+    writingTasks,
+    speakTitle,
+    speakDesc,
+    speakDuration,
+    speakingParts,
+  ]);
+
+  // Immediate save on page unload
+  useEffect(() => {
+    if (!isDraftHydrated) return;
+    const persistBeforeExit = () => {
+      const currentDraft = latestDraftRef.current;
+      if (!currentDraft || isFullMockDraftEmpty(currentDraft)) return;
+      try {
+        window.localStorage.setItem(
+          FULL_MOCK_DRAFT_KEY,
+          JSON.stringify({
+            draft: currentDraft,
+            savedAt: new Date().toISOString(),
+          })
+        );
+      } catch {}
+    };
+    window.addEventListener("pagehide", persistBeforeExit);
+    window.addEventListener("beforeunload", persistBeforeExit);
+    return () => {
+      window.removeEventListener("pagehide", persistBeforeExit);
+      window.removeEventListener("beforeunload", persistBeforeExit);
+    };
+  }, [isDraftHydrated]);
+
+  const handleResetDraft = () => {
+    window.localStorage.removeItem(FULL_MOCK_DRAFT_KEY);
+    setMockTitle("");
+    setMockDescription("A complete Cambridge IELTS-style Academic mock test combining Listening, Reading, Writing, and Speaking modules under realistic exam conditions.");
+    setIsPublished(true);
+    setIsPremium(false);
+    setSharedListeningExam(null);
+    setSharedReadingExam(null);
+    setWriteTitle("Cambridge IELTS Academic Writing Practice Test 1");
+    setWriteDesc("A Cambridge IELTS-style Academic Writing test featuring Task 1 and Task 2.");
+    setWriteDuration(60);
+    setWriteExamType("ACADEMIC");
+    setWritingTasks([
+      { taskType: "TASK_1", instruction: "", imageUrl: "", pdfUrl: "", minWords: 150, modelAnswer: "", order: 1 },
+      { taskType: "TASK_2", instruction: "", imageUrl: "", pdfUrl: "", minWords: 250, modelAnswer: "", order: 2 },
+    ]);
+    setSpeakTitle("Cambridge IELTS Speaking Practice Test 1");
+    setSpeakDesc("A Cambridge IELTS-style Speaking test covering Part 1, Part 2, and Part 3.");
+    setSpeakDuration(15);
+    setLastDraftSavedAt(null);
+    toast.success("Full Mock Test draft cleared.");
+  };
 
   const handleSpeakingPartFieldChange = (partIdx: number, field: string, val: any) => {
     setSpeakingParts((prev) => {
@@ -1913,6 +2088,7 @@ export default function CreateFullMockTestPage() {
     setMockTitle(demoTemplateData.title);
     setMockDescription(demoTemplateData.description);
     setIsPublished(demoTemplateData.isPublished);
+    setIsPremium(demoTemplateData.isPremium ?? false);
 
     // 1. Listening - Map Sections 1-4
     const listeningSectionsData = [1, 2, 3, 4].map((order) => {
@@ -2008,7 +2184,6 @@ export default function CreateFullMockTestPage() {
     setWriteExamType(demoTemplateData.writingExam.examType);
     setWritingTasks(JSON.parse(JSON.stringify(demoTemplateData.writingExam.tasks)));
     setActiveWritingTaskIdx(0);
-    setWriteIsPublished(demoTemplateData.isPublished);
 
     // 4. Speaking
     setSpeakTitle(demoTemplateData.speakingExam.title);
@@ -2016,7 +2191,6 @@ export default function CreateFullMockTestPage() {
     setSpeakDuration(demoTemplateData.speakingExam.duration);
     setSpeakingParts(JSON.parse(JSON.stringify(demoTemplateData.speakingExam.parts)));
     setActiveSpeakingTab(1);
-    setSpeakIsPublished(demoTemplateData.isPublished);
 
     toast.success("Loaded pre-populated IELTS Mock Test demo data!");
   };
@@ -2027,6 +2201,9 @@ export default function CreateFullMockTestPage() {
   const createMutation = useMutation({
     mutationFn: (payload: any) => mockTestService.createFullMockTest(payload),
     onSuccess: () => {
+      try {
+        window.localStorage.removeItem(FULL_MOCK_DRAFT_KEY);
+      } catch {}
       toast.success("Premium CBT Mock Test assembled and saved with all modules!");
       queryClient.invalidateQueries({ queryKey: ["teacher-mock-tests"] });
       router.push("/teacher/mock-tests");
@@ -2042,16 +2219,18 @@ export default function CreateFullMockTestPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!mockTitle.trim()) {
+    if (!resolvedMockTitle.trim()) {
       toast.error("Mock Test Title is required.");
       return;
     }
 
-    // Validate passages up to passageCount
-    for (let idx = 1; idx <= passageCount; idx++) {
-      if (!passages[idx as 1 | 2 | 3].title) {
-        toast.error(`Please ensure Reading Passage ${idx} has a title drafted.`);
-        return;
+    // Validate passages created with the local fallback builder.
+    if (!sharedReadingExam) {
+      for (let idx = 1; idx <= passageCount; idx++) {
+        if (!passages[idx as 1 | 2 | 3].title) {
+          toast.error(`Please ensure Reading Passage ${idx} has a title drafted.`);
+          return;
+        }
       }
     }
 
@@ -2108,7 +2287,10 @@ export default function CreateFullMockTestPage() {
       let currentGroup: any = null;
 
       for (const q of passageQuestions) {
-        const isSameType = currentGroup && currentGroup.type === q.typeCode;
+        const isSameType =
+          currentGroup &&
+          currentGroup.type === q.typeCode &&
+          areInstructionsCompatible(currentGroup.instruction, q.instruction);
         if (isSameType) {
           if ((!currentGroup.options || currentGroup.options.length === 0) && q.groupOptions && q.groupOptions.length > 0) {
             currentGroup.options = q.groupOptions;
@@ -2144,6 +2326,20 @@ export default function CreateFullMockTestPage() {
         });
       }
 
+      questionGroups.forEach((g) => {
+        if (g.questions.length > 0) {
+          const qStart = g.questions[0].questionNumber;
+          const qEnd = g.questions[g.questions.length - 1].questionNumber;
+          const autoRange = qStart === qEnd ? `Question ${qStart}` : `Questions ${qStart}–${qEnd}`;
+          if (g.instruction) {
+            const parsed = parseGroupInstruction(g.instruction);
+            const inst3Part = parsed.inst3 ? `|||INST3:${parsed.inst3}` : "";
+            const listPart = parsed.listItems.length > 0 ? "|||" + parsed.listItems.join("|||") : "";
+            g.instruction = `${autoRange}|||${parsed.inst1}|||${parsed.inst2}|||${parsed.heading}${inst3Part}${listPart}`;
+          }
+        }
+      });
+
       const instructionHtml = p.instruction 
         ? `<div class="mb-6 p-5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-750 leading-relaxed font-semibold italic shadow-sm">
              <span class="text-xs font-black uppercase tracking-wider block text-indigo-700 mb-1">READING PASSAGE ${idx}</span>
@@ -2171,11 +2367,11 @@ export default function CreateFullMockTestPage() {
     });
 
     const payload = {
-      title: mockTitle,
+      title: resolvedMockTitle,
       description: mockDescription,
       isPublished,
-      isPremium: true,
-      listeningExam: {
+      isPremium,
+      listeningExam: sharedListeningExam || {
         title: listeningFormState.title,
         description: listeningFormState.description,
         duration: Number(listeningFormState.duration),
@@ -2203,7 +2399,7 @@ export default function CreateFullMockTestPage() {
           })),
         })),
       },
-      readingExam: {
+      readingExam: sharedReadingExam || {
         title: readTitle,
         description: readDesc,
         duration: readDuration,
@@ -2248,9 +2444,40 @@ export default function CreateFullMockTestPage() {
   };
 
   const activeListeningSection = listeningFormState.sections[activeListeningSectionIdx];
+  const moduleCompletion: Record<TabType, boolean> = {
+    listening: Boolean(sharedListeningExam || (listeningFormState.title.trim() && listeningFormState.sections.every((section) => section.questionGroups.length > 0))),
+    reading: Boolean(sharedReadingExam || (readTitle.trim() && Object.values(passages).slice(0, passageCount).every((passage) => passage.title.trim() && passage.body.trim()))),
+    writing: Boolean(writeTitle.trim() && writingTasks[0]?.instruction?.trim() && writingTasks[1]?.instruction?.trim()),
+    speaking: Boolean(speakTitle.trim() && speakingParts[1]?.instruction?.trim() && speakingParts[0]?.questions?.length && speakingParts[2]?.questions?.length),
+  };
+  const previewListeningExam = sharedListeningExam || listeningFormState;
+  const previewReadingExam = sharedReadingExam
+    ? {
+        title: sharedReadingExam.title,
+        passages: sharedReadingExam.passages,
+        questions: sharedReadingExam.passages.flatMap((passage: any, passageIndex: number) =>
+          (passage.questionGroups || []).flatMap((group: any) =>
+            (group.questions || []).map((question: any) => ({
+              ...question,
+              id: question.id || `shared-reading-${passageIndex + 1}-${question.questionNumber}`,
+              passageIndex: passageIndex + 1,
+              typeCode: group.type,
+              instruction: group.instruction,
+              passageSegment: group.passageSegment,
+              groupOptions: group.options,
+              groupImageUrl: group.imageUrl,
+              text: question.questionText,
+            }))
+          )
+        ),
+      }
+    : { title: readTitle, passages: Object.values(passages).slice(0, passageCount), questions: readingQuestions };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 px-4 py-6 font-sans">
+    <div className="max-w-7xl mx-auto space-y-6 px-4 py-5 font-sans">
+      {(activeTab === "writing" || activeTab === "speaking") && (
+        <FloatingSelectionToolbar allEditableFields syntax="html" />
+      )}
       {/* Uploading full-page overlay loading indicator */}
       {(uploadingStatus || uploadingListeningAudio || uploadingImage || uploadingQImage) && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-3 text-white z-50">
@@ -2266,7 +2493,7 @@ export default function CreateFullMockTestPage() {
       )}
 
       {/* Back Navigation & Load Demo Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/teacher/mock-tests"
           className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-slate-900 transition-colors"
@@ -2275,49 +2502,71 @@ export default function CreateFullMockTestPage() {
           <span>Back to Mock Tests</span>
         </Link>
 
-        <button
-          type="button"
-          onClick={handleLoadDemoTemplate}
-          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-extrabold text-xs shadow-md transition duration-155 active:scale-95 cursor-pointer"
-        >
-          <IconSparkles size={16} className="text-amber-300" />
-          <span>Load Demo Mock Test Template</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {lastDraftSavedAt && (
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                Draft auto-saved ({new Date(lastDraftSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+              </span>
+              <button
+                type="button"
+                onClick={handleResetDraft}
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition active:scale-95 cursor-pointer"
+                title="Discard full draft and reset"
+              >
+                Reset Draft
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleLoadDemoTemplate}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-extrabold text-xs shadow-md transition duration-155 active:scale-95 cursor-pointer"
+          >
+            <IconSparkles size={15} className="text-amber-300" />
+            <span>Load Demo Mock Test</span>
+          </button>
+        </div>
       </div>
 
       {/* Header Banner - Replaced with shadcn Card */}
-      <Card className="border border-slate-200 shadow-sm bg-white p-6">
+      <Card className="border border-slate-200 shadow-xs bg-white p-5 md:p-6">
         <CardHeader className="p-0 pb-1">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1.5">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-[10px] font-bold text-purple-700 uppercase tracking-widest">
                 <IconLock size={12} className="text-purple-600" />
                 <span>Premium Full Exam Simulation Builder</span>
               </div>
-              <CardTitle className="text-2xl font-black text-gray-900 tracking-tight mt-2">
+              <CardTitle className="text-2xl font-black text-gray-900 tracking-tight">
                 Create Full Mock Test
               </CardTitle>
               <CardDescription className="text-gray-500 text-sm font-medium">
                 Construct a complete IELTS CBT Mock Test with Listening, Reading, Writing, and Speaking modules loaded with comprehensive builders.
               </CardDescription>
             </div>
-            <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 shadow-xs shrink-0 self-start md:self-auto">
-              <IconTrophy size={32} />
+            <div className="flex items-center justify-center h-13 w-13 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 shadow-xs shrink-0 self-start md:self-auto">
+              <IconTrophy size={28} />
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="space-y-6">
         {/* Step 1: Mock Test Meta Details */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xs space-y-6">
-          <h2 className="text-lg font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 text-xs font-black">1</span>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-xs space-y-5">
+          <h2 className="text-base font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 text-xs font-black">1</span>
             <span>Mock Test Details</span>
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+            <div className="space-y-1.5 md:col-span-2">
               <label className="text-xs font-black text-gray-700 uppercase" htmlFor="mockTitle">
                 Mock Test Title *
               </label>
@@ -2326,7 +2575,7 @@ export default function CreateFullMockTestPage() {
                 type="text"
                 required
                 placeholder="e.g. IELTS Academic Full Practice Exam Vol 1"
-                value={mockTitle}
+                value={resolvedMockTitle}
                 onChange={(e) => setMockTitle(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:border-purple-600 focus:outline-hidden transition duration-200"
               />
@@ -2342,9 +2591,79 @@ export default function CreateFullMockTestPage() {
                 onChange={(e) => setIsPublished(e.target.value === "true")}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-semibold bg-white focus:border-purple-600 focus:outline-hidden transition duration-200"
               >
-                <option value="true">Published (Students can purchase/attempt)</option>
-                <option value="false">Draft (Hidden from students)</option>
+                <option value="true">🟢 Published (Students can attempt)</option>
+                <option value="false">📝 Draft (Hidden from students)</option>
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-gray-700 uppercase flex items-center gap-1.5" htmlFor="isPremium">
+                <IconCrown size={14} className={isPremium ? "text-amber-500 fill-amber-500" : "text-slate-400"} />
+                <span>Access Tier</span>
+              </label>
+              <select
+                id="isPremium"
+                value={isPremium ? "true" : "false"}
+                onChange={(e) => setIsPremium(e.target.value === "true")}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-semibold bg-white focus:border-purple-600 focus:outline-hidden transition duration-200"
+              >
+                <option value="false">🆓 Free Mock Test (All Candidates)</option>
+                <option value="true">👑 Premium Mock Test (Paid Access)</option>
+              </select>
+            </div>
+
+            {/* Visual Access Tier Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:col-span-2">
+              <div
+                onClick={() => setIsPremium(false)}
+                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                  !isPremium
+                    ? "border-emerald-500 bg-emerald-50/40 shadow-xs"
+                    : "border-slate-200 hover:border-slate-300 bg-slate-50/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="cbtAccessTier"
+                  checked={!isPremium}
+                  onChange={() => setIsPremium(false)}
+                  className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                    Free Mock Test
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    Open to all registered candidates for free practice without any payment or subscription.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setIsPremium(true)}
+                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                  isPremium
+                    ? "border-amber-500 bg-amber-50/40 shadow-xs"
+                    : "border-slate-200 hover:border-slate-300 bg-slate-50/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="cbtAccessTier"
+                  checked={isPremium}
+                  onChange={() => setIsPremium(true)}
+                  className="mt-1 h-4 w-4 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider">
+                    <IconCrown size={12} className="fill-amber-500 text-amber-600" />
+                    <span>Premium Mock Test</span>
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    Locked for free users. Students must purchase premium access to unlock this and all other premium tests.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
@@ -2367,10 +2686,10 @@ export default function CreateFullMockTestPage() {
         <div className="bg-white border border-gray-200 rounded-2xl shadow-xs overflow-hidden">
           <div className="bg-slate-50 border-b border-gray-200 px-4 md:px-8 flex overflow-x-auto gap-2">
             {[
-              { id: "listening", label: "Listening Module", icon: <IconHeadset size={18} />, color: "text-blue-500 border-blue-500" },
-              { id: "reading", label: "Reading Module", icon: <IconBook2 size={18} />, color: "text-emerald-500 border-emerald-500" },
-              { id: "writing", label: "Writing Module", icon: <IconPencil size={18} />, color: "text-amber-500 border-amber-500" },
-              { id: "speaking", label: "Speaking Module", icon: <IconMicrophone size={18} />, color: "text-rose-500 border-rose-500" },
+              { id: "listening", label: "Listening", icon: <IconHeadset size={18} />, color: "text-blue-600 border-blue-500" },
+              { id: "reading", label: "Reading", icon: <IconBook2 size={18} />, color: "text-emerald-600 border-emerald-500" },
+              { id: "writing", label: "Writing", icon: <IconPencil size={18} />, color: "text-amber-600 border-amber-500" },
+              { id: "speaking", label: "Speaking", icon: <IconMicrophone size={18} />, color: "text-rose-600 border-rose-500" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -2392,16 +2711,25 @@ export default function CreateFullMockTestPage() {
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
+                  <span className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${moduleCompletion[tab.id as TabType] ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                    {moduleCompletion[tab.id as TabType] ? <IconCheck size={12} stroke={3} /> : ["listening", "reading", "writing", "speaking"].indexOf(tab.id) + 1}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="p-6 md:p-8 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6">
             {/* ========================================================== */}
             {/* TAB: LISTENING (Hubuhu matching standalone create form) */}
             {/* ========================================================== */}
             {activeTab === "listening" && (
+              <div>
+                <ListeningCreatorWorkspace embedded onExamReady={setSharedListeningExam} />
+              </div>
+            )}
+
+            {showLegacyModuleBuilders && activeTab === "listening" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
                 {/* LEFT COLUMN: EXAM CORE METADATA */}
                 <div className="lg:col-span-1 space-y-6">
@@ -2924,6 +3252,12 @@ export default function CreateFullMockTestPage() {
             {/* TAB: READING (Hubuhu matching standalone create form) */}
             {/* ========================================================== */}
             {activeTab === "reading" && (
+              <div>
+                <ReadingCreatorWorkspace embedded onExamReady={setSharedReadingExam} />
+              </div>
+            )}
+
+            {showLegacyModuleBuilders && activeTab === "reading" && (
               <div className="flex-1 space-y-6">
                 
                 {/* Top Welcome & Header Info (re-styled to fit in layout frame) */}
@@ -2991,59 +3325,15 @@ export default function CreateFullMockTestPage() {
                     </Card>
 
                     {/* Passage Tab Selectors */}
-                    <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs flex gap-2 w-full">
-                      {([1, 2, 3] as const).slice(0, passageCount).map((idx) => {
-                        const isSelected = activePassage === idx;
-                        const isPassageComplete = passages[idx].title !== '';
-                        const qCount = getQuestionCountForPassage(idx);
-                        
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setActivePassage(idx);
-                              setSelectedQuestionType(null);
-                            }}
-                            className={`flex-1 flex flex-col sm:flex-row items-center justify-between p-3.5 rounded-lg border text-left transition-all duration-200 cursor-pointer ${
-                              isSelected
-                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md font-bold'
-                                : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-100 hover:bg-indigo-50/20'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className={`h-6 w-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                                isSelected ? 'bg-white text-indigo-755' : 'bg-indigo-50 text-indigo-600'
-                              }`}>
-                                {idx}
-                              </span>
-                              <div className="text-left">
-                                <p className="text-[10px] font-bold uppercase tracking-wider block opacity-75">IELTS Passage</p>
-                                <p className="font-extrabold text-xs block mt-0.5 sm:hidden">P{idx}</p>
-                                <p className="font-extrabold text-xs hidden sm:block">Passage {idx}</p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                isSelected 
-                                  ? 'bg-white/20 text-white' 
-                                  : isPassageComplete 
-                                    ? 'bg-indigo-50 text-indigo-600' 
-                                    : 'bg-gray-100 text-gray-400'
-                              }`}>
-                                {isPassageComplete ? 'Text Drafted' : 'Empty'}
-                              </span>
-                              <span className={`text-[10px] font-black shrink-0 ${
-                                isSelected ? 'text-white' : 'text-gray-500'
-                              }`}>
-                                {qCount} Qs
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <ReadingSectionTabs
+                      sectionCount={passageCount}
+                      activeSection={activePassage}
+                      onSectionChange={(section) => {
+                        setActivePassage(section);
+                        setSelectedQuestionType(null);
+                      }}
+                      isSectionComplete={(section) => Boolean(passages[section].title.trim())}
+                    />
 
                     {/* Passage Form Card */}
                     <Card className="bg-white border-gray-200 shadow-xs relative overflow-hidden pt-5">
@@ -3154,7 +3444,7 @@ export default function CreateFullMockTestPage() {
                             ref={readPassageBodyRef}
                             rows={8}
                             value={passages[activePassage].body}
-                            onChange={(e) => updatePassageField('body', e.target.value)}
+                            onChange={(e) => updatePassageField('body', htmlPassageToEditableText(e.target.value))}
                             placeholder="Enter the full Reading Passage paragraphs..." 
                             className="w-full text-xs font-semibold px-4.5 py-3 border border-gray-200 rounded-xl focus:outline-hidden focus:border-indigo-400 bg-gray-50/50 text-black placeholder:text-gray-400 resize-y"
                           />
@@ -3187,6 +3477,11 @@ export default function CreateFullMockTestPage() {
                                     if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
                                       setQuestionInstruction("|||Which paragraph contains the following information?|||Write the correct letter, A–G. NB You may use any letter more than once.|||");
                                     }
+                                  } else if (type.code === "R-NMATCH") {
+                                    if (!groupOptions.trim()) setGroupOptions("A  Person one\nB  Person two\nC  Person three");
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Look at the following statements and the list of people below.|||Match each statement with the correct person or people, A–E.|||Write the correct letter, A–E, in the boxes on your answer sheet.");
+                                    }
                                   } else if (type.code === "R-TFN") {
                                     if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
                                       setQuestionInstruction("|||Do the following statements agree with the information given in Reading Passage?|||In boxes on your answer sheet, write:||||||TRUE  if the statement agrees with the information|||FALSE  if the statement contradicts the information|||NOT GIVEN  if there is no information on this");
@@ -3198,6 +3493,10 @@ export default function CreateFullMockTestPage() {
                                   } else if (type.code === "R-MHDG") {
                                     if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
                                       setQuestionInstruction("|||Choose the correct heading for each paragraph from the list of headings below.|||Write the correct number, i–x, in boxes on your answer sheet.|||");
+                                    }
+                                  } else if (type.code === "R-SCOMP") {
+                                    if (!questionInstruction.trim() || questionInstruction === "||||||" || questionInstruction === "|||") {
+                                      setQuestionInstruction("|||Complete the sentences below.|||Choose NO MORE THAN TWO WORDS from the passage for each answer.||||||INST3:Write your answers in boxes on your answer sheet.");
                                     }
                                   }
                                 }}
@@ -3379,13 +3678,149 @@ export default function CreateFullMockTestPage() {
                                 />
                               </div>
                               
-                              {(() => {
+                              {selectedQuestionType === "R-SCOMP" && (() => {
+                                const parsed = parseGroupInstruction(questionInstruction);
+                                const currentPassageQuestions = readingQuestions.filter(q => q.passageIndex === activePassage);
+                                const scompQuestions = currentPassageQuestions.filter(q => q.typeCode === "R-SCOMP" || q.type === "SENTENCE_COMPLETION");
+                                const nextQNum = typeof customQuestionNumber === "number" && customQuestionNumber > 0
+                                  ? customQuestionNumber
+                                  : readingQuestions.length + 1;
+                                const rangeStart = scompQuestions.length > 0 ? Math.min(...scompQuestions.map(q => q.questionNumber)) : nextQNum;
+                                const rangeEnd = scompQuestions.length > 0 ? Math.max(...scompQuestions.map(q => q.questionNumber), nextQNum) : nextQNum;
+                                const automaticRange = rangeStart === rangeEnd
+                                  ? `Question ${rangeStart}`
+                                  : `Questions ${rangeStart}–${rangeEnd}`;
+                                const rangeBoxStr = rangeStart === rangeEnd ? `box ${rangeStart}` : `boxes ${rangeStart}–${rangeEnd}`;
+
+                                const updateScompInstruction = (field: "range" | "inst1" | "inst2" | "inst3" | "heading", val: string) => {
+                                  const next = { ...parsed, [field]: val };
+                                  const inst3Part = next.inst3?.trim() ? `|||INST3:${next.inst3.trim()}` : "";
+                                  const listItemsJoined = (next.listItems || []).join("|||");
+                                  const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}${inst3Part}${
+                                    listItemsJoined ? "|||" + listItemsJoined : ""
+                                  }`;
+                                  setQuestionInstruction(serialized);
+                                };
+
+                                return (
+                                  <div className="sm:col-span-3 space-y-4 bg-indigo-50/40 p-4 rounded-xl border border-indigo-200 shadow-xs animate-fadeIn">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <span className="text-[11px] font-black uppercase text-indigo-900 tracking-wider block">
+                                          Sentence Completion Instruction Configuration
+                                        </span>
+                                        <p className="text-[10px] font-medium text-gray-500 mt-0.5">
+                                          Configure the 3 instruction lines to match standard IELTS exam format.
+                                        </p>
+                                      </div>
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                                        IELTS Standard (3 Lines)
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      {/* 1. Question Range Header */}
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-gray-600 uppercase flex items-center justify-between">
+                                          <span>1. Question Range Header</span>
+                                          <span className="text-gray-400 font-normal lowercase">(optional heading)</span>
+                                        </label>
+                                        <ReadIeltsHeaderInput
+                                          value={parsed.range || automaticRange}
+                                          onChange={(val) => updateScompInstruction("range", val)}
+                                          placeholder="e.g. Questions 23–26"
+                                        />
+                                      </div>
+
+                                      {/* 2. Instruction Line 1: Main Task */}
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-gray-600 uppercase">
+                                          2. Instruction Line 1 (Main Task)
+                                        </label>
+                                        <ReadIeltsHeaderInput
+                                          value={parsed.inst1}
+                                          onChange={(val) => updateScompInstruction("inst1", val)}
+                                          placeholder="Complete the sentences below."
+                                        />
+                                      </div>
+
+                                      {/* 3. Instruction Line 2: Word Limit Rule */}
+                                      <div className="space-y-1 sm:col-span-2">
+                                        <label className="text-[9px] font-black text-gray-600 uppercase flex items-center justify-between">
+                                          <span>3. Instruction Line 2 (Word Limit Rule)</span>
+                                          <span className="text-indigo-600 font-bold text-[9px]">Click quick presets to auto-fill</span>
+                                        </label>
+                                        <ReadIeltsHeaderInput
+                                          value={parsed.inst2}
+                                          onChange={(val) => updateScompInstruction("inst2", val)}
+                                          placeholder="Choose NO MORE THAN TWO WORDS from the passage for each answer."
+                                        />
+                                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                          <span className="text-[9px] font-bold text-gray-500">Quick Word Limits:</span>
+                                          {[
+                                            "Choose NO MORE THAN TWO WORDS from the passage for each answer.",
+                                            "Choose ONE WORD ONLY from the passage for each answer.",
+                                            "Choose NO MORE THAN THREE WORDS AND/OR A NUMBER from the passage for each answer.",
+                                            "Choose NO MORE THAN TWO WORDS AND/OR A NUMBER from the passage for each answer."
+                                          ].map((preset, pIdx) => {
+                                            const shortLabel = preset.includes("TWO WORDS AND/OR A NUMBER")
+                                              ? "NO MORE THAN 2 WORDS & NUMBER"
+                                              : preset.includes("THREE WORDS")
+                                              ? "NO MORE THAN 3 WORDS"
+                                              : preset.includes("ONE WORD ONLY")
+                                              ? "ONE WORD ONLY"
+                                              : "NO MORE THAN 2 WORDS";
+                                            return (
+                                              <button
+                                                key={pIdx}
+                                                type="button"
+                                                onClick={() => updateScompInstruction("inst2", preset)}
+                                                className={`text-[9px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                                                  parsed.inst2 === preset
+                                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                                    : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                                                }`}
+                                              >
+                                                {shortLabel}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+
+                                      {/* 4. Instruction Line 3: Answer Sheet Box Instruction */}
+                                      <div className="space-y-1 sm:col-span-2">
+                                        <div className="flex items-center justify-between">
+                                          <label className="text-[9px] font-black text-gray-600 uppercase">
+                                            4. Instruction Line 3 (Answer Sheet Boxes)
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => updateScompInstruction("inst3", `Write your answers in ${rangeBoxStr} on your answer sheet.`)}
+                                            className="text-[9px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                                          >
+                                            ⚡ Auto-fill: &quot;Write your answers in {rangeBoxStr} on your answer sheet.&quot;
+                                          </button>
+                                        </div>
+                                        <ReadIeltsHeaderInput
+                                          value={parsed.inst3 || ""}
+                                          onChange={(val) => updateScompInstruction("inst3", val)}
+                                          placeholder={`Write your answers in ${rangeBoxStr} on your answer sheet.`}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {selectedQuestionType !== "R-SCOMP" && (() => {
                                 const parsed = parseGroupInstruction(questionInstruction);
                                 
-                                const updateField = (field: "range" | "inst1" | "inst2" | "heading", val: string) => {
+                                const updateField = (field: "range" | "inst1" | "inst2" | "heading" | "inst3", val: string) => {
                                   const next = { ...parsed, [field]: val };
+                                  const inst3Part = next.inst3?.trim() ? `|||INST3:${next.inst3.trim()}` : "";
                                   const listItemsJoined = (next.listItems || []).join("|||");
-                                  const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}${
+                                  const serialized = `${next.range.trim()}|||${next.inst1.trim()}|||${next.inst2.trim()}|||${next.heading.trim()}${inst3Part}${
                                     listItemsJoined ? "|||" + listItemsJoined : ""
                                   }`;
                                   setQuestionInstruction(serialized);
@@ -3394,20 +3829,23 @@ export default function CreateFullMockTestPage() {
                                 const handleAddListItem = () => {
                                   const currentItems = parsed.listItems || [];
                                   const nextItems = [...currentItems, ""];
-                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}|||${nextItems.join("|||")}`;
+                                  const inst3Part = parsed.inst3?.trim() ? `|||INST3:${parsed.inst3.trim()}` : "";
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}${inst3Part}|||${nextItems.join("|||")}`;
                                   setQuestionInstruction(serialized);
                                 };
 
                                 const handleUpdateListItem = (index: number, val: string) => {
                                   const nextItems = [...(parsed.listItems || [])];
                                   nextItems[index] = val;
-                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}|||${nextItems.join("|||")}`;
+                                  const inst3Part = parsed.inst3?.trim() ? `|||INST3:${parsed.inst3.trim()}` : "";
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}${inst3Part}|||${nextItems.join("|||")}`;
                                   setQuestionInstruction(serialized);
                                 };
 
                                 const handleRemoveListItem = (index: number) => {
                                   const nextItems = (parsed.listItems || []).filter((_, idx) => idx !== index);
-                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}${nextItems.length > 0 ? "|||" + nextItems.join("|||") : ""}`;
+                                  const inst3Part = parsed.inst3?.trim() ? `|||INST3:${parsed.inst3.trim()}` : "";
+                                  const serialized = `${parsed.range.trim()}|||${parsed.inst1.trim()}|||${parsed.inst2.trim()}|||${parsed.heading.trim()}${inst3Part}${nextItems.length > 0 ? "|||" + nextItems.join("|||") : ""}`;
                                   setQuestionInstruction(serialized);
                                 };
 
@@ -3449,6 +3887,14 @@ export default function CreateFullMockTestPage() {
                                           placeholder="e.g. Write the correct letter..."
                                         />
                                       </div>
+                                      <div className="space-y-1 sm:col-span-2">
+                                        <label className="text-[9px] font-black text-gray-500 uppercase">5. Instruction Line 3 (Italic - Optional)</label>
+                                        <ReadIeltsHeaderInput
+                                          value={parsed.inst3 || ""}
+                                          onChange={(val) => updateField("inst3", val)}
+                                          placeholder="e.g. Write your answers in boxes on your answer sheet."
+                                        />
+                                      </div>
                                     </div>
 
                                     {/* Dynamic list items block */}
@@ -3460,26 +3906,26 @@ export default function CreateFullMockTestPage() {
                                         <button
                                           type="button"
                                           onClick={handleAddListItem}
-                                          className="text-[9px] font-extrabold uppercase px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                                          className="text-[9px] font-extrabold uppercase px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition cursor-pointer"
                                         >
                                           + Add Instruction Line
                                         </button>
                                       </div>
 
-                                      <div className="space-y-2">
+                                      <div className="space-y-3">
                                         {(parsed.listItems || []).map((item, itemIdx) => (
-                                          <div key={itemIdx} className="flex gap-2 items-center">
-                                            <input
-                                              type="text"
-                                              value={item}
-                                              onChange={(e) => handleUpdateListItem(itemIdx, e.target.value)}
-                                              placeholder="e.g. TRUE  if the statement agrees with the information"
-                                              className="flex-grow text-xs px-2.5 py-1.5 border border-indigo-100 rounded bg-white text-black placeholder:text-gray-400 focus:outline-none focus:border-indigo-400 font-semibold"
-                                            />
+                                          <div key={itemIdx} className="flex gap-2 items-start bg-white p-2.5 rounded-lg border border-indigo-100">
+                                            <div className="flex-1 min-w-0">
+                                              <ReadIeltsHeaderInput
+                                                value={item}
+                                                onChange={(val) => handleUpdateListItem(itemIdx, val)}
+                                                placeholder="e.g. TRUE  if the statement agrees with the information"
+                                              />
+                                            </div>
                                             <button
                                               type="button"
                                               onClick={() => handleRemoveListItem(itemIdx)}
-                                              className="text-[10px] font-bold text-red-500 hover:text-red-750 px-2 py-1"
+                                              className="text-[10px] font-bold text-red-500 hover:text-red-750 px-2 py-2 mt-7 shrink-0 cursor-pointer"
                                             >
                                               Remove
                                             </button>
@@ -3493,14 +3939,41 @@ export default function CreateFullMockTestPage() {
                             </div>
 
                             {/* Conditional input: Matching Options */}
-                            {["R-MHDG", "R-MINF", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) && (
+                            {["R-MHDG", "R-MINF", "R-NMATCH", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) && (
                               <div className="space-y-1">
                                 <ReadFormatToolbar 
                                   inputRef={readGroupOptionsRef}
                                   value={groupOptions}
                                   onChange={setGroupOptions}
-                                  label="List of Options (One per line)"
+                                  label={selectedQuestionType === "R-MHDG"
+                                    ? "List of Headings"
+                                    : selectedQuestionType === "R-MINF"
+                                    ? "Paragraph dropdown options"
+                                    : selectedQuestionType === "R-NMATCH"
+                                    ? "List of People"
+                                    : "List of Options (One per line)"}
                                 />
+                                {selectedQuestionType === "R-MSE" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setGroupOptions([
+                                        "A  the question of how certain long-lost traits could reappear.",
+                                        "B  the occurrence of a particular feature in different species.",
+                                        "C  parallels drawn between behaviour and appearance.",
+                                        "D  the continued existence of certain genetic information.",
+                                        "E  the doubts felt about evolutionary throwbacks.",
+                                        "F  the possibility of evolution being reversible.",
+                                        "G  Dollo's findings and the convictions held by Lombroso."
+                                      ].join("\n"));
+                                      setQuestionInstruction("|||Complete each sentence with the correct ending, A–G, below.|||Write the correct letter, A–G, in boxes on your answer sheet.|||");
+                                      toast.success("Loaded Matching Sentence Endings template (A–G).");
+                                    }}
+                                    className="rounded border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-800 hover:bg-indigo-100"
+                                  >
+                                    Load Evolutionary Throwbacks sample (A–G)
+                                  </button>
+                                )}
                                 <textarea 
                                   ref={readGroupOptionsRef}
                                   rows={4}
@@ -3509,6 +3982,10 @@ export default function CreateFullMockTestPage() {
                                   placeholder={
                                     selectedQuestionType === "R-SCO"
                                       ? `e.g.\nA  constant conflict\nB  additional evidence\nC  different locations\nD  experimental subjects`
+                                      : selectedQuestionType === "R-NMATCH"
+                                      ? `A  Freeman\nB  Shore and Kanevsky\nC  Elshout\nD  Simonton\nE  Boekaerts`
+                                      : selectedQuestionType === "R-MSE"
+                                      ? `A  first possible ending.\nB  second possible ending.\nC  third possible ending.`
                                       : `e.g.\ni   Heading 1\nii  Heading 2\niii Heading 3`
                                   } 
                                   className="w-full text-xs font-semibold px-3.5 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden focus:border-indigo-400 text-black placeholder:text-gray-400 resize-none font-mono"
@@ -3550,6 +4027,40 @@ export default function CreateFullMockTestPage() {
                                         })()
                                       }
                                     />
+                                    {getPlaceholderNumbers(passageSegment).length > 0 && (
+                                      <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+                                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                          <p className="text-xs font-extrabold uppercase tracking-wide text-indigo-950">
+                                            Correct answers — {getPlaceholderNumbers(passageSegment).length} blanks
+                                          </p>
+                                          <span className="rounded-full bg-indigo-700 px-2.5 py-1 text-[10px] font-bold text-white">
+                                            Questions {getPlaceholderNumbers(passageSegment).join(", ")}
+                                          </span>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                          {getPlaceholderNumbers(passageSegment).map((questionNumber) => {
+                                            const savedAnswer = readingQuestions.find(
+                                              (question) => question.passageIndex === activePassage && question.questionNumber === questionNumber
+                                            )?.correctAnswer ?? "";
+                                            return (
+                                              <label key={questionNumber} className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-white p-2.5 shadow-sm">
+                                                <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md bg-indigo-700 text-xs font-black text-white">
+                                                  {questionNumber}
+                                                </span>
+                                                <input
+                                                  type="text"
+                                                  value={noteAnswers[questionNumber] ?? savedAnswer}
+                                                  onChange={(event) => setNoteAnswers((current) => ({ ...current, [questionNumber]: event.target.value }))}
+                                                  placeholder={`Answer for [${questionNumber}]`}
+                                                  className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-black outline-none"
+                                                />
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                        <p className="mt-3 text-[10px] font-medium text-indigo-800">Fill every box, then save all Note Completion answers together.</p>
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
                                   <>
@@ -3610,6 +4121,101 @@ export default function CreateFullMockTestPage() {
                             {/* MCQ Options Choices */}
                             {(selectedQuestionType === "R-MCQ" || selectedQuestionType === "R-MMCQ") && (
                               <div className="space-y-3">
+                                <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 to-purple-50/40 p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-indigo-950">
+                                      Question Format & Number of Answers
+                                    </p>
+                                    <span className="text-[10px] font-semibold text-indigo-600 bg-white border border-indigo-200 px-2 py-0.5 rounded-full shadow-2xs">
+                                      Unified MCQ Builder
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuestionType("R-MCQ");
+                                        if (multiMcqCorrectAnswers.length > 0 && !correctAnswer) {
+                                          setCorrectAnswer(multiMcqCorrectAnswers[0]);
+                                        }
+                                      }}
+                                      className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                                        selectedQuestionType === "R-MCQ"
+                                          ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                                          : "border-indigo-100 bg-white text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/30"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <span>Choose 1 letter</span>
+                                        {selectedQuestionType === "R-MCQ" && <span className="text-[10px] font-black">✓</span>}
+                                      </div>
+                                      <span className={`text-[10px] mt-0.5 ${selectedQuestionType === "R-MCQ" ? "text-indigo-100" : "text-gray-500"}`}>
+                                        Standard 1 Question (A–D)
+                                      </span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuestionType("R-MMCQ");
+                                        setMultiMcqAnswerCount(2);
+                                        if (correctAnswer && !multiMcqCorrectAnswers.includes(correctAnswer)) {
+                                          setMultiMcqCorrectAnswers([correctAnswer]);
+                                        } else {
+                                          setMultiMcqCorrectAnswers((current) => current.slice(0, 2));
+                                        }
+                                      }}
+                                      className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                                        selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 2
+                                          ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                                          : "border-indigo-100 bg-white text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/30"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <span>Choose TWO letters</span>
+                                        {selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 2 && <span className="text-[10px] font-black">✓</span>}
+                                      </div>
+                                      <span className={`text-[10px] mt-0.5 ${selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 2 ? "text-indigo-100" : "text-gray-500"}`}>
+                                        2 Questions (A–E)
+                                      </span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedQuestionType("R-MMCQ");
+                                        setMultiMcqAnswerCount(3);
+                                        if (correctAnswer && !multiMcqCorrectAnswers.includes(correctAnswer)) {
+                                          setMultiMcqCorrectAnswers([correctAnswer]);
+                                        } else {
+                                          setMultiMcqCorrectAnswers((current) => current.slice(0, 3));
+                                        }
+                                      }}
+                                      className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                                        selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 3
+                                          ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                                          : "border-indigo-100 bg-white text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/30"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <span>Choose THREE letters</span>
+                                        {selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 3 && <span className="text-[10px] font-black">✓</span>}
+                                      </div>
+                                      <span className={`text-[10px] mt-0.5 ${selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 3 ? "text-indigo-100" : "text-gray-500"}`}>
+                                        3 Questions (A–G)
+                                      </span>
+                                    </button>
+                                  </div>
+
+                                  <p className="mt-2 text-[10.5px] text-indigo-800 font-medium">
+                                    {selectedQuestionType === "R-MCQ"
+                                      ? "💡 Standard IELTS: Student chooses 1 answer. Options A to D are typical (E optional)."
+                                      : selectedQuestionType === "R-MMCQ" && multiMcqAnswerCount === 2
+                                      ? "💡 Standard IELTS: Creates 2 numbered questions (e.g. 37–38). Fill options A through E."
+                                      : "💡 Standard IELTS: Creates 3 numbered questions (e.g. 24–26). Fill options A through G."}
+                                  </p>
+                                </div>
                                 <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block">Multiple Choice Options</label>
                                 <div className="grid gap-2 sm:grid-cols-2">
                                   <ReadFormatInput 
@@ -3663,117 +4269,325 @@ export default function CreateFullMockTestPage() {
                             )}
 
                             {/* Correct Answer & Explanation */}
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block font-bold">Correct Answer Value <span className="text-rose-500">*</span></label>
-                                {selectedQuestionType === "R-MMCQ" ? (
-                                  <div className="space-y-2 py-1">
-                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                      {["A", "B", "C", "D", "E", "F", "G"].map((letter) => {
-                                        const optVal = letter === "A" ? mcqOptA : letter === "B" ? mcqOptB : letter === "C" ? mcqOptC : letter === "D" ? mcqOptD : letter === "E" ? mcqOptE : letter === "F" ? mcqOptF : mcqOptG;
-                                        if (!optVal.trim()) return null;
-                                        const isChecked = multiMcqCorrectAnswers.includes(letter);
-                                        const handleCheck = () => {
-                                          if (isChecked) {
-                                            setMultiMcqCorrectAnswers(multiMcqCorrectAnswers.filter(item => item !== letter));
-                                          } else {
-                                            setMultiMcqCorrectAnswers([...multiMcqCorrectAnswers, letter]);
-                                          }
-                                        };
-                                        return (
-                                          <label key={letter} className="flex items-center gap-1.5 text-xs text-black font-semibold cursor-pointer font-sans">
-                                            <input 
-                                              type="checkbox" 
-                                              checked={isChecked} 
-                                              onChange={handleCheck} 
-                                              className="rounded border-indigo-100 text-indigo-650 focus:ring-indigo-500 h-4 w-4"
-                                            />
-                                            <span>Option {letter} ({optVal})</span>
-                                          </label>
-                                        );
-                                      })}
+                            {!(selectedQuestionType === "R-NCOMP" && getPlaceholderNumbers(passageSegment).length > 0) && (
+                            selectedQuestionType === "R-SCOMP" && scompMode !== "WITH_CLUES" ? (
+                              <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/20 p-3.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider">
+                                    Sentence Completion Answer Keys (3 Fields)
+                                  </span>
+                                  <span className="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded-full shadow-2xs">
+                                    Auto-deduplicated
+                                  </span>
+                                </div>
+                                
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                  {/* 1. Primary Correct Answer */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-extrabold text-indigo-800 uppercase tracking-wider block">
+                                        Primary Correct Answer <span className="text-rose-500">*</span>
+                                      </label>
+                                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-100/60 px-1.5 py-0.5 rounded">
+                                        Required
+                                      </span>
                                     </div>
+                                    <ReadFormatInput 
+                                      inputRef={readAnswerInputRef}
+                                      value={correctAnswer}
+                                      onChange={setCorrectAnswer}
+                                      placeholder="e.g. books and activities"
+                                      required
+                                    />
                                   </div>
-                                ) : selectedQuestionType === "R-MCQ" ? (
-                                  <select 
-                                    value={correctAnswer}
-                                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                                    className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
-                                    required
-                                  >
-                                    <option value="">-- Choose Option Letter --</option>
-                                    <option value="A">Option A</option>
-                                    <option value="B">Option B</option>
-                                    <option value="C">Option C</option>
-                                    <option value="D">Option D</option>
-                                    {mcqOptE && <option value="E">Option E</option>}
-                                    {mcqOptF && <option value="F">Option F</option>}
-                                    {mcqOptG && <option value="G">Option G</option>}
-                                  </select>
-                                ) : selectedQuestionType === "R-TFN" ? (
-                                  <select 
-                                    value={correctAnswer}
-                                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                                    className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
-                                    required
-                                  >
-                                    <option value="">-- Select Answer --</option>
-                                    <option value="TRUE">TRUE</option>
-                                    <option value="FALSE">FALSE</option>
-                                    <option value="NOT GIVEN">NOT GIVEN</option>
-                                  </select>
-                                ) : selectedQuestionType === "R-YNN" ? (
-                                  <select 
-                                    value={correctAnswer}
-                                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                                    className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
-                                    required
-                                  >
-                                    <option value="">-- Select Answer --</option>
-                                    <option value="YES">YES</option>
-                                    <option value="NO">NO</option>
-                                    <option value="NOT GIVEN">NOT GIVEN</option>
-                                  </select>
-                                ) : (["R-MHDG", "R-MINF", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) || (selectedQuestionType === "R-SCOMP" && scompMode === "WITH_CLUES")) && groupOptions.trim() ? (
-                                  <select 
-                                    value={correctAnswer}
-                                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                                    className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
-                                    required
-                                  >
-                                    <option value="">-- Select Option --</option>
-                                    {groupOptions.split("\n").map(o => o.trim()).filter(Boolean).map((opt, idx) => (
-                                      <option key={idx} value={opt}>{opt}</option>
-                                    ))}
-                                  </select>
-                                ) : (
+
+                                  {/* 2. Extra Correct Answer 1 */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-extrabold text-indigo-800 uppercase tracking-wider block">
+                                        Extra Correct Answer 1
+                                      </label>
+                                      {scompAltAnswer1.trim() && correctAnswer.trim().toLowerCase() === scompAltAnswer1.trim().toLowerCase() ? (
+                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                          Duplicate (ignored)
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                          Optional
+                                        </span>
+                                      )}
+                                    </div>
+                                    <input 
+                                      ref={scompAlt1Ref}
+                                      type="text"
+                                      value={scompAltAnswer1}
+                                      onChange={(e) => setScompAltAnswer1(e.target.value)}
+                                      placeholder="e.g. activities and books"
+                                      className={`w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white focus:outline-hidden text-black placeholder:text-gray-400 transition-colors h-9 ${
+                                        scompAltAnswer1.trim() && correctAnswer.trim().toLowerCase() === scompAltAnswer1.trim().toLowerCase()
+                                          ? "border-amber-300 bg-amber-50/40"
+                                          : "border-indigo-100"
+                                      }`}
+                                    />
+                                  </div>
+
+                                  {/* 3. Extra Correct Answer 2 */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-[10px] font-extrabold text-indigo-800 uppercase tracking-wider block">
+                                        Extra Correct Answer 2
+                                      </label>
+                                      {scompAltAnswer2.trim() &&
+                                      (correctAnswer.trim().toLowerCase() === scompAltAnswer2.trim().toLowerCase() ||
+                                       scompAltAnswer1.trim().toLowerCase() === scompAltAnswer2.trim().toLowerCase()) ? (
+                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                          Duplicate (ignored)
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                          Optional
+                                        </span>
+                                      )}
+                                    </div>
+                                    <input 
+                                      ref={scompAlt2Ref}
+                                      type="text"
+                                      value={scompAltAnswer2}
+                                      onChange={(e) => setScompAltAnswer2(e.target.value)}
+                                      placeholder="e.g. books, activities"
+                                      className={`w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white focus:outline-hidden text-black placeholder:text-gray-400 transition-colors h-9 ${
+                                        scompAltAnswer2.trim() &&
+                                        (correctAnswer.trim().toLowerCase() === scompAltAnswer2.trim().toLowerCase() ||
+                                         scompAltAnswer1.trim().toLowerCase() === scompAltAnswer2.trim().toLowerCase())
+                                          ? "border-amber-300 bg-amber-50/40"
+                                          : "border-indigo-100"
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Deduplicated Accepted Answers Live Preview */}
+                                {(() => {
+                                  const deduped: string[] = [];
+                                  const seen = new Set<string>();
+                                  for (const raw of [correctAnswer, scompAltAnswer1, scompAltAnswer2]) {
+                                    if (!raw) continue;
+                                    const segments = raw.split("/").map((s) => s.trim()).filter(Boolean);
+                                    for (const seg of segments) {
+                                      const lower = seg.toLowerCase();
+                                      if (!seen.has(lower)) {
+                                        seen.add(lower);
+                                        deduped.push(seg);
+                                      }
+                                    }
+                                  }
+                                  return (
+                                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-indigo-200/60 bg-white px-3 py-2 text-[11px]">
+                                      <span className="font-extrabold text-indigo-950">Valid Answer Variations ({deduped.length}):</span>
+                                      {deduped.length > 0 ? (
+                                        deduped.map((ans, i) => (
+                                          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700 border border-indigo-200 shadow-2xs">
+                                            <span className="text-[9px] text-indigo-400 font-semibold">#{i + 1}</span> {ans}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-gray-400 italic">Enter primary answer above</span>
+                                      )}
+                                      <span className="ml-auto text-[10px] text-emerald-700 font-bold">
+                                        ✓ Cleaned & saved together without duplicate questions
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Answer Explanation */}
+                                <div className="space-y-1 pt-1">
+                                  <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block">Answer Explanation (Optional)</label>
                                   <ReadFormatInput 
-                                    inputRef={readAnswerInputRef}
-                                    value={correctAnswer}
-                                    onChange={setCorrectAnswer}
-                                    placeholder="e.g. shade / 1990s"
-                                    required
+                                    inputRef={readExplanationRef}
+                                    value={questionExplanation}
+                                    onChange={setQuestionExplanation}
+                                    placeholder="e.g. Para 3 mentions stepwells provided shade during dry seasons."
                                   />
-                                )}
+                                </div>
                               </div>
-                              
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block">Answer Explanation (Optional)</label>
-                                <ReadFormatInput 
-                                  inputRef={readExplanationRef}
-                                  value={questionExplanation}
-                                  onChange={setQuestionExplanation}
-                                  placeholder="e.g. Para 3 mentions stepwells provided shade during dry seasons."
-                                />
+                            ) : (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block font-bold">Correct Answer Value <span className="text-rose-500">*</span></label>
+                                  {selectedQuestionType === "R-MMCQ" ? (
+                                    <div className="space-y-2 py-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-indigo-900">
+                                          Click options to select {getNumberWord(multiMcqAnswerCount)} correct answers:
+                                        </span>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                          multiMcqCorrectAnswers.length === multiMcqAnswerCount
+                                            ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                            : "bg-amber-50 text-amber-700 border-amber-300"
+                                        }`}>
+                                          {multiMcqCorrectAnswers.length} of {multiMcqAnswerCount} selected
+                                        </span>
+                                      </div>
+                                      
+                                      {[mcqOptA, mcqOptB, mcqOptC, mcqOptD, mcqOptE, mcqOptF, mcqOptG].every(v => !v.trim()) ? (
+                                        <p className="text-xs text-gray-400 italic py-1">
+                                          Please enter option texts above first to select the correct answers.
+                                        </p>
+                                      ) : (
+                                        <div className="grid gap-1.5 sm:grid-cols-2">
+                                          {(["A", "B", "C", "D", "E", "F", "G"] as const).map((letter) => {
+                                            const optVal = letter === "A" ? mcqOptA : letter === "B" ? mcqOptB : letter === "C" ? mcqOptC : letter === "D" ? mcqOptD : letter === "E" ? mcqOptE : letter === "F" ? mcqOptF : mcqOptG;
+                                            if (!optVal.trim()) return null;
+                                            const isChecked = multiMcqCorrectAnswers.includes(letter);
+                                            const handleCheck = () => {
+                                              if (isChecked) {
+                                                setMultiMcqCorrectAnswers(multiMcqCorrectAnswers.filter(item => item !== letter));
+                                              } else if (multiMcqCorrectAnswers.length < multiMcqAnswerCount) {
+                                                setMultiMcqCorrectAnswers([...multiMcqCorrectAnswers, letter]);
+                                              } else {
+                                                toast.error(`You can select exactly ${multiMcqAnswerCount} answers.`);
+                                              }
+                                            };
+                                            return (
+                                              <div
+                                                key={letter}
+                                                onClick={handleCheck}
+                                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left cursor-pointer transition-all ${
+                                                  isChecked
+                                                    ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 font-bold shadow-2xs"
+                                                    : "border-gray-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-gray-50/60"
+                                                }`}
+                                              >
+                                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                                  isChecked ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-700"
+                                                }`}>
+                                                  {letter}
+                                                </span>
+                                                <span className="text-xs grow truncate">
+                                                  {optVal}
+                                                </span>
+                                                <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                                  isChecked ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-300 bg-white"
+                                                }`}>
+                                                  {isChecked && <span className="text-[10px] font-black">✓</span>}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : selectedQuestionType === "R-MCQ" ? (
+                                    <div className="space-y-1.5">
+                                      <select 
+                                        value={correctAnswer}
+                                        onChange={(e) => setCorrectAnswer(e.target.value)}
+                                        className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
+                                        required
+                                      >
+                                        <option value="">-- Choose Option Letter --</option>
+                                        {(["A", "B", "C", "D", "E", "F", "G"] as const).map((letter) => {
+                                          const optVal = letter === "A" ? mcqOptA : letter === "B" ? mcqOptB : letter === "C" ? mcqOptC : letter === "D" ? mcqOptD : letter === "E" ? mcqOptE : letter === "F" ? mcqOptF : mcqOptG;
+                                          if (!optVal.trim() && !["A", "B", "C", "D"].includes(letter)) return null;
+                                          return (
+                                            <option key={letter} value={letter}>
+                                              Option {letter} {optVal.trim() ? `— ${optVal.slice(0, 40)}${optVal.length > 40 ? "..." : ""}` : ""}
+                                            </option>
+                                          );
+                                        })}
+                                      </select>
+                                      {mcqOptA.trim() && (
+                                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                          {(["A", "B", "C", "D", "E", "F", "G"] as const).map((letter) => {
+                                            const optVal = letter === "A" ? mcqOptA : letter === "B" ? mcqOptB : letter === "C" ? mcqOptC : letter === "D" ? mcqOptD : letter === "E" ? mcqOptE : letter === "F" ? mcqOptF : mcqOptG;
+                                            if (!optVal.trim()) return null;
+                                            const isSelected = correctAnswer === letter;
+                                            return (
+                                              <button
+                                                key={letter}
+                                                type="button"
+                                                onClick={() => setCorrectAnswer(letter)}
+                                                className={`px-2.5 py-1 text-xs rounded-md border font-bold transition-all ${
+                                                  isSelected
+                                                    ? "border-indigo-600 bg-indigo-600 text-white shadow-2xs"
+                                                    : "border-gray-200 bg-white text-gray-700 hover:border-indigo-300"
+                                                }`}
+                                              >
+                                                {letter}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : selectedQuestionType === "R-TFN" ? (
+                                    <select 
+                                      value={correctAnswer}
+                                      onChange={(e) => setCorrectAnswer(e.target.value)}
+                                      className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
+                                      required
+                                    >
+                                      <option value="">-- Select Answer --</option>
+                                      <option value="TRUE">TRUE</option>
+                                      <option value="FALSE">FALSE</option>
+                                      <option value="NOT GIVEN">NOT GIVEN</option>
+                                    </select>
+                                  ) : selectedQuestionType === "R-YNN" ? (
+                                    <select 
+                                      value={correctAnswer}
+                                      onChange={(e) => setCorrectAnswer(e.target.value)}
+                                      className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
+                                      required
+                                    >
+                                      <option value="">-- Select Answer --</option>
+                                      <option value="YES">YES</option>
+                                      <option value="NO">NO</option>
+                                      <option value="NOT GIVEN">NOT GIVEN</option>
+                                    </select>
+                                  ) : (["R-MHDG", "R-MINF", "R-NMATCH", "R-MFT", "R-MSE", "R-SCO"].includes(selectedQuestionType) || (selectedQuestionType === "R-SCOMP" && scompMode === "WITH_CLUES")) && groupOptions.trim() ? (
+                                    <select 
+                                      value={correctAnswer}
+                                      onChange={(e) => setCorrectAnswer(e.target.value)}
+                                      className="w-full text-xs font-semibold px-2 py-2 border border-indigo-100 rounded-lg bg-white focus:outline-hidden text-black cursor-pointer h-9"
+                                      required
+                                    >
+                                      <option value="">-- Select Option --</option>
+                                      {groupOptions.split("\n").map(o => o.trim()).filter(Boolean).map((opt, idx) => (
+                                        <option key={idx} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <ReadFormatInput 
+                                      inputRef={readAnswerInputRef}
+                                      value={correctAnswer}
+                                      onChange={setCorrectAnswer}
+                                      placeholder="e.g. shade / 1990s"
+                                      required
+                                    />
+                                  )}
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-indigo-705 uppercase tracking-widest block">Answer Explanation (Optional)</label>
+                                  <ReadFormatInput 
+                                    inputRef={readExplanationRef}
+                                    value={questionExplanation}
+                                    onChange={setQuestionExplanation}
+                                    placeholder="e.g. Para 3 mentions stepwells provided shade during dry seasons."
+                                  />
+                                </div>
                               </div>
-                            </div>
+                            ))}
 
                             <button 
                               type="button"
                               onClick={handleAddReadingQuestion}
                               className="w-full bg-indigo-650 hover:bg-indigo-755 text-white font-bold transition-all duration-200 shadow-md shadow-indigo-100 flex items-center justify-center gap-2 py-2 rounded-lg text-xs cursor-pointer"
                             >
-                              <IconPlus size={16} /> Append to Passage {activePassage} Questions
+                              <IconPlus size={16} /> {selectedQuestionType === "R-NCOMP" && getPlaceholderNumbers(passageSegment).length > 0
+                                ? `Save Note Answers (${getPlaceholderNumbers(passageSegment).length} Blanks)`
+                                : `Append to Passage ${activePassage} Questions`}
                             </button>
 
                           </div>
@@ -3913,101 +4727,27 @@ export default function CreateFullMockTestPage() {
             {/* ========================================== */}
             {activeTab === "writing" && (
               <div className="space-y-6 animate-fadeIn">
-                {/* Exam Details card */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                    <h4 className="font-black text-gray-900 text-base flex items-center gap-2">
-                      <IconFileText size={18} className="text-indigo-600" />
-                      <span>Exam Details</span>
-                    </h4>
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                    <div>
+                      <h4 className="flex items-center gap-2 text-base font-black text-black"><IconFileText size={18} /> IELTS Writing Overview</h4>
+                      <p className="mt-1 text-xs font-medium text-gray-400">Configure the two official IELTS writing tasks.</p>
+                    </div>
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black">
+                      {[writingTasks[0].instruction, writingTasks[1].instruction].filter((value) => value.trim()).length} / 2 Tasks Ready
+                    </span>
                   </div>
-                  <div className="p-6 space-y-5">
-                    {/* Title */}
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        Exam Title <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={writeTitle}
-                        onChange={(e) => setWriteTitle(e.target.value)}
-                        placeholder="e.g. Cambridge IELTS 18 — Academic Writing Test 1"
-                        className="w-full h-11 px-4 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-semibold text-gray-800 placeholder:text-gray-400 transition-all"
-                      />
+                      <label className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-gray-600">Exam Type</label>
+                      <select value={writeExamType} onChange={(event) => setWriteExamType(event.target.value as any)} className="h-11 w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 outline-none focus:border-black">
+                        <option value="ACADEMIC">Academic</option>
+                        <option value="GENERAL_TRAINING">General Training</option>
+                      </select>
                     </div>
-
-                    {/* Description */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        Description
-                      </label>
-                      <textarea
-                        value={writeDesc}
-                        onChange={(e) => setWriteDesc(e.target.value)}
-                        placeholder="Briefly describe this writing test..."
-                        rows={3}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-medium text-gray-800 placeholder:text-gray-400 resize-none transition-all"
-                      />
-                    </div>
-
-                    {/* Row: Type / Duration / Published */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {/* Exam Type */}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                          Exam Type
-                        </label>
-                        <select
-                          value={writeExamType}
-                          onChange={(e) => setWriteExamType(e.target.value as any)}
-                          className="w-full h-11 px-3 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-semibold text-gray-800 cursor-pointer transition-all"
-                        >
-                          <option value="ACADEMIC">Academic</option>
-                          <option value="GENERAL_TRAINING">General Training</option>
-                        </select>
-                      </div>
-
-                      {/* Duration */}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                          Duration (minutes)
-                        </label>
-                        <input
-                          type="number"
-                          value={writeDuration}
-                          onChange={(e) => setWriteDuration(parseInt(e.target.value) || 60)}
-                          min={1}
-                          className="w-full h-11 px-4 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-semibold text-gray-800 transition-all"
-                        />
-                      </div>
-
-                      {/* Published Toggle */}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                          Status
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setWriteIsPublished(!writeIsPublished)}
-                          className={`w-full h-11 px-4 rounded-xl text-sm font-bold border-2 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                            writeIsPublished
-                              ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-                              : "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
-                          }`}
-                        >
-                          {writeIsPublished ? (
-                            <>
-                              <IconCheck size={16} className="stroke-[3]" />
-                              Published
-                            </>
-                          ) : (
-                            <>
-                              <IconPencil size={16} />
-                              Draft
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      <label className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-gray-600">Duration (Minutes)</label>
+                      <input type="number" value={writeDuration} onChange={(event) => setWriteDuration(parseInt(event.target.value) || 60)} min={1} className="h-11 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-800 outline-none focus:border-black" />
                     </div>
                   </div>
                 </div>
@@ -4078,16 +4818,34 @@ export default function CreateFullMockTestPage() {
                 </div>
 
                 {/* Task Panels */}
-                <WriteTaskPanel
-                  task={writingTasks[activeWritingTaskIdx]}
-                  taskIdx={activeWritingTaskIdx}
-                  examType={writeExamType}
-                  onTaskChange={handleWritingTaskChange}
-                  onImageUpload={handleWritingImageUpload}
-                  onPdfUpload={handleWritingPdfUpload}
-                  uploadingImage={uploadingWritingImage}
-                  uploadingPdf={uploadingWritingPdf}
-                />
+                {activeWritingTaskIdx === 0 ? (
+                  <WritingTask1Form
+                    instruction={writingTasks[0].instruction}
+                    minWords={writingTasks[0].minWords || 150}
+                    modelAnswer={writingTasks[0].modelAnswer || ""}
+                    imageUrl={writingTasks[0].imageUrl}
+                    pdfUrl={writingTasks[0].pdfUrl}
+                    examType={writeExamType}
+                    onInstructionChange={(val) => handleWritingTaskChange(0, "instruction", val)}
+                    onMinWordsChange={(val) => handleWritingTaskChange(0, "minWords", val)}
+                    onModelAnswerChange={(val) => handleWritingTaskChange(0, "modelAnswer", val)}
+                    onImageUpload={(file) => handleWritingImageUpload(0, file)}
+                    onImageUrlChange={(url) => handleWritingTaskChange(0, "imageUrl", url)}
+                    onPdfUpload={(file) => handleWritingPdfUpload(0, file)}
+                    onPdfUrlChange={(url) => handleWritingTaskChange(0, "pdfUrl", url)}
+                    uploadingImage={uploadingWritingImage === 0}
+                    uploadingPdf={uploadingWritingPdf === 0}
+                  />
+                ) : (
+                  <WritingTask2Form
+                    instruction={writingTasks[1].instruction}
+                    minWords={writingTasks[1].minWords || 250}
+                    modelAnswer={writingTasks[1].modelAnswer || ""}
+                    onInstructionChange={(val) => handleWritingTaskChange(1, "instruction", val)}
+                    onMinWordsChange={(val) => handleWritingTaskChange(1, "minWords", val)}
+                    onModelAnswerChange={(val) => handleWritingTaskChange(1, "modelAnswer", val)}
+                  />
+                )}
               </div>
             )}
 
@@ -4096,61 +4854,25 @@ export default function CreateFullMockTestPage() {
             {/* ========================================== */}
             {activeTab === "speaking" && (
               <div className="space-y-6 animate-fadeIn">
-                {/* Basic metadata */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xs space-y-6">
-                  <h4 className="text-sm font-black uppercase tracking-widest text-rose-600 border-b border-gray-100 pb-2">
-                    Exam General Metadata
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-xs font-black text-slate-705 uppercase tracking-widest">Exam Title</label>
-                      <input
-                        type="text"
-                        value={speakTitle}
-                        onChange={(e) => setSpeakTitle(e.target.value)}
-                        placeholder="e.g. IELTS Academic Speaking Practice Test 1"
-                        required
-                        className="w-full text-xs font-medium px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-rose-500 bg-slate-50/50 text-black placeholder:text-gray-400 font-semibold"
-                      />
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                    <div>
+                      <h4 className="flex items-center gap-2 text-base font-black text-black"><IconMicrophone size={18} /> IELTS Speaking Overview</h4>
+                      <p className="mt-1 text-xs font-medium text-gray-400">Configure all three official IELTS speaking parts.</p>
                     </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-705 uppercase tracking-widest">Duration (Minutes)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={isNaN(speakDuration) ? "" : speakDuration}
-                        onChange={(e) => setSpeakDuration(parseInt(e.target.value) || 0)}
-                        placeholder="15"
-                        required
-                        className="w-full text-xs font-medium px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-rose-500 bg-slate-50/50 text-black placeholder:text-gray-400 font-semibold"
-                      />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-gray-600">Duration (Minutes)</label>
+                      <input type="number" min="1" value={isNaN(speakDuration) ? "" : speakDuration} onChange={(event) => setSpeakDuration(parseInt(event.target.value) || 0)} className="h-11 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-800 outline-none focus:border-black" />
                     </div>
-
-                    <div className="md:col-span-3 space-y-2">
-                      <label className="text-xs font-black text-slate-705 uppercase tracking-widest">Description / Instructions</label>
-                      <textarea
-                        rows={3}
-                        value={speakDesc}
-                        onChange={(e) => setSpeakDesc(e.target.value)}
-                        placeholder="Write specific briefing guidelines or target information for student practice..."
-                        className="w-full text-xs font-medium px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-rose-500 bg-slate-50/50 text-black placeholder:text-gray-400 resize-y"
-                      />
-                      <span className="text-[10px] text-gray-400 font-bold mt-1 block">Tip: You can use HTML tags like &lt;b&gt;bold text&lt;/b&gt; or &lt;strong&gt;bold text&lt;/strong&gt; to style specific words or lines.</span>
+                    <div>
+                      <label className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-gray-600">Total Parts</label>
+                      <div className="flex h-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-lg font-black text-black">{speakingParts.length}</div>
                     </div>
-
-                    <div className="md:col-span-3 flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        id="speakIsPublished"
-                        checked={speakIsPublished}
-                        onChange={(e) => setSpeakIsPublished(e.target.checked)}
-                        className="h-4.5 w-4.5 accent-rose-500 cursor-pointer rounded border-gray-300"
-                      />
-                      <label htmlFor="speakIsPublished" className="text-xs font-extrabold text-gray-700 cursor-pointer select-none">
-                        Publish immediately (Draft mode is hidden from candidate lists)
-                      </label>
+                    <div>
+                      <label className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-gray-600">Total Questions</label>
+                      <div className="flex h-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-lg font-black text-black">{speakingParts.reduce((total, part) => total + part.questions.length, 0)}</div>
                     </div>
                   </div>
                 </div>
@@ -4351,16 +5073,11 @@ export default function CreateFullMockTestPage() {
                           </div>
 
                           <div className="md:col-span-3 space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Cue Card Instructions & Topics (Task Prompt)</label>
-                            <textarea
-                              rows={8}
+                            <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Part 2 Cue Card Maker</label>
+                            <SpeakingCueCardBuilder
                               value={speakingParts[1]?.instruction || ""}
-                              onChange={(e) => handleSpeakingPartFieldChange(1, "instruction", e.target.value)}
-                              placeholder="Describe a journey you made that took longer than expected...&#15;&#15;You should say:&#15;- Where you went...&#15;- Who you went with...&#15;- Why it took so long..."
-                              required
-                              className="w-full text-xs font-medium px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-rose-500 bg-slate-50/50 text-black resize-y leading-relaxed"
+                              onChange={(value) => handleSpeakingPartFieldChange(1, "instruction", value)}
                             />
-                            <span className="text-[10px] text-gray-400 font-bold mt-1 block">Tip: You can use HTML tags like &lt;b&gt;bold text&lt;/b&gt; or &lt;strong&gt;bold text&lt;/strong&gt; to style specific words or lines.</span>
                           </div>
                         </div>
 
@@ -4477,38 +5194,104 @@ export default function CreateFullMockTestPage() {
                     )}
                   </div>
                 </div>
+
+                <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 bg-slate-50 px-5 py-3">
+                    <h4 className="text-sm font-bold text-slate-900">Speaking question-paper preview</h4>
+                    <p className="text-xs text-slate-500">This is the same Part 1–3 layout candidates will see.</p>
+                  </div>
+                  <SpeakingQuestionPaper title={speakTitle} parts={speakingParts} compact />
+                </section>
               </div>
             )}
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-xs">
-          <Link
-            href="/teacher/mock-tests"
-            className="px-6 py-3 rounded-xl border border-gray-200 text-sm font-extrabold text-slate-500 hover:text-slate-800 hover:bg-slate-55 active:scale-98 transition duration-150"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-extrabold text-sm shadow-lg shadow-purple-600/25 active:scale-98 transition-all duration-150 cursor-pointer"
-          >
-            {createMutation.isPending ? (
-              <>
-                <IconLoader2 className="animate-spin" size={18} />
-                <span>Saving All Modules...</span>
-              </>
-            ) : (
-              <>
-                <IconCheck size={18} />
-                <span>Save Full Premium Mock Test</span>
-              </>
-            )}
-          </button>
+        {/* Action Buttons & Bottom Previews */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-xs">
+          {/* 4 Module Previews + Full Mock Preview */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1.5">
+              <IconEye size={15} /> Previews:
+            </span>
+            <button
+              type="button"
+              onClick={() => setMockPreviewMode("listening")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-xs font-bold text-slate-700 transition cursor-pointer"
+            >
+              Listening Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setMockPreviewMode("reading")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-xs font-bold text-slate-700 transition cursor-pointer"
+            >
+              Reading Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setMockPreviewMode("writing")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 text-xs font-bold text-slate-700 transition cursor-pointer"
+            >
+              Writing Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setMockPreviewMode("speaking")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 text-xs font-bold text-slate-700 transition cursor-pointer"
+            >
+              Speaking Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setMockPreviewMode("full")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-purple-700 text-xs font-bold text-white transition shadow-sm cursor-pointer"
+            >
+              <IconEye size={15} /> Full Mock Simulation
+            </button>
+          </div>
+
+          {/* Cancel & Save Action Buttons */}
+          <div className="flex items-center justify-end gap-3 shrink-0">
+            <Link
+              href="/teacher/mock-tests"
+              className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:bg-slate-50 active:scale-98 transition duration-150"
+            >
+              Cancel
+            </Link>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createMutation.isPending}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-extrabold text-xs shadow-md shadow-purple-600/20 active:scale-98 transition-all duration-150 cursor-pointer"
+            >
+              {createMutation.isPending ? (
+                <>
+                  <IconLoader2 className="animate-spin" size={16} />
+                  <span>Saving Full Mock Test...</span>
+                </>
+              ) : (
+                <>
+                  <IconCheck size={16} />
+                  <span>{isPublished ? "Save & Publish Full Mock Test" : "Save Full Mock as Draft"}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </form>
+      </div>
+
+
+      <FullMockTestPreview
+        isOpen={mockPreviewMode !== null}
+        mode={mockPreviewMode || "full"}
+        onClose={() => setMockPreviewMode(null)}
+        title={resolvedMockTitle}
+        listening={previewListeningExam}
+        reading={previewReadingExam}
+        writing={{ title: writeTitle, tasks: writingTasks }}
+        speaking={{ title: speakTitle, parts: speakingParts }}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/mocktest.services.ts
 import { httpClient } from '@/lib/axios/httpClient';
-import { IMockTest, IUserMockAttempt } from '@/types/mocktest.types';
+import { IMockTest, IStudentDashboard, IUserMockAttempt } from '@/types/mocktest.types';
 
 export const mockTestService = {
   /** Create a Full Mock Test (Teacher/Admin) */
@@ -15,6 +15,10 @@ export const mockTestService = {
   /** Get All Full Mock Tests */
   getAllMockTests: (params?: any) =>
     httpClient.get<IMockTest[]>('/mock-tests', { params }),
+
+  /** Get the authenticated student's calculated dashboard data. */
+  getStudentDashboard: () =>
+    httpClient.get<IStudentDashboard>('/mock-tests/student/dashboard'),
 
   /** Get Full Mock Test by ID */
   getMockTestById: (id: string) =>
@@ -39,4 +43,8 @@ export const mockTestService = {
   /** Update/Link sub-attempt to the Mock Test Attempt */
   updateAttempt: (attemptId: string, payload: { readingAttemptId?: string; listeningAttemptId?: string; writingAttemptId?: string; speakingAttemptId?: string }) =>
     httpClient.patch<IUserMockAttempt>(`/mock-tests/attempts/${attemptId}`, payload),
+
+  /** Upgrade Student account to Premium (Sample / Demo Payment checkout) */
+  upgradeToPremium: (payload?: any) =>
+    httpClient.post<{ success: boolean; message: string; data: any }>('/users/upgrade-premium', payload || {}),
 };

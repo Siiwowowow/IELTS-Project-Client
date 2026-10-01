@@ -6,14 +6,9 @@ import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import TabletNav from "./TabletNav";
 import MobileDrawer from "./MobileDrawer";
-import type { NavbarProps } from "./types";
 import { cn } from "@/lib/utils";
 
-export default function Navbar({
- 
-  showSearch = true,
-  notificationCount = 2,
-}: NavbarProps) {
+export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -33,21 +28,16 @@ export default function Navbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full bg-[#f8f3e9]/90 backdrop-blur-md transition-all duration-300",
+        "sticky top-0 z-50 w-full bg-white transition-all duration-300",
         showScrolled
-          ? "border-b border-stone-300/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)]"
-          : "border-b border-stone-200/50"
+          ? "border-b border-neutral-200/90 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)]"
+          : "border-b border-neutral-100"
       )}
     >
-  
-      <DesktopNav
-        showSearch={showSearch}
-        notificationCount={notificationCount}
-      />
+      <DesktopNav />
       <TabletNav
         onMenuOpen={openDrawer}
         drawerOpen={drawerOpen}
-        notificationCount={notificationCount}
       />
       <MobileNav onMenuOpen={openDrawer} drawerOpen={drawerOpen} />
 

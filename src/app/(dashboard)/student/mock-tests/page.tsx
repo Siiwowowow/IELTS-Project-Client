@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { mockTestService } from "@/services/mocktest.services";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -13,18 +13,23 @@ import {
   IconArrowRight,
   IconMoodSad,
   IconClock,
-  IconSparkles,
-  IconCheck,
   IconLock,
   IconCrown,
 } from "@tabler/icons-react";
-import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
+import { ExamCardSkeleton } from "@/components/shared/ExamCardSkeleton";
+import SamplePaymentModal from "@/components/MockTest/SamplePaymentModal";
+
+const examCopy = (value?: string | null) =>
+  value?.replace(/mock test/gi, "Full Test").replace(/simulation/gi, "test") ?? "";
 
 export default function StudentMockTestsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedMockTestForPayment, setSelectedMockTestForPayment] = useState<any>(null);
 
   // Fetch published mock tests
   const {
@@ -42,7 +47,7 @@ export default function StudentMockTestsPage() {
   const startAttemptMutation = useMutation({
     mutationFn: (mockTestId: string) => mockTestService.createAttempt(mockTestId),
     onSuccess: (res, mockTestId) => {
-      toast.success("Exam simulation started!");
+      toast.success("Your test is ready.");
       router.push(`/student/mock-tests/${mockTestId}?attemptId=${res.data.id}`);
     },
     onError: (err: any) => {
@@ -63,30 +68,26 @@ export default function StudentMockTestsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 py-6 px-4">
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 text-black [&_*]:!text-black">
       {/* Header banner */}
       <div>
-        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2.5 uppercase tracking-tight">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white shadow-md">
+        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-black bg-white">
             <IconTrophy size={24} />
           </span>
-          IELTS Mock Tests
+          IELTS Full Tests
         </h1>
         <p className="text-sm font-medium text-gray-500 mt-2 ml-12">
-          Experience real exam conditions with our full 2 hour 45 minute IELTS Computer-Based (CBT) mock tests.
+          Complete Listening, Reading, Writing and Speaking under timed test conditions.
         </p>
       </div>
 
       {/* Main List Grid */}
       <section>
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <IconLoader2 size={32} className="animate-spin text-purple-600" />
-          </div>
-        )}
+        {isLoading && <ExamCardSkeleton count={6} />}
 
         {isError && (
-          <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 font-medium">
+          <div className="flex items-center gap-3 rounded-xl border border-neutral-300 bg-white p-4 font-medium">
             <IconAlertCircle size={20} className="shrink-0" />
             <p className="text-sm">Failed to load mock tests. Please refresh and try again.</p>
           </div>
@@ -115,33 +116,21 @@ export default function StudentMockTestsPage() {
               return (
                 <div
                   key={mockTest.id}
-                  className={`group relative bg-white border-2 rounded-2xl p-6 transition-all duration-300 overflow-hidden flex flex-col justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
-                    isLocked ? "border-amber-100 hover:border-amber-400" : "border-gray-100 hover:border-purple-600"
-                  }`}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-300 bg-white p-6 transition hover:border-black"
                 >
                   {/* Subtle top accent */}
-                  <div className={`absolute top-0 left-0 w-full h-1 transform -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ${
-                    isLocked ? "bg-amber-500" : "bg-purple-600"
-                  }`} />
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-black opacity-0 transition-opacity group-hover:opacity-100" />
 
                   <div className="space-y-4">
                     {/* Icon header */}
                     <div className="flex items-start justify-between">
-                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
-                        isLocked 
-                          ? "bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white"
-                          : "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
-                      }`}>
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white">
                         <IconTrophy size={24} />
                       </div>
                       
-                      <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
-                        isLocked
-                          ? "bg-amber-50 text-amber-500 group-hover:bg-amber-100"
-                          : "bg-slate-50 text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600"
-                      }`}>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white">
                         {isLocked ? (
-                          <IconCrown size={16} className="fill-amber-400 animate-bounce" />
+                          <IconCrown size={16} />
                         ) : !user ? (
                           <IconLock size={16} />
                         ) : (
@@ -153,20 +142,18 @@ export default function StudentMockTestsPage() {
                     {/* Title & description */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className={`text-lg font-black leading-snug transition-colors line-clamp-2 ${
-                          isLocked ? "text-amber-900 group-hover:text-amber-600" : "text-black group-hover:text-purple-600"
-                        }`}>
-                          {mockTest.title}
+                        <h3 className="line-clamp-2 text-lg font-semibold leading-snug">
+                          {examCopy(mockTest.title)}
                         </h3>
                         {mockTest.isPremium && (
-                          <span className="inline-flex items-center gap-0.5 px-2.5 py-0.5 bg-amber-500/15 text-amber-700 border border-amber-500/20 text-[9px] font-black uppercase rounded-md tracking-wider">
+                          <span className="inline-flex items-center gap-0.5 rounded-full border border-black bg-white px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                             Premium
                           </span>
                         )}
                       </div>
                       {mockTest.description && (
                         <p className="text-sm font-medium text-gray-500 line-clamp-2 leading-relaxed">
-                          {mockTest.description}
+                          {examCopy(mockTest.description)}
                         </p>
                       )}
                     </div>
@@ -174,22 +161,22 @@ export default function StudentMockTestsPage() {
                     {/* Inclusion items */}
                     <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2">
                       {mockTest.listeningExamId && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-md">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase">
                           Listening
                         </span>
                       )}
                       {mockTest.readingExamId && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-md">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase">
                           Reading
                         </span>
                       )}
                       {mockTest.writingExamId && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase rounded-md">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase">
                           Writing
                         </span>
                       )}
                       {mockTest.speakingExamId && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase rounded-md">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase">
                           Speaking
                         </span>
                       )}
@@ -204,18 +191,22 @@ export default function StudentMockTestsPage() {
                     </span>
 
                     {isLocked ? (
-                      <Link
-                        href="/pricing"
-                        className="inline-flex items-center gap-1 px-4.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs shadow-md shadow-amber-200 active:scale-98 transition duration-150"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMockTestForPayment(mockTest);
+                          setPaymentModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-black bg-white px-4 py-2 text-xs font-semibold transition hover:bg-neutral-100"
                       >
                         <IconCrown size={14} className="fill-white" />
                         <span>Unlock Test</span>
-                      </Link>
+                      </button>
                     ) : (
                       <button
                         onClick={() => handleStartTest(mockTest.id)}
                         disabled={isStarting}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 text-white font-extrabold text-xs shadow-md shadow-purple-200 hover:bg-purple-700 active:scale-98 transition duration-150"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-black bg-white px-4 py-2 text-xs font-semibold transition hover:bg-neutral-100 disabled:opacity-50"
                       >
                         {isStarting ? (
                           <>
@@ -223,7 +214,7 @@ export default function StudentMockTestsPage() {
                             <span>Initializing...</span>
                           </>
                         ) : (
-                          <span>Start Simulation</span>
+                          <span>Begin test</span>
                         )}
                       </button>
                     )}
@@ -234,6 +225,19 @@ export default function StudentMockTestsPage() {
           </div>
         )}
       </section>
+
+      {/* Sample Payment Modal for Demo Checkout */}
+      <SamplePaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedMockTestForPayment(null);
+        }}
+        mockTestTitle={examCopy(selectedMockTestForPayment?.title)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["student-mock-tests"] });
+        }}
+      />
     </div>
   );
 }

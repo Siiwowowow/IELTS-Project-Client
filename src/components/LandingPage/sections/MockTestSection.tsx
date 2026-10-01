@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
 import { Clock, BookOpen, Headphones, Mic, PenTool, ArrowRight } from "lucide-react";

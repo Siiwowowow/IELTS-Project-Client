@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { speakingService } from "@/services/speaking.services";
@@ -12,13 +12,13 @@ import {
   IconArrowLeft,
   IconPlus,
   IconTrash,
-  IconUpload,
   IconLoader2,
   IconCheck,
   IconInfoCircle,
   IconMicrophone,
-  IconFolderPlus,
 } from "@tabler/icons-react";
+import { FloatingSelectionToolbar } from "@/components/shared/FloatingSelectionToolbar";
+import { SpeakingQuestionPaper } from "@/components/Speaking/SpeakingQuestionPaper";
 
 interface Question {
   id?: string;
@@ -36,6 +36,55 @@ interface SpeakingPart {
   speakingTime: number;
   order: number;
   questions: Question[];
+}
+
+interface CueCardFields {
+  topic: string;
+  bullets: string[];
+  finalPrompt: string;
+}
+
+const plainText = (value: string) => value
+  .replace(/<br\s*\/?>/gi, "\n")
+  .replace(/<(?:p|li|ul)[^>]*>/gi, "\n")
+  .replace(/<\/(?:p|li)>/gi, "\n")
+  .replace(/<[^>]+>/g, "")
+  .replace(/&nbsp;/gi, " ")
+  .replace(/&amp;/gi, "&")
+  .trim();
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
+
+function parseCueCard(value?: string | null): CueCardFields {
+  const html = value || "";
+  const markedTopic = html.match(/class="cue-topic"[^>]*>([\s\S]*?)<\/p>/i)?.[1];
+  const markedFinal = html.match(/class="cue-final"[^>]*>([\s\S]*?)<\/p>/i)?.[1];
+  const listBlock = html.match(/<ul[^>]*>([\s\S]*?)<\/ul>/i)?.[1] || "";
+  const listItems = [...listBlock.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((match) => plainText(match[1]));
+
+  if (markedTopic || markedFinal) {
+    return {
+      topic: plainText(markedTopic || ""),
+      bullets: listItems.length ? listItems : [""],
+      finalPrompt: plainText(markedFinal || ""),
+    };
+  }
+
+  const lines = plainText(html).split(/\n+/).map((line) => line.replace(/^[-•]\s*/, "").trim()).filter(Boolean);
+  const topic = lines.find((line) => !/^you should say:?$/i.test(line)) || "";
+  const prompts = lines.filter((line) => line !== topic && !/^you should say:?$/i.test(line));
+  const finalIndex = prompts.findIndex((line) => /^and explain/i.test(line));
+  const finalPrompt = finalIndex >= 0 ? prompts.splice(finalIndex, 1)[0] : "";
+  return { topic, bullets: prompts.length ? prompts : [""], finalPrompt };
+}
+
+function buildCueCard({ topic, bullets, finalPrompt }: CueCardFields) {
+  const items = bullets.map((item) => `<li>${escapeHtml(item.trim())}</li>`).join("");
+  return `<p class="cue-topic"><strong>${escapeHtml(topic)}</strong></p><p class="cue-label"><strong>You should say:</strong></p><ul class="cue-points">${items}</ul><p class="cue-final">${escapeHtml(finalPrompt)}</p>`;
 }
 
 interface ExamForm {
@@ -56,8 +105,8 @@ function SpeakingBuilderContent() {
   const [activeTab, setActiveTab] = useState(1);
 
   // Core form states
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState("Cambridge IELTS Speaking Practice Test 1");
+  const [description, setDescription] = useState("A Cambridge IELTS-style Speaking test covering Part 1 interview questions, Part 2 cue card, and Part 3 discussion.");
   const [duration, setDuration] = useState(15);
   const [isPublished, setIsPublished] = useState(false);
 
@@ -66,19 +115,21 @@ function SpeakingBuilderContent() {
     {
       partNumber: 1,
       title: "Part 1: Introduction and Interview",
-      instruction: "The examiner will ask you general questions about yourself, your home, family, studies, or interests.",
+      instruction: "The examiner asks the candidate about him/herself, his/her home, work or studies and other familiar topics.<p><strong>School</strong></p>",
       preparationTime: 0,
       speakingTime: 60,
       order: 1,
       questions: [
-        { questionText: "Can you tell me about your hometown?", order: 1 },
-        { questionText: "What do you like most about your studies or job?", order: 2 },
+        { questionText: "Did you go to secondary/high school near to where you lived? Why/Why not?", order: 1 },
+        { questionText: "What did you like about your secondary/high school? Why?", order: 2 },
+        { questionText: "Tell me about anything you didn't like at your school.", order: 3 },
+        { questionText: "How do you think your school could be improved? Why/Why not?", order: 4 },
       ],
     },
     {
       partNumber: 2,
       title: "Part 2: Individual Long Turn (Cue Card)",
-      instruction: "Describe a book you read recently that made a strong impression on you.\n\nYou should say:\n- What the book was about\n- When you read it\n- Why you chose to read it\n- And explain why it impressed you so much.",
+      instruction: "<strong>Describe something you don't have now but would really like to own in the future.</strong><p><strong>You should say:</strong></p><ul><li>what this thing is</li><li>how long you have wanted to own it</li><li>where you first saw it</li><li>and explain why you would like to own it.</li></ul>",
       preparationTime: 60,
       speakingTime: 120,
       order: 2,
@@ -89,16 +140,19 @@ function SpeakingBuilderContent() {
     {
       partNumber: 3,
       title: "Part 3: Two-way Discussion",
-      instruction: "The examiner will ask you further questions related to the topic in Part 2.",
+      instruction: "<strong>Owning things</strong>",
       preparationTime: 0,
       speakingTime: 60,
       order: 3,
       questions: [
-        { questionText: "Do you think children should be encouraged to read more books?", order: 1 },
-        { questionText: "How has the internet changed the reading habits of people?", order: 2 },
+        { questionText: "What types of things do young people in your country most want to own today?", order: 1 },
+        { questionText: "Why is this?", order: 2 },
+        { questionText: "Why do some people feel they need to own things?", order: 3 },
+        { questionText: "Do you think that owning lots of things makes people happy? Why?", order: 4 },
       ],
     },
   ]);
+  const cueCard = parseCueCard(parts[1]?.instruction);
 
   // Load speaking exam details if editing
   useEffect(() => {
@@ -299,6 +353,7 @@ function SpeakingBuilderContent() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full pb-20 select-text">
+      <FloatingSelectionToolbar allEditableFields />
       {/* Premium Header Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 p-6 md:p-8 rounded-2xl shadow-md border border-rose-950/40 relative overflow-hidden text-white">
         <div className="absolute -top-12 -right-12 h-44 w-44 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -322,6 +377,7 @@ function SpeakingBuilderContent() {
             <p className="text-xs text-rose-200/70 mt-1 max-w-xl">Build structured IELTS Speaking simulation modules with customizable Part timers and examiner questions.</p>
           </div>
         </div>
+
       </div>
 
       {/* Main Form */}
@@ -465,6 +521,7 @@ function SpeakingBuilderContent() {
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Part Instructions / Directions</label>
                     <textarea
+                      data-format-toolbar="true"
                       rows={2}
                       value={parts[0]?.instruction || ""}
                       onChange={(e) => handlePartFieldChange(0, "instruction", e.target.value)}
@@ -501,6 +558,7 @@ function SpeakingBuilderContent() {
                           Q{q.order}:
                         </span>
                         <input
+                          data-format-toolbar="true"
                           type="text"
                           value={q.questionText}
                           onChange={(e) => handleQuestionTextChange(0, qIdx, e.target.value)}
@@ -581,16 +639,75 @@ function SpeakingBuilderContent() {
                   </div>
 
                   <div className="md:col-span-3 space-y-2">
-                    <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Cue Card Instructions & Topics (Task Prompt)</label>
-                    <textarea
-                      rows={8}
-                      value={parts[1]?.instruction || ""}
-                      onChange={(e) => handlePartFieldChange(1, "instruction", e.target.value)}
-                      placeholder="Describe a journey you made that took longer than expected...&#10;&#10;You should say:&#10;- Where you went...&#10;- Who you went with...&#10;- Why it took so long..."
-                      required
-                      className="w-full text-xs font-medium px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-rose-500 bg-slate-50/50 text-black resize-y leading-relaxed"
-                    />
-                    <span className="text-[10px] text-gray-400 font-bold mt-1 block">Tip: You can use HTML tags like &lt;b&gt;bold text&lt;/b&gt; or &lt;strong&gt;bold text&lt;/strong&gt; to style specific words or lines.</span>
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Part 2 Cue Card Maker</label>
+                    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <label className="mb-1.5 block text-[11px] font-bold text-slate-600">Main topic</label>
+                        <textarea
+                          rows={2}
+                          value={cueCard.topic}
+                          onChange={(e) => handlePartFieldChange(1, "instruction", buildCueCard({ ...cueCard, topic: e.target.value }))}
+                          placeholder="Describe a shop near where you live that you sometimes use."
+                          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold leading-5 text-slate-900 outline-none focus:border-rose-500"
+                        />
+                      </div>
+
+                      <div className="space-y-3 p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">You should say:</p>
+                            <p className="text-[11px] text-slate-500">Each line appears as an indented bullet point.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handlePartFieldChange(1, "instruction", buildCueCard({ ...cueCard, bullets: [...cueCard.bullets, ""] }))}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          >
+                            <IconPlus size={14} /> Add point
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {cueCard.bullets.map((bullet, bulletIndex) => (
+                            <div key={bulletIndex} className="flex items-center gap-2 pl-3">
+                              <span className="text-lg leading-none text-slate-500">•</span>
+                              <input
+                                type="text"
+                                value={bullet}
+                                onChange={(e) => {
+                                  const bullets = [...cueCard.bullets];
+                                  bullets[bulletIndex] = e.target.value;
+                                  handlePartFieldChange(1, "instruction", buildCueCard({ ...cueCard, bullets }));
+                                }}
+                                placeholder="what sorts of product or service it sells"
+                                className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-rose-500"
+                              />
+                              {cueCard.bullets.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePartFieldChange(1, "instruction", buildCueCard({ ...cueCard, bullets: cueCard.bullets.filter((_, index) => index !== bulletIndex) }))}
+                                  className="rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                  aria-label="Remove cue-card point"
+                                >
+                                  <IconTrash size={15} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-3">
+                          <label className="mb-1.5 block text-[11px] font-bold text-slate-600">Final explanation prompt</label>
+                          <input
+                            type="text"
+                            value={cueCard.finalPrompt}
+                            onChange={(e) => handlePartFieldChange(1, "instruction", buildCueCard({ ...cueCard, finalPrompt: e.target.value }))}
+                            placeholder="and explain why you use this shop."
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-rose-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -648,6 +765,7 @@ function SpeakingBuilderContent() {
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Part Instructions / Directions</label>
                     <textarea
+                      data-format-toolbar="true"
                       rows={2}
                       value={parts[2]?.instruction || ""}
                       onChange={(e) => handlePartFieldChange(2, "instruction", e.target.value)}
@@ -684,6 +802,7 @@ function SpeakingBuilderContent() {
                           Q{q.order}:
                         </span>
                         <input
+                          data-format-toolbar="true"
                           type="text"
                           value={q.questionText}
                           onChange={(e) => handleQuestionTextChange(2, qIdx, e.target.value)}
@@ -727,6 +846,20 @@ function SpeakingBuilderContent() {
           </button>
         </div>
       </form>
+
+      {/* Always-visible paper preview: exactly the question layout candidates see. */}
+      <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Live question-paper preview</h2>
+            <p className="text-xs text-slate-500">Updates immediately as you edit Parts 1–3.</p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+            {isPublished ? "Published" : "Draft"}
+          </span>
+        </div>
+        <SpeakingQuestionPaper title={title || "IELTS Speaking Practice Test"} parts={parts} compact />
+      </section>
     </div>
   );
 }

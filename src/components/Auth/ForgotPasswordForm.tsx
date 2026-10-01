@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { authDebug } from "@/lib/authDebug";
 
 const ForgotPasswordForm = () => {
   const router = useRouter();
@@ -31,6 +32,7 @@ const ForgotPasswordForm = () => {
   const form = useForm({
     defaultValues: { email: "" },
     onSubmit: async ({ value }) => {
+      authDebug.info("PASSWORD_RESET_REQUEST_SUBMITTED");
       setServerError(null);
       try {
         const result = (await mutateAsync(value)) as {
@@ -40,17 +42,20 @@ const ForgotPasswordForm = () => {
 
         if (!result.success) {
           const msg = result.message || "Failed to send reset code";
+          authDebug.error("PASSWORD_RESET_REQUEST_FAILED", { message: msg });
           setServerError(msg);
           toast.error(msg);
           return;
         }
 
         setSubmittedEmail(value.email);
+        authDebug.info("PASSWORD_RESET_REQUEST_SUCCEEDED");
         setIsSubmitted(true);
         toast.success(result.message ?? "Reset code sent!");
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Failed to send reset code";
+        authDebug.error("PASSWORD_RESET_REQUEST_CRASHED", { message: msg });
         setServerError(msg);
         toast.error(msg);
       }

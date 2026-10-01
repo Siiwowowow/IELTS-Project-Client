@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 interface LoginParams {
-  searchParams: Promise<{ redirect?: string; email?: string }>;
+  searchParams: Promise<{ redirect?: string; email?: string; error?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginParams) {
@@ -16,6 +16,7 @@ export default async function LoginPage({ searchParams }: LoginParams) {
     <LoginForm
       redirectPath={params.redirect}
       defaultEmail={params.email || ""}
+      socialError={params.error}
     />
   );
 }

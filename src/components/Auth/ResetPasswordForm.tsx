@@ -22,6 +22,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { authDebug } from "@/lib/authDebug";
 
 const ResetPasswordForm = () => {
   const router = useRouter();
@@ -53,6 +54,7 @@ const ResetPasswordForm = () => {
       confirmPassword: "",
     },
     onSubmit: async ({ value }) => {
+      authDebug.info("PASSWORD_RESET_SUBMITTED");
       setServerError(null);
       setOtpError(null);
 
@@ -70,16 +72,19 @@ const ResetPasswordForm = () => {
         })) as { success: boolean; message?: string };
 
         if (!result.success) {
+          authDebug.error("PASSWORD_RESET_FAILED", { message: result.message });
           setServerError(result.message ?? "Failed to reset password");
           toast.error(result.message);
           return;
         }
 
         setResetSuccess(true);
+        authDebug.info("PASSWORD_RESET_SUCCEEDED");
         toast.success(result.message ?? "Password updated!");
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Failed to reset password";
+        authDebug.error("PASSWORD_RESET_ACTION_CRASHED", { message: msg });
         setServerError(msg);
         toast.error(msg);
       }

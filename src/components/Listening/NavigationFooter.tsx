@@ -43,15 +43,15 @@ export function NavigationFooter({
   onSubmitClick,
 }: NavigationFooterProps) {
   return (
-    <footer className="fixed bottom-0 left-0 right-0 h-16 bg-[#F8FAFC] border-t border-gray-200 flex items-center justify-between px-6 z-40 select-none shadow-md font-sans">
+    <footer className="fixed bottom-0 left-0 right-0 z-40 grid h-14 grid-cols-4 items-stretch border-t border-[#d8e0e6] bg-white px-1 shadow-[0_-2px_8px_rgba(15,23,42,0.04)] select-none font-sans md:flex md:h-12 md:items-center md:justify-between md:px-5">
       
       {/* LEFT: BACK / NEXT */}
-      <div className="flex items-center gap-3">
+      <div className="contents md:flex md:items-center md:gap-2">
         <button
           type="button"
           onClick={onBack}
           disabled={activeSectionIdx === 0}
-          className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none ${
+          className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 border-r px-1 text-[9px] font-bold transition-colors select-none md:flex-row md:gap-1 md:border md:px-3 md:py-1.5 md:text-xs ${
             activeSectionIdx === 0
               ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
               : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
@@ -65,20 +65,20 @@ export function NavigationFooter({
           type="button"
           onClick={onNext}
           disabled={activeSectionIdx === 3}
-          className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none text-white ${
+          className={`flex min-w-0 flex-col-reverse items-center justify-center gap-0.5 border-0 border-r px-1 text-[9px] font-bold transition-colors select-none text-white md:flex-row md:gap-1 md:border md:px-3 md:py-1.5 md:text-xs ${
             activeSectionIdx === 3
               ? "bg-gray-300 border-gray-300 text-gray-400 cursor-not-allowed"
               : "bg-[#1B3A6B] hover:bg-[#152e54] border-[#1B3A6B] cursor-pointer"
           }`}
         >
-          <span>NEXT SECTION</span>
+          <span className="leading-none">NEXT <span className="hidden sm:inline">SECTION</span></span>
           <IconArrowRight size={16} />
         </button>
       </div>
 
       {/* CENTER: SECTION QUESTIONS TRACKER (1 TO 10 BOXES) */}
-      <div className="hidden md:flex items-center gap-2">
-        {questions.map((q, idx) => {
+      <div className="hidden items-center gap-1.5 md:flex">
+        {questions.map((q) => {
           const numberLabel = q.questionNumber;
           const isActive = activeQuestionId === q.id;
           const isAnswered = !!answers[q.id]?.trim();
@@ -93,7 +93,7 @@ export function NavigationFooter({
           }
 
           return (
-            <div key={q.id} className="relative py-1 select-none">
+            <div key={q.id} className="relative select-none">
               {/* Flag Red Notification Dot above box */}
               {isFlagged && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-600 border border-white" />
@@ -101,7 +101,7 @@ export function NavigationFooter({
               <button
                 type="button"
                 onClick={() => onQuestionClick(q.id)}
-                className={`w-9 h-9 border text-xs flex items-center justify-center font-semibold select-none ${boxStyle}`}
+                className={`flex h-8 w-8 items-center justify-center border text-xs font-semibold select-none ${boxStyle}`}
               >
                 {numberLabel}
               </button>
@@ -111,28 +111,28 @@ export function NavigationFooter({
       </div>
 
       {/* RIGHT: REVIEW ALL & SUBMIT TEST */}
-      <div className="flex items-center gap-3">
+      <div className="contents md:flex md:items-center md:gap-2">
         <button
           type="button"
           onClick={onReviewAllClick}
-          className="flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer select-none"
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 border-r border-gray-200 bg-white px-1 text-[9px] font-bold text-gray-700 transition-colors select-none cursor-pointer hover:bg-gray-50 md:flex-row md:gap-1 md:border md:border-gray-300 md:px-3 md:py-1.5 md:text-xs md:shadow-sm"
         >
           <IconLayoutGrid size={16} />
-          <span>REVIEW ALL</span>
+          <span className="leading-none">REVIEW <span className="hidden sm:inline">ALL</span></span>
         </button>
 
         <button
           type="button"
           onClick={onSubmitClick}
           disabled={!submitEnabled || isPending}
-          className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-black border transition-all select-none shadow-sm ${
+          className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-0 px-1 text-[9px] font-black transition-all select-none md:flex-row md:gap-1 md:border md:px-3 md:py-1.5 md:text-xs md:shadow-sm ${
             submitEnabled && !isPending
               ? "bg-[#1B3A6B] border-[#1B3A6B] hover:bg-[#152e54] text-white cursor-pointer"
               : "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
           }`}
         >
           <IconUpload size={16} />
-          <span>SUBMIT TEST</span>
+          <span className="leading-none">SUBMIT <span className="hidden sm:inline">TEST</span></span>
         </button>
       </div>
 

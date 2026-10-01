@@ -1,26 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { writingService } from "@/services/writing.services";
 import { toast } from "sonner";
 import {
   IconArrowLeft,
-  IconUpload,
   IconLoader2,
-  IconPhoto,
   IconFileText,
   IconCheck,
-  IconInfoCircle,
   IconPencil,
-  IconTrash,
   IconSparkles,
   IconChartBar,
   IconWriting,
-  IconBold,
 } from "@tabler/icons-react";
+import WritingTask1Form from "@/components/Writing/WritingTask1Form";
+import WritingTask2Form from "@/components/Writing/WritingTask2Form";
+import { FloatingSelectionToolbar } from "@/components/shared/FloatingSelectionToolbar";
 
 // ─── Types ───────────────────────────────────────────────────────
 type WritingExamType = "ACADEMIC" | "GENERAL_TRAINING";
@@ -66,8 +64,8 @@ const getDefaultTask2 = (): TaskForm => ({
 });
 
 const getDefaultForm = (): ExamForm => ({
-  title: "",
-  description: "",
+  title: "Cambridge IELTS Academic Writing Practice Test 1",
+  description: "A Cambridge IELTS-style Academic Writing test featuring Task 1 visual information and Task 2 essay writing under realistic exam conditions.",
   examType: "ACADEMIC",
   duration: 60,
   isPublished: false,
@@ -240,7 +238,7 @@ export default function CreateWritingExamPage() {
   };
 
   // ── Submit ──
-  const handleSubmit = () => {
+  const handleSubmit = (publishOverride?: boolean) => {
     // Validation
     if (!formState.title.trim()) {
       toast.error("Please enter an exam title.");
@@ -260,7 +258,7 @@ export default function CreateWritingExamPage() {
       description: formState.description.trim() || undefined,
       examType: formState.examType,
       duration: formState.duration,
-      isPublished: formState.isPublished,
+      isPublished: publishOverride ?? formState.isPublished,
       tasks: formState.tasks.map((t) => ({
         taskType: t.taskType,
         instruction: t.instruction.trim(),
@@ -296,6 +294,7 @@ export default function CreateWritingExamPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full pb-12">
+      <FloatingSelectionToolbar allEditableFields />
       {/* ── Header Banner ── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-900 via-indigo-800 to-slate-900 p-6 md:p-8 text-white shadow-xl shadow-indigo-950/20">
         <div className="absolute right-0 top-0 -mr-16 -mt-16 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl"></div>
@@ -318,13 +317,15 @@ export default function CreateWritingExamPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => router.push("/teacher/writing/exams")}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all duration-200 self-start md:self-auto shrink-0"
-          >
-            <IconArrowLeft size={16} />
-            <span>My Exams</span>
-          </button>
+          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+            <button
+              onClick={() => router.push("/teacher/writing/exams")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all duration-200"
+            >
+              <IconArrowLeft size={16} />
+              <span>My Exams</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -505,384 +506,66 @@ export default function CreateWritingExamPage() {
         </button>
       </div>
 
-      {/* ── Task 1 Panel ── */}
+      {/* ── Task 1 Panel (Dedicated IELTS Task 1 Builder) ── */}
       {activeTask === 0 && (
-        <TaskPanel
-          task={task1}
-          taskIdx={0}
+        <WritingTask1Form
+          instruction={task1.instruction}
+          minWords={task1.minWords || 150}
+          modelAnswer={task1.modelAnswer || ""}
+          imageUrl={task1.imageUrl}
+          pdfUrl={task1.pdfUrl}
           examType={formState.examType}
-          onTaskChange={handleTaskChange}
-          onImageUpload={handleImageUpload}
-          onPdfUpload={handlePdfUpload}
-          uploadingImage={uploadingImage}
-          uploadingPdf={uploadingPdf}
+          onInstructionChange={(val) => handleTaskChange(0, "instruction", val)}
+          onMinWordsChange={(val) => handleTaskChange(0, "minWords", val)}
+          onModelAnswerChange={(val) => handleTaskChange(0, "modelAnswer", val)}
+          onImageUpload={(file) => handleImageUpload(0, file)}
+          onImageUrlChange={(url) => handleTaskChange(0, "imageUrl", url)}
+          onPdfUpload={(file) => handlePdfUpload(0, file)}
+          onPdfUrlChange={(url) => handleTaskChange(0, "pdfUrl", url)}
+          uploadingImage={uploadingImage === 0}
+          uploadingPdf={uploadingPdf === 0}
         />
       )}
 
-      {/* ── Task 2 Panel ── */}
+      {/* ── Task 2 Panel (Dedicated IELTS Task 2 Builder) ── */}
       {activeTask === 1 && (
-        <TaskPanel
-          task={task2}
-          taskIdx={1}
-          examType={formState.examType}
-          onTaskChange={handleTaskChange}
-          onImageUpload={handleImageUpload}
-          onPdfUpload={handlePdfUpload}
-          uploadingImage={uploadingImage}
-          uploadingPdf={uploadingPdf}
+        <WritingTask2Form
+          instruction={task2.instruction}
+          minWords={task2.minWords || 250}
+          modelAnswer={task2.modelAnswer || ""}
+          onInstructionChange={(val) => handleTaskChange(1, "instruction", val)}
+          onMinWordsChange={(val) => handleTaskChange(1, "minWords", val)}
+          onModelAnswerChange={(val) => handleTaskChange(1, "modelAnswer", val)}
         />
       )}
 
-      {/* ── Submit Button ── */}
+      {/* ── Submit Buttons (Live Sheet Previews are visible directly under each task) ── */}
       <div className="flex items-center justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={() => router.push("/teacher/writing/exams")}
-          className="px-6 py-3 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-all"
+          className="px-6 py-3 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-all cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={() => handleSubmit(false)}
           disabled={isPending}
-          className="px-8 py-3 rounded-xl text-sm font-black text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2"
+          className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-6 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
         >
-          {isPending ? (
-            <>
-              <IconLoader2 size={16} className="animate-spin" />
-              <span>{editExamId ? "Updating..." : "Creating..."}</span>
-            </>
-          ) : (
-            <>
-              <IconCheck size={16} className="stroke-[3]" />
-              <span>
-                {editExamId ? "Update Exam" : "Create Writing Exam"}
-              </span>
-            </>
-          )}
+          <IconPencil size={16} />
+          <span>Save as Draft</span>
         </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Task Panel Component ────────────────────────────────────────
-interface TaskPanelProps {
-  task: TaskForm;
-  taskIdx: number;
-  examType: WritingExamType;
-  onTaskChange: (taskIdx: number, field: keyof TaskForm, val: any) => void;
-  onImageUpload: (taskIdx: number, file: File) => void;
-  onPdfUpload: (taskIdx: number, file: File) => void;
-  uploadingImage: number | null;
-  uploadingPdf: number | null;
-}
-
-function TaskPanel({
-  task,
-  taskIdx,
-  examType,
-  onTaskChange,
-  onImageUpload,
-  onPdfUpload,
-  uploadingImage,
-  uploadingPdf,
-}: TaskPanelProps) {
-  const isTask1 = taskIdx === 0;
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleBold = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart ?? 0;
-    const end = textarea.selectionEnd ?? 0;
-    const selectedText = task.instruction.substring(start, end);
-    const replacement = `<strong>${selectedText}</strong>`;
-    const newValue = task.instruction.substring(0, start) + replacement + task.instruction.substring(end);
-    onTaskChange(taskIdx, "instruction", newValue);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 8, start + 8 + selectedText.length);
-    }, 0);
-  };
-
-  const focusClasses = isTask1
-    ? "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-    : "focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20";
-  const taskLabel = isTask1
-    ? examType === "ACADEMIC"
-      ? "Task 1 — Describe a Chart, Graph, or Diagram"
-      : "Task 1 — Write a Letter"
-    : "Task 2 — Write an Essay";
-  const taskDescription = isTask1
-    ? examType === "ACADEMIC"
-      ? "Candidates describe, summarise, or explain information from a visual representation (graph, table, chart, diagram, or map). Minimum 150 words in about 20 minutes."
-      : "Candidates write a letter in response to a given situation. Minimum 150 words in about 20 minutes."
-    : "Candidates write an essay in response to a point of view, argument, or problem. Minimum 250 words in about 40 minutes.";
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      {/* Task Header */}
-      <div
-        className={`px-6 py-4 border-b border-gray-100 ${
-          isTask1
-            ? "bg-gradient-to-r from-indigo-50 to-white"
-            : "bg-gradient-to-r from-violet-50 to-white"
-        }`}
-      >
-        <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
-          {isTask1 ? (
-            <IconChartBar size={18} className="text-indigo-600" />
-          ) : (
-            <IconWriting size={18} className="text-violet-600" />
-          )}
-          {taskLabel}
-        </h2>
-        <p className="text-xs text-gray-500 mt-1 font-medium max-w-2xl">
-          {taskDescription}
-        </p>
-      </div>
-
-      <div className="p-6 space-y-5">
-        {/* Instruction / Prompt */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-bold text-gray-700">
-              Task Instruction / Prompt <span className="text-rose-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={handleBold}
-              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
-                isTask1
-                  ? "text-indigo-700 bg-indigo-50 border-indigo-150 hover:bg-indigo-100"
-                  : "text-violet-700 bg-violet-50 border-violet-150 hover:bg-violet-100"
-              }`}
-              title="Wrap selection in HTML bold tags"
-            >
-              <IconBold size={12} className="stroke-[3]" />
-              <span>Bold Selection</span>
-            </button>
-          </div>
-          <textarea
-            ref={textareaRef}
-            value={task.instruction}
-            onChange={(e) =>
-              onTaskChange(taskIdx, "instruction", e.target.value)
-            }
-            placeholder={
-              isTask1
-                ? "e.g. The graph below shows the number of visitors to three London museums between 2000 and 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant."
-                : "e.g. Some people believe that children should be allowed to stay at home and play until they are six or seven years old. Others believe that it is important for young children to go to school as soon as possible.\n\nDiscuss both these views and give your own opinion."
-            }
-            rows={6}
-            className={`w-full px-4 py-3 border border-gray-300 rounded-xl ${focusClasses} outline-none text-sm bg-white font-medium text-gray-800 placeholder:text-gray-400 resize-y transition-all`}
-          />
-          <div className="flex items-center gap-1 mt-1.5">
-            <IconInfoCircle size={12} className="text-gray-400" />
-            <p className="text-[11px] text-gray-400 font-medium">
-              This is the question students will see during the exam.
-            </p>
-          </div>
-        </div>
-
-        {/* Image Upload (Task 1 Academic primarily, but available for all) */}
-        {isTask1 && (
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Visual Stimulus (Chart / Graph / Diagram / Map)
-            </label>
-
-            {task.imageUrl ? (
-              <div className="relative group rounded-xl overflow-hidden border-2 border-indigo-100 bg-gray-50">
-                <img
-                  src={task.imageUrl}
-                  alt="Task 1 Visual Stimulus"
-                  className="w-full max-h-72 object-contain bg-white p-2"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => onTaskChange(taskIdx, "imageUrl", "")}
-                    className="px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1.5 hover:bg-rose-700 transition"
-                  >
-                    <IconTrash size={14} />
-                    Remove Image
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-200 group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onImageUpload(taskIdx, file);
-                  }}
-                  disabled={uploadingImage === taskIdx}
-                />
-                {uploadingImage === taskIdx ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <IconLoader2
-                      size={28}
-                      className="animate-spin text-indigo-500"
-                    />
-                    <span className="text-xs font-bold text-indigo-600">
-                      Uploading image...
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="h-12 w-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <IconPhoto
-                        size={22}
-                        className="text-indigo-500"
-                      />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-gray-700">
-                        Click to upload chart/graph image
-                      </p>
-                      <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-                        PNG, JPG, or WebP — max 10 MB
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </label>
-            )}
-          </div>
-        )}
-
-        {/* PDF Upload */}
-        {isTask1 && (
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              PDF Stimulus (optional alternative)
-            </label>
-
-            {task.pdfUrl ? (
-              <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                <IconFileText size={20} className="text-emerald-600 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-emerald-800 truncate">
-                    PDF uploaded
-                  </p>
-                  <a
-                    href={task.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-emerald-600 hover:underline font-medium"
-                  >
-                    View PDF →
-                  </a>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onTaskChange(taskIdx, "pdfUrl", "")}
-                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
-                >
-                  <IconTrash size={14} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex items-center gap-3 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group">
-                <input
-                  type="file"
-                  accept=".pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onPdfUpload(taskIdx, file);
-                  }}
-                  disabled={uploadingPdf === taskIdx}
-                />
-                {uploadingPdf === taskIdx ? (
-                  <>
-                    <IconLoader2
-                      size={18}
-                      className="animate-spin text-indigo-500"
-                    />
-                    <span className="text-xs font-bold text-indigo-600">
-                      Uploading PDF...
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <IconUpload
-                      size={18}
-                      className="text-gray-400 group-hover:text-indigo-500 transition"
-                    />
-                    <span className="text-xs font-semibold text-gray-600 group-hover:text-gray-800 transition">
-                      Upload PDF stimulus
-                    </span>
-                  </>
-                )}
-              </label>
-            )}
-          </div>
-        )}
-
-        {/* Min Words */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Minimum Word Count
-            </label>
-            <input
-              type="number"
-              value={task.minWords}
-              onChange={(e) =>
-                onTaskChange(
-                  taskIdx,
-                  "minWords",
-                  parseInt(e.target.value) || (isTask1 ? 150 : 250)
-                )
-              }
-              min={1}
-              className="w-full h-11 px-4 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-semibold text-gray-800 transition-all"
-            />
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
-              Standard: {isTask1 ? "150 words" : "250 words"}
-            </p>
-          </div>
-        </div>
-
-        {/* Model Answer */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-bold text-gray-700">
-              Model Answer{" "}
-              <span className="text-gray-400 font-medium">
-                (teacher reference only)
-              </span>
-            </label>
-            {task.modelAnswer.trim() && (
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                  countWords(task.modelAnswer) >= task.minWords
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                    : "bg-amber-50 text-amber-600 border border-amber-100"
-                }`}
-              >
-                {countWords(task.modelAnswer)} / {task.minWords} words
-              </span>
-            )}
-          </div>
-          <textarea
-            value={task.modelAnswer}
-            onChange={(e) =>
-              onTaskChange(taskIdx, "modelAnswer", e.target.value)
-            }
-            placeholder="Optionally provide a model answer for reference. This is hidden from students."
-            rows={8}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm bg-white font-medium text-gray-800 placeholder:text-gray-400 resize-y transition-all leading-relaxed"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => handleSubmit(true)}
+          disabled={isPending}
+          className="px-8 py-3 rounded-xl text-sm font-black text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2 cursor-pointer"
+        >
+          {isPending ? <IconLoader2 size={16} className="animate-spin" /> : <IconCheck size={16} className="stroke-[3]" />}
+          <span>{isPending ? "Saving..." : editExamId ? "Update & Publish" : "Publish Exam"}</span>
+        </button>
       </div>
     </div>
   );

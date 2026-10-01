@@ -19,6 +19,7 @@ import { IELTSAudioPlayer } from "@/components/Listening/IELTSAudioPlayer";
 import { QuestionGroupCard } from "@/components/Listening/QuestionGroupCard";
 import { NavigationFooter } from "@/components/Listening/NavigationFooter";
 import { ReviewModal } from "@/components/Listening/ReviewModal";
+import { ExamSubmissionOverlay } from "@/components/shared/ExamSubmissionOverlay";
 
 interface Props {
   params: Promise<{ examId: string }>;
@@ -73,18 +74,19 @@ export default function ListeningExamPage({ params }: Props) {
   const exam = data?.data;
   useTextHighlighter(workspaceRef, [exam]);
 
-  // Dynamically calculate sequential question numbers (1 to 40) across all sections
-  let questionCounter = 1;
-  const sections = ((exam?.sections as any[]) ?? []).map((sec) => ({
-    ...sec,
-    questionGroups: (sec.questionGroups ?? []).map((group: any) => ({
-      ...group,
-      questions: (group.questions ?? []).map((q: any) => ({
-        ...q,
-        questionNumber: questionCounter++,
-      })),
-    })),
-  }));
+  const sections = [...((exam?.sections as any[]) ?? [])]
+    .sort((first, second) => first.order - second.order)
+    .map((section) => ({
+      ...section,
+      questionGroups: [...(section.questionGroups ?? [])]
+        .sort((first: any, second: any) => first.order - second.order)
+        .map((group: any) => ({
+          ...group,
+          questions: [...(group.questions ?? [])].sort(
+            (first: any, second: any) => first.questionNumber - second.questionNumber,
+          ),
+        })),
+    }));
 
   // Find first available audio URL across all sections (since listening test has one global audio)
   const examAudioUrl = sections.find((s) => s.audioUrl)?.audioUrl || "";
@@ -420,14 +422,13 @@ export default function ListeningExamPage({ params }: Props) {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const getSectionTitle = (idx: number) => {
-    const secQuestions = sections[idx]?.questionGroups.flatMap((g: any) => g.questions) ?? [];
-    if (secQuestions.length === 0) {
-      return `SECTION ${idx + 1}`;
-    }
-    const startNum = secQuestions[0].questionNumber;
-    const endNum = secQuestions[secQuestions.length - 1].questionNumber;
-    return `SECTION ${idx + 1} – QUESTIONS ${startNum}–${endNum}`;
+  const getSectionRange = (idx: number) => {
+    const sectionQuestions = sections[idx]?.questionGroups.flatMap((group: any) => group.questions) ?? [];
+    if (sectionQuestions.length === 0) return "";
+    const numbers = sectionQuestions.map((question: any) => Number(question.questionNumber));
+    const start = Math.min(...numbers);
+    const end = Math.max(...numbers);
+    return start === end ? `Question ${start}` : `Questions ${start}–${end}`;
   };
 
   // LOADING STATE
@@ -463,10 +464,10 @@ export default function ListeningExamPage({ params }: Props) {
   }
 
   // Stats calculation
-  const currentSectionAnsweredCount = currentSectionQuestions.filter((q: { id: string | number; }) => answers[q.id]?.trim()).length;
 
   return (
     <>
+      <ExamSubmissionOverlay visible={mutation.isPending} />
       <style>{`
         /* Lockdown environment body overrides */
         html, body {
@@ -494,27 +495,27 @@ export default function ListeningExamPage({ params }: Props) {
           isCheckPeriod={isCheckPeriod}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleKioskFullscreen}
+          audioPlayer={
+            <IELTSAudioPlayer
+              isPlaying={isPlaying}
+              isMuted={isMuted}
+              volume={volume}
+              audioDuration={audioDuration}
+              audioCurrentTime={audioCurrentTime}
+              activeSectionIdx={activeSectionIdx}
+              isCheckPeriod={isCheckPeriod}
+              playbackRate={playbackRate}
+              onPlayToggle={handlePlayToggle}
+              onVolumeChange={handleVolumeChange}
+              onMuteToggle={handleMuteToggle}
+              onScrub={handleScrub}
+              onSpeedChange={handleSpeedChange}
+            />
+          }
         />
 
         {/* WORKSPACE AREA */}
-        <div ref={workspaceRef} className="mt-14 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-16 bg-[#F8FAFC]">
-          
-          {/* 2. FIXED AUDIO PLAYER BAR */}
-          <IELTSAudioPlayer
-            isPlaying={isPlaying}
-            isMuted={isMuted}
-            volume={volume}
-            audioDuration={audioDuration}
-            audioCurrentTime={audioCurrentTime}
-            activeSectionIdx={activeSectionIdx}
-            isCheckPeriod={isCheckPeriod}
-            playbackRate={playbackRate}
-            onPlayToggle={handlePlayToggle}
-            onVolumeChange={handleVolumeChange}
-            onMuteToggle={handleMuteToggle}
-            onScrub={handleScrub}
-            onSpeedChange={handleSpeedChange}
-          />
+        <div ref={workspaceRef} className="mt-[116px] flex-1 flex flex-col min-h-0 overflow-hidden relative pb-14 bg-[#f8fafb] md:mt-[76px] md:pb-12">
 
           {/* CHECK ANSWERS TIMER WARNING ON AUDIO COMPLETED */}
           {isCheckPeriod && (
@@ -526,13 +527,14 @@ export default function ListeningExamPage({ params }: Props) {
           )}
 
           {/* 3. SCROLLABLE TEST QUESTIONS CONTAINER */}
-          <main className="flex-grow overflow-y-auto bg-[#F8FAFC] py-6 px-4 md:px-6">
-            <div className="max-w-[1000px] mx-auto space-y-6">
+          <main className="flex-grow overflow-y-auto bg-[#f8fafb] px-2 py-3 sm:px-4 md:px-7 md:py-5">
+            <div className="mx-auto max-w-[1240px] space-y-4 border-l-[3px] border-red-600 pb-3 pl-2.5 sm:pl-4 md:border-l-4 md:pl-5">
               
               {/* SECTION TITLE & DIRECTIONS */}
-              <div className="border-b border-gray-200 pb-3">
-                <h2 className="text-lg md:text-xl font-black text-[#1B3A6B] tracking-tight uppercase">
-                  {getSectionTitle(activeSectionIdx)}
+              <div className="border-b border-gray-300 pb-2 font-[Arial,sans-serif]">
+                <h2 className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-base font-bold uppercase tracking-wide text-black md:text-lg">
+                  <span>Section {activeSection?.order ?? activeSectionIdx + 1}</span>
+                  {getSectionRange(activeSectionIdx) && <span className="italic normal-case">{getSectionRange(activeSectionIdx)}</span>}
                 </h2>
                 {activeSection?.instruction && (
                   <p className="text-xs md:text-sm text-gray-500 font-semibold mt-1">
@@ -547,7 +549,7 @@ export default function ListeningExamPage({ params }: Props) {
                   No questions found in this section.
                 </div>
               ) : (
-                <div className="space-y-6 select-text">
+                <div className="space-y-4 select-text font-[Arial,sans-serif]">
                   {activeSection?.questionGroups.map((group: { id: Key | null | undefined; }) => (
                     <QuestionGroupCard
                       key={group.id}
@@ -559,18 +561,6 @@ export default function ListeningExamPage({ params }: Props) {
                       onToggleFlag={handleToggleFlag}
                     />
                   ))}
-                </div>
-              )}
-
-              {/* QUESTIONS ATTEMPTED PILL COUNTER */}
-              {currentSectionQuestions.length > 0 && (
-                <div className="pt-4 flex justify-end items-center select-none">
-                  <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-gray-500">
-                    <span>Questions attempted:</span>
-                    <span className="bg-[#1B3A6B] text-white font-bold py-1.5 px-3 rounded shadow-sm">
-                      Answered: {currentSectionAnsweredCount}/{currentSectionQuestions.length}
-                    </span>
-                  </div>
                 </div>
               )}
 
@@ -587,7 +577,7 @@ export default function ListeningExamPage({ params }: Props) {
             submitEnabled={true}
             isPending={mutation.isPending}
             onBack={() => activeSectionIdx > 0 && setActiveSectionIdx(activeSectionIdx - 1)}
-            onNext={() => activeSectionIdx < 3 && setActiveSectionIdx(activeSectionIdx + 1)}
+            onNext={() => activeSectionIdx < sections.length - 1 && setActiveSectionIdx(activeSectionIdx + 1)}
             onQuestionClick={handleQuestionSelect}
             onReviewAllClick={() => setShowReviewModal(true)}
             onSubmitClick={handleSubmitClick}

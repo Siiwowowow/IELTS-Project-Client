@@ -2,6 +2,10 @@
 // src/services/writing.services.ts
 import { httpClient } from '@/lib/axios/httpClient';
 import { IWritingExam } from '@/types/writing.types';
+import type {
+  WritingAssessment,
+  WritingAssessmentRequest,
+} from '@/types/writing-assessment.types';
 
 export const writingService = {
   /** POST /writing/exams – Create a full writing exam with tasks (Teacher/Admin) */
@@ -48,5 +52,20 @@ export const writingService = {
   /** GET /writing/exams/history – Student's list of attempts */
   getStudentAttemptHistory: () =>
     httpClient.get<any>('/writing/exams/history'),
-};
 
+  /** Vercel-hosted AI assessment route; the Groq key stays server-side. */
+  assessTask: async (payload: WritingAssessmentRequest): Promise<WritingAssessment> => {
+    const response = await fetch('/api/writing-assessment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(data?.message || 'AI assessment failed.');
+    }
+
+    return data.assessment as WritingAssessment;
+  },
+};

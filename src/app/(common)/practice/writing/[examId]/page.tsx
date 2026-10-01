@@ -1,52 +1,47 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { use, useState, useEffect, useRef, useCallback } from "react";
+import { use, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { writingService } from "@/services/writing.services";
 import { mockTestService } from "@/services/mocktest.services";
-import { WritingCandidateHeader } from "@/components/Writing/WritingCandidateHeader";
+import { ExamTimer } from "@/components/Reading/ExamTimer";
+import { ExamImageViewer } from "@/components/Writing/ExamImageViewer";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { toast } from "sonner";
 import {
   IconLoader2,
   IconAlertCircle,
   IconCheck,
-  IconAlertTriangle,
-  IconPhoto,
   IconFileText,
+  IconArrowLeft,
+  IconClock,
+  IconMaximize,
+  IconMinimize,
+  IconInfoCircle,
+  IconUserCircle,
+  IconUpload,
 } from "@tabler/icons-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTextHighlighter } from "@/hooks/useTextHighlighter";
 import Link from "next/link";
+import {
+  pendingWritingAssessmentStorageKey,
+  type PendingWritingAssessment,
+} from "@/types/writing-assessment.types";
+import { ExamSubmissionOverlay } from "@/components/shared/ExamSubmissionOverlay";
 
 interface Props {
   params: Promise<{ examId: string }>;
 }
 
-// Word counting helper matching official IELTS guidelines
 function countWords(text: string): number {
   return text
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
-}
-
-// Convert seconds into standard HH:MM:SS / MM:SS format
-function formatTimeRemaining(seconds: number): string {
-  if (seconds <= 0) return "00:00";
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  const pad = (num: number) => String(num).padStart(2, "0");
-
-  if (hours > 0) {
-    return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
-  }
-  return `${pad(minutes)}:${pad(secs)}`;
 }
 
 export default function WritingExamPage({ params }: Props) {
@@ -60,48 +55,31 @@ export default function WritingExamPage({ params }: Props) {
   const mockTestId = searchParams.get("mockTestId");
 
   // Core Exam States
-  const [answers, setAnswers] = useState<Record<string, string>>({}); // key is taskId
-  const [activeTaskIdx, setActiveTaskIdx] = useState<0 | 1>(0); // 0 = Task 1, 1 = Task 2
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const answersRef = useRef<Record<string, string>>({});
+  const [activeTaskIdx, setActiveTaskIdx] = useState<0 | 1>(0);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [testTimeRemaining, setTestTimeRemaining] = useState<number | null>(null);
 
-  // Splitscreen Resizing State
-  const [leftWidth, setLeftWidth] = useState(50); // percentage of left panel
-  const [isDragging, setIsDragging] = useState(false);
-
-  // Handle document level mouse dragging event listeners
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = (e.clientX / window.innerWidth) * 100;
-      // Constraints: restrict panels between 25% and 75%
-      if (newWidth >= 25 && newWidth <= 75) {
-        setLeftWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  // Responsive & Mobile Tab
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"prompt" | "response">("prompt");
 
   const submittedRef = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  // Responsive listener matching Reading Exam
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Fetch Exam Query
   const { data, isLoading, isError } = useQuery({
@@ -112,37 +90,77 @@ export default function WritingExamPage({ params }: Props) {
 
   const exam = data?.data;
   useTextHighlighter(workspaceRef, [exam]);
-  const sortedTasks = exam?.tasks ? [...exam.tasks].sort((a, b) => a.order - b.order) : [];
+  const sortedTasks = useMemo(
+    () => (exam?.tasks ? [...exam.tasks].sort((a, b) => a.order - b.order) : []),
+    [exam],
+  );
   const activeTask = sortedTasks[activeTaskIdx];
 
-  // Tanstack submission mutation
+  // Initialize blank answers when tasks are loaded
+  useEffect(() => {
+    if (sortedTasks.length > 0 && Object.keys(answers).length === 0) {
+      const initialAnswers: Record<string, string> = {};
+      sortedTasks.forEach((t) => {
+        initialAnswers[t.id] = "";
+      });
+      setAnswers(initialAnswers);
+    }
+  }, [sortedTasks, answers]);
+
+  // Submission mutation
   const submitMutation = useMutation({
     mutationFn: (snap: Record<string, string>) => {
-      const responsesArray = Object.entries(snap)
-        .map(([taskId, essay]) => ({
-          taskId,
-          essay,
-          wordCount: countWords(essay),
-        }));
+      const responsesArray = Object.entries(snap).map(([taskId, essay]) => ({
+        taskId,
+        essay,
+        wordCount: countWords(essay),
+      }));
 
       return writingService.submitAttempt(examId, {
         responses: responsesArray,
       });
     },
-    onSuccess: async (res) => {
+    onSuccess: async (res, submittedAnswers) => {
       toast.success("Writing attempt submitted successfully!");
+      const attemptId = res.data.id as string;
+      const pendingAssessment: PendingWritingAssessment = {
+        version: 1,
+        attemptId,
+        tasks: sortedTasks.map((task) => ({
+          taskId: task.id,
+          request: {
+            examType: exam?.examType ?? "ACADEMIC",
+            taskType: task.taskType,
+            prompt: task.instruction,
+            essay: submittedAnswers[task.id] || "",
+            minWords: task.minWords ?? (task.taskType === "TASK_1" ? 150 : 250),
+            imageUrl: task.imageUrl || null,
+          },
+        })),
+      };
+
+      try {
+        const serialized = JSON.stringify(pendingAssessment);
+        sessionStorage.setItem(pendingWritingAssessmentStorageKey(attemptId), serialized);
+        localStorage.setItem(pendingWritingAssessmentStorageKey(attemptId), serialized);
+      } catch (storageErr) {
+        console.warn("Storage error for pending assessment:", storageErr);
+      }
+
       if (mockAttemptId && mockTestId) {
         try {
           await mockTestService.updateAttempt(mockAttemptId, {
             writingAttemptId: res.data.id,
           });
-          router.push(`/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=writing`);
-        } catch (err) {
+          router.push(
+            `/student/mock-tests/run/${mockAttemptId}/transition?mockTestId=${mockTestId}&completedModule=writing`
+          );
+        } catch {
           toast.error("Failed to link attempt to mock test session.");
-          router.push(`/practice/writing/${examId}/review/${res.data.id}`);
+          router.push(`/practice/writing/${examId}/review/${res.data.id}?assessing=1`);
         }
       } else {
-        router.push(`/practice/writing/${examId}/review/${res.data.id}`);
+        router.push(`/practice/writing/${examId}/review/${attemptId}?assessing=1`);
       }
     },
     onError: (err: any) => {
@@ -165,42 +183,14 @@ export default function WritingExamPage({ params }: Props) {
     [submitMutation]
   );
 
-  // Initialize timer once exam details are fetched
-  useEffect(() => {
-    if (exam && testTimeRemaining === null) {
-      setTestTimeRemaining(exam.duration * 60);
-      
-      // Initialize blank answers for both tasks
-      const initialAnswers: Record<string, string> = {};
-      sortedTasks.forEach((t) => {
-        initialAnswers[t.id] = "";
-      });
-      setAnswers(initialAnswers);
+  const handleTimeUp = useCallback(() => {
+    if (!submittedRef.current) {
+      toast.info("Time is up! Auto-submitting your writing responses...");
+      doSubmit(answersRef.current);
     }
-  }, [exam, sortedTasks, testTimeRemaining]);
+  }, [doSubmit]);
 
-  // Tick the timer
-  useEffect(() => {
-    if (testTimeRemaining === null) return;
-
-    if (testTimeRemaining <= 0) {
-      if (!submittedRef.current) {
-        toast.info("Time is up! Auto-submitting your writing responses...");
-        doSubmit(answers);
-      }
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      setTestTimeRemaining((prev) => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [testTimeRemaining, answers, doSubmit]);
-
-  // Lock-down exam listeners (context menu, reloads, keys)
+  // Exam environment lock-down listeners
   useEffect(() => {
     const preventReloads = (e: KeyboardEvent) => {
       if (e.key === "F5") {
@@ -211,7 +201,10 @@ export default function WritingExamPage({ params }: Props) {
         e.preventDefault();
         toast.error("Page reload is disabled during the assessment.");
       }
-      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(e.key.toLowerCase()))) {
+      if (
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(e.key.toLowerCase()))
+      ) {
         e.preventDefault();
         toast.error("Developer inspection tools are disabled.");
       }
@@ -230,10 +223,10 @@ export default function WritingExamPage({ params }: Props) {
     };
   }, []);
 
-  const handleToggleFullscreen = () => {
+  const toggleKioskFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch((err) => {
-        toast.error(`Kiosk fullscreen error: ${err.message}`);
+        toast.error(`Kiosk Mode expansion failed: ${err.message}`);
       });
     } else {
       document.exitFullscreen();
@@ -248,10 +241,15 @@ export default function WritingExamPage({ params }: Props) {
     }));
   };
 
+  const handleSwitchTask = (idx: 0 | 1) => {
+    setActiveTaskIdx(idx);
+    setMobileTab("prompt");
+  };
+
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
-        <IconLoader2 size={40} className="animate-spin text-violet-600" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white gap-4">
+        <IconLoader2 size={40} className="animate-spin text-black" />
         <p className="text-sm font-bold text-gray-500">Preparing Writing Exam workspace...</p>
       </div>
     );
@@ -259,285 +257,552 @@ export default function WritingExamPage({ params }: Props) {
 
   if (isError || !exam) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 max-w-md mx-auto text-center px-4">
-        <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
-          <IconAlertCircle size={28} />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 font-sans">
+        <div className="bg-white border border-gray-300 p-8 rounded-none max-w-md w-full text-center shadow-sm">
+          <IconAlertCircle className="mx-auto text-red-600 mb-3" size={40} />
+          <h2 className="font-bold text-gray-900 text-lg mb-1">Failed to Load Exam</h2>
+          <p className="text-gray-500 text-sm mb-4">Please go back and try again.</p>
+          <Link
+            href="/practice/writing"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium"
+          >
+            <IconArrowLeft size={15} />
+            Back to Practice
+          </Link>
         </div>
-        <div className="space-y-1.5">
-          <h2 className="font-black text-gray-900 text-lg">Exam Workspace Failed</h2>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed">
-            We couldn't initialize your assessment session. The exam may have been deleted or unpublished.
-          </p>
-        </div>
-        <Link
-          href="/practice/writing"
-          className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm shadow-sm transition"
-        >
-          Return to Practice Zone
-        </Link>
       </div>
     );
   }
 
-  const timeRemainingSeconds = testTimeRemaining ?? 3600;
-  const isWarningPeriod = timeRemainingSeconds < 600; // < 10 mins
-  const activeEssay = activeTask ? (answers[activeTask.id] || "") : "";
+  const activeEssay = activeTask ? answers[activeTask.id] || "" : "";
   const activeWordCount = countWords(activeEssay);
   const minWordsRequired = activeTask?.minWords ?? (activeTaskIdx === 0 ? 150 : 250);
 
+  // Left Panel (Task Instruction / Stimulus)
+  const promptPanel = (
+    <div
+      className={`
+        ${mobileTab === "response" ? "hidden lg:flex" : "flex"}
+        flex-col
+        h-full
+        overflow-hidden
+        bg-white
+        lg:border-r
+        lg:border-gray-200
+      `}
+    >
+      {/* Sticky Panel Header matching Reading Exam */}
+      <div
+        className="sticky top-0 z-20 px-4 py-2 flex items-center justify-between shrink-0"
+        style={{
+          background: "#F8FAFC",
+          borderBottom: "1px solid #E2E8F0",
+        }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <IconFileText size={16} className="text-black shrink-0" />
+          <span className="font-bold text-black text-sm">
+            Writing {activeTask?.taskType === "TASK_1" ? "Task 1" : "Task 2"}
+          </span>
+          <span className="text-xs text-gray-500 font-medium hidden sm:inline">
+            {activeTask?.taskType === "TASK_1" ? "(Suggested: 20 mins)" : "(Suggested: 40 mins)"}
+          </span>
+        </div>
+
+        <button
+          onClick={() => setMobileTab("response")}
+          className="ml-auto lg:hidden bg-black text-white px-3 py-1 text-xs font-semibold cursor-pointer"
+        >
+          Response Area
+        </button>
+      </div>
+
+      {/* Scrollable Prompt & Question Details */}
+      <div className="flex-1 overflow-y-auto panel-scroll px-6 py-5 space-y-4">
+        {activeTask ? (
+          <>
+            {/* Prompt Text / IELTS Question Instruction */}
+            <div className="space-y-4 leading-relaxed text-sm select-text">
+              {activeTask.taskType === "TASK_1" &&
+              !activeTask.instruction.includes("ielts-task1-sheet") &&
+              !activeTask.instruction.includes("ielts-task1-box") ? (
+                <div className="bg-white font-sans select-text space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold tracking-tight text-slate-900">
+                      WRITING TASK 1
+                    </h3>
+                    <p className="text-sm text-slate-800 font-normal leading-relaxed">
+                      You should spend about 20 minutes on this task.
+                    </p>
+                  </div>
+
+                  {/* The Official IELTS Box */}
+                  <div className="my-3 p-4 md:p-5 border-2 border-slate-900 bg-white rounded-none font-normal text-slate-900 leading-relaxed text-sm select-text whitespace-pre-wrap">
+                    <div dangerouslySetInnerHTML={{ __html: activeTask.instruction }} />
+                  </div>
+
+                  <p className="text-sm text-slate-800 font-normal">
+                    Write at least {minWordsRequired} words.
+                  </p>
+                </div>
+              ) : activeTask.taskType === "TASK_2" &&
+                !activeTask.instruction.includes("ielts-task2-sheet") &&
+                !activeTask.instruction.includes("ielts-task2-box") ? (
+                <div className="bg-white font-sans select-text space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold tracking-tight text-slate-900">
+                      WRITING TASK 2
+                    </h3>
+                    <p className="text-sm text-slate-800 font-normal leading-relaxed">
+                      You should spend about 40 minutes on this task.
+                    </p>
+                    <p className="text-sm text-slate-800 font-normal leading-relaxed">
+                      Present a written argument or case to an educated reader with no specialist
+                      knowledge of the following topic.
+                    </p>
+                  </div>
+
+                  {/* The Official IELTS Box */}
+                  <div className="my-3 p-4 md:p-5 border-2 border-slate-900 bg-white rounded-none font-normal text-slate-900 leading-relaxed text-sm select-text whitespace-pre-wrap">
+                    <div dangerouslySetInnerHTML={{ __html: activeTask.instruction }} />
+                  </div>
+
+                  <p className="text-sm text-slate-800 font-normal leading-relaxed">
+                    Give reasons for your answer and include any relevant examples from your own
+                    knowledge or experience.
+                  </p>
+                  <p className="text-sm text-slate-800 font-normal">
+                    Write at least {minWordsRequired} words.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="font-normal text-gray-900 leading-relaxed bg-white p-1"
+                  dangerouslySetInnerHTML={{ __html: activeTask.instruction }}
+                />
+              )}
+
+              {activeTask.taskType === "TASK_1" && activeTask.imageUrl && (
+                <ExamImageViewer key={activeTask.imageUrl} src={activeTask.imageUrl} embedded />
+              )}
+            </div>
+
+            {/* PDF visual stimulus notice */}
+            {activeTask.pdfUrl && (
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 mt-4">
+                <div className="flex items-center gap-2.5">
+                  <IconFileText className="text-black" size={20} />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">Task Reference PDF</p>
+                    <p className="text-[11px] text-slate-500">
+                      A visual stimulus document is attached to this task.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={activeTask.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white text-xs font-bold transition"
+                >
+                  Open PDF
+                </a>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center justify-center flex-1 text-gray-400 text-sm">
+            Please choose a writing task from the tabs below.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Right Panel (Response Area / Writing Textarea)
+  const responsePanel = (
+    <div
+      className={`
+        ${mobileTab === "prompt" ? "hidden lg:flex" : "flex"}
+        flex-col
+        h-full
+        overflow-hidden
+        bg-white
+      `}
+    >
+      {/* Sticky Panel Header matching Reading Exam */}
+      <div
+        className="sticky top-0 z-20 px-4 py-2 flex items-center justify-between shrink-0"
+        style={{
+          background: "#FFFFFF",
+          borderBottom: "1px solid #E2E8F0",
+        }}
+      >
+        <span className="font-bold text-black text-sm">Response Area</span>
+
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-600 font-medium">
+            Words:{" "}
+            <strong className="text-black font-bold tabular-nums">{activeWordCount}</strong> /{" "}
+            {minWordsRequired}
+          </div>
+
+          <button
+            onClick={() => setMobileTab("prompt")}
+            className="ml-2 lg:hidden bg-black text-white px-3 py-1 text-xs font-semibold cursor-pointer"
+          >
+            Task Prompt
+          </button>
+        </div>
+      </div>
+
+      {/* Editor Content Area - Full bleed, minimal CBT design */}
+      <div className="flex-1 flex flex-col p-4 md:p-6 min-h-0 bg-white">
+        <div className="flex-1 relative border border-gray-300 rounded-none overflow-hidden bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-colors">
+          <textarea
+            value={activeEssay}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Type your response here..."
+            className="panel-scroll absolute inset-0 h-full w-full resize-none border-none p-4 md:p-5 font-sans text-base leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 select-text"
+            spellCheck={false}
+            autoComplete="off"
+            autoFocus
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
+      <ExamSubmissionOverlay visible={submitMutation.isPending} />
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+        html,
+        body {
+          overflow: hidden;
+        }
+
+        .panel-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .panel-scroll::-webkit-scrollbar-track {
+          background: #F3F4F6;
+        }
+
+        .panel-scroll::-webkit-scrollbar-thumb {
+          background: #CBD5E1;
+          border-radius: 999px;
+        }
+
         .highlighted {
           background-color: #fdff32 !important;
           color: #000000 !important;
           cursor: pointer;
         }
       `}</style>
-      <div className="min-h-screen bg-slate-50 text-gray-900 flex flex-col overflow-hidden antialiased">
-        {/* Dynamic CBT Candidate Header */}
-        <WritingCandidateHeader
-          candidateName={user?.name || "IELTS Candidate"}
-          candidateId={user?.id?.slice(0, 8).toUpperCase() || "CANDIDATE"}
-          examTitle={exam.title}
-          examType={exam.examType}
-          timeRemainingText={formatTimeRemaining(timeRemainingSeconds)}
-          isWarningPeriod={isWarningPeriod}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={handleToggleFullscreen}
-        />
 
-        {/* Main Testing Workspace Grid (Left/Right Splitscreen) */}
-        <main ref={workspaceRef} className="flex-1 mt-14 mb-16 flex flex-row overflow-hidden w-full h-[calc(100vh-120px)] relative">
-        {/* LEFT PANEL: Visual Stimulus / Exam Prompts */}
-        <section 
-          className="border-r border-gray-200 bg-white flex flex-col overflow-y-auto"
-          style={{ width: `${leftWidth}%` }}
-        >
-          {activeTask ? (
-            <div className="pt-4 px-6 pb-6 md:pt-4 md:px-8 md:pb-8 space-y-4">
-              {/* Task Title & Guidance */}
-              <div className="border-b border-gray-100 pb-3">
-                <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                  Writing {activeTask.taskType === "TASK_1" ? "Task 1" : "Task 2"}
-                </h2>
-                <p className="text-xs font-semibold text-violet-600 mt-0.5 uppercase tracking-wide">
-                  {activeTask.taskType === "TASK_1"
-                    ? exam.examType === "ACADEMIC"
-                      ? "Visual Information Description"
-                      : "Situational Letter Writing"
-                    : "Argumentative / Problem Essay"}
-                </p>
-                <div className="flex gap-4 mt-3 text-xs text-gray-400 font-bold">
-                  <span>Suggested time: {activeTaskIdx === 0 ? "20" : "40"} mins</span>
-                  <span>Minimum words: {minWordsRequired}</span>
-                </div>
-              </div>
+      <div className="flex flex-col h-screen bg-white text-gray-800 relative font-sans overflow-hidden">
+        {/* 1. CANDIDATE TOP HEADER (Identical to Reading Exam) */}
+        <header className="fixed top-0 left-0 right-0 h-12 bg-white border-b-2 border-black flex items-center justify-between px-4 z-40 select-none font-sans">
+          {/* LEFT: Badge and Candidate Details */}
+          <div className="flex items-center">
+            <span className="font-bold text-sm md:text-base text-black tracking-tight border border-black px-3 py-1">
+              Writing Exam
+            </span>
 
-              {/* Prompt Text / IELTS Question Instruction (KEPT ABOVE IMAGE & BOLDED) */}
-              <div className="space-y-4 leading-relaxed text-sm select-text">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Question prompt:</p>
-                <div 
-                  className="whitespace-pre-wrap bg-slate-50/50 p-5 rounded-xl border border-gray-100 font-bold text-gray-900 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: activeTask.instruction }}
-                />
-              </div>
-
-              {/* PDF stimulator notice */}
-              {activeTask.pdfUrl && (
-                <div className="flex items-center justify-between p-4 bg-violet-50 border border-violet-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <IconFileText className="text-violet-600" size={24} />
-                    <div>
-                      <p className="text-xs font-bold text-violet-900">Task Reference PDF</p>
-                      <p className="text-[10px] text-violet-700/80 font-medium">A PDF file is attached as a visual stimulus.</p>
-                    </div>
-                  </div>
-                  <a
-                    href={activeTask.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition"
-                  >
-                    Open PDF
-                  </a>
-                </div>
-              )}
-
-              {/* Visual image stimulus (Task 1 Academic charts, maps, diagrams) */}
-              {activeTask.imageUrl && (
-                <div className="bg-slate-50 border border-gray-150 rounded-xl p-3 flex flex-col items-center justify-center">
-                  <div className="relative group max-w-full rounded-lg overflow-hidden bg-white shadow-sm border border-gray-200">
-                    <img
-                      src={activeTask.imageUrl}
-                      alt="Visual Stimulus"
-                      className="max-h-[300px] object-contain mx-auto"
-                    />
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-medium mt-2 flex items-center gap-1">
-                    <IconPhoto size={12} /> Visual representation for descriptions.
-                  </span>
-                </div>
-              )}
+            <div className="hidden sm:flex items-center gap-4 border-l border-gray-300 pl-4 ml-4 text-xs font-medium text-gray-600">
+              <span>
+                Candidate: <strong className="text-gray-800">{user?.name || "Student"}</strong>
+              </span>
+              <span>
+                ID:{" "}
+                <strong className="text-gray-800">
+                  {`BRIT${user?.id?.slice(-4).toUpperCase() || "1234"}`}
+                </strong>
+              </span>
+              <span>
+                Date:{" "}
+                <strong className="text-gray-800">
+                  {new Date().toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </strong>
+              </span>
             </div>
-          ) : (
-            <div className="flex items-center justify-center flex-1 text-gray-400 text-sm">
-              Please choose a writing task from the tabs below.
-            </div>
-          )}
-        </section>
+          </div>
 
-        {/* Resizable Divider Between Question (Left) & Answer Place (Right) */}
-        <div
-          className="w-1.5 hover:w-2 bg-gray-200 hover:bg-violet-500 active:bg-violet-600 cursor-col-resize transition-all h-full relative z-30 flex-shrink-0 flex items-center justify-center group"
-          onMouseDown={handleMouseDown}
-        >
-          <div className="w-[2px] h-8 bg-gray-400 group-hover:bg-white rounded-full transition-colors" />
-        </div>
-
-        {/* RIGHT PANEL: High-performance Text Editor */}
-        <section 
-          className="bg-slate-50 flex flex-col overflow-hidden relative"
-          style={{ width: `${100 - leftWidth}%` }}
-        >
-          {activeTask ? (
-            <div className="flex-1 flex flex-col pt-4 px-6 pb-6 h-full">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  Response Area
-                </span>
-                
-                {/* Live word count indicator */}
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all ${
-                      activeWordCount >= minWordsRequired
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : activeWordCount > 0
-                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    <span>Words:</span>
-                    <strong className="font-extrabold">{activeWordCount}</strong>
-                    <span className="text-[10px] opacity-60">/ {minWordsRequired}</span>
-                  </span>
-                  
-                  {activeWordCount > 0 && activeWordCount < minWordsRequired && (
-                    <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5 animate-pulse" title="Under recommended word count">
-                      <IconAlertTriangle size={12} /> Needs {minWordsRequired - activeWordCount} more
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Textarea editor box */}
-              <div className="flex-1 relative rounded-2xl border border-gray-200 shadow-sm overflow-hidden bg-white focus-within:ring-2 focus-within:ring-violet-500/20 focus-within:border-violet-500 transition-all">
-                <textarea
-                  value={activeEssay}
-                  onChange={(e) => handleTextChange(e.target.value)}
-                  placeholder="Type your response here..."
-                  className="absolute inset-0 w-full h-full p-6 outline-none border-none text-base text-gray-800 placeholder:text-gray-400 resize-none font-sans leading-relaxed select-text"
-                  spellCheck={false}
-                  autoComplete="off"
-                  autoFocus
-                />
-              </div>
-            </div>
-          ) : null}
-        </section>
-      </main>
-
-      {/* Dynamic Bottom Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex items-center justify-between px-6 z-40 select-none shadow-md">
-        {/* Left footer: Task selector buttons */}
-        <div className="flex gap-2">
-          {sortedTasks.map((t, idx) => {
-            const isCompleted = answers[t.id]?.trim().length > 0;
-            const isSelected = activeTaskIdx === idx;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTaskIdx(idx as 0 | 1)}
-                className={`px-5 py-2 rounded-xl text-xs font-black border transition-all duration-200 flex items-center gap-1.5 ${
-                  isSelected
-                    ? "bg-violet-600 border-violet-600 text-white shadow-sm"
-                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                <span>Task {idx + 1}</span>
-                {isCompleted && (
-                  <IconCheck
-                    size={14}
-                    className={`stroke-[3] ${isSelected ? "text-white" : "text-emerald-500"}`}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right footer: Submit button */}
-        <button
-          type="button"
-          onClick={() => setShowSubmitModal(true)}
-          disabled={submitMutation.isPending}
-          className="px-6 py-2 bg-[#1B3A6B] hover:bg-[#152e54] text-white rounded-xl text-xs font-black shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
-        >
-          {submitMutation.isPending ? "Submitting..." : "Submit Exam"}
-        </button>
-      </footer>
-
-      {/* Confirmation Submission Dialog Modal */}
-      {showSubmitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white border border-gray-150 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-              <IconAlertCircle size={20} className="text-violet-600 shrink-0" />
-              Confirm Examination Submit
-            </h3>
-            
-            <p className="text-xs text-gray-500 font-medium leading-relaxed">
-              Are you sure you want to finish and submit your writing test responses? 
-              You will not be able to change your answers once submitted.
-            </p>
-
-            <div className="bg-slate-50 rounded-xl p-3 border border-gray-100 text-xs font-semibold text-gray-600 space-y-1.5">
-              <div className="flex justify-between">
-                <span>Task 1 Essay:</span>
-                <span className={answers[sortedTasks[0]?.id]?.trim().length > 0 ? "text-emerald-600" : "text-rose-500"}>
-                  {answers[sortedTasks[0]?.id]?.trim().length > 0 ? `${countWords(answers[sortedTasks[0]?.id])} words` : "Empty"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Task 2 Essay:</span>
-                <span className={answers[sortedTasks[1]?.id]?.trim().length > 0 ? "text-emerald-600" : "text-rose-500"}>
-                  {answers[sortedTasks[1]?.id]?.trim().length > 0 ? `${countWords(answers[sortedTasks[1]?.id])} words` : "Empty"}
-                </span>
-              </div>
+          {/* RIGHT: Countdown timer & utilities */}
+          <div className="flex items-center gap-4">
+            {/* TIMER PILL */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 border text-sm font-bold font-mono bg-white text-black border-black"
+              title="Time Remaining"
+            >
+              <IconClock size={15} className="text-black" />
+              <ExamTimer
+                durationMinutes={exam.duration}
+                onTimeUp={handleTimeUp}
+                className="text-black font-mono text-sm font-bold bg-transparent p-0 rounded-none border-none"
+              />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* UTILITIES */}
+            <div className="flex items-center gap-2.5 text-gray-400">
               <button
                 type="button"
-                onClick={() => setShowSubmitModal(false)}
-                className="px-4.5 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-slate-50 transition"
+                onClick={toggleKioskFullscreen}
+                className="hover:text-black transition-colors p-1 cursor-pointer"
+                title={isFullscreen ? "Exit Fullscreen" : "Simulate Kiosk Fullscreen"}
               >
-                Go Back
+                {isFullscreen ? <IconMinimize size={20} /> : <IconMaximize size={20} />}
               </button>
               <button
                 type="button"
-                onClick={() => doSubmit(answers)}
-                className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-black shadow-md transition"
+                className="hover:text-black transition-colors p-1 cursor-pointer"
+                title="Assessment Information"
               >
-                Submit Responses
+                <IconInfoCircle size={20} />
+              </button>
+              <button
+                type="button"
+                className="hover:text-black transition-colors p-1 cursor-pointer"
+                title="Candidate Profile"
+              >
+                <IconUserCircle size={20} />
               </button>
             </div>
           </div>
+        </header>
+
+        {/* 2. WORKSPACE AREA (mt-12 perfectly balances h-12 header with zero extra gap) */}
+        <div
+          ref={workspaceRef}
+          className="mt-12 flex-1 flex flex-col min-h-0 overflow-hidden relative pb-14 bg-white"
+        >
+          {/* PROGRESS LINE */}
+          <div className="h-0.5 bg-gray-200 shrink-0">
+            <div
+              className="h-full transition-all duration-500 bg-black"
+              style={{
+                width: `${
+                  sortedTasks.length > 0
+                    ? ((answers[sortedTasks[0]?.id]?.trim() ? 50 : 0) +
+                        (answers[sortedTasks[1]?.id]?.trim() ? 50 : 0))
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+
+          {/* MOBILE TABS (Matching Reading Exam style) */}
+          <div className="lg:hidden flex shrink-0 border-b border-gray-200 bg-white">
+            <button
+              type="button"
+              onClick={() => setMobileTab("prompt")}
+              className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                mobileTab === "prompt"
+                  ? "bg-black text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              Task {activeTaskIdx + 1} Prompt
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileTab("response")}
+              className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                mobileTab === "response"
+                  ? "bg-black text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              Response Area ({activeWordCount} words)
+            </button>
+          </div>
+
+          {/* MAIN SPLITSCREEN WORKSPACE */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {isDesktop ? (
+              <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  {promptPanel}
+                </ResizablePanel>
+
+                {/* Resizable Divider identical to Reading Exam */}
+                <ResizableHandle
+                  withHandle
+                  className="w-1.5 bg-gray-200 hover:bg-black transition-all cursor-col-resize shrink-0 h-full"
+                />
+
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  {responsePanel}
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <div className="h-full flex flex-col overflow-hidden">
+                <div
+                  className={`${
+                    mobileTab === "response" ? "hidden" : "flex"
+                  } flex-col h-full overflow-hidden`}
+                >
+                  {promptPanel}
+                </div>
+                <div
+                  className={`${
+                    mobileTab === "prompt" ? "hidden" : "flex"
+                  } flex-col h-full overflow-hidden`}
+                >
+                  {responsePanel}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* 3. PERSISTENT NAVIGATION BAR (Matching Reading Exam footer) */}
+        <footer className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t-2 border-black flex items-center justify-between px-4 z-40 select-none font-sans">
+          {/* LEFT: TASK SELECTORS */}
+          <div className="flex items-center gap-2">
+            {sortedTasks.map((t, idx) => {
+              const isCompleted = !!answers[t.id]?.trim();
+              const isSelected = activeTaskIdx === idx;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleSwitchTask(idx as 0 | 1)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-bold border transition-colors select-none cursor-pointer ${
+                    isSelected
+                      ? "bg-black border-black text-white"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span>Task {idx + 1}</span>
+                  {isCompleted && (
+                    <IconCheck
+                      size={14}
+                      className={isSelected ? "text-white" : "text-green-600 font-bold"}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* CENTER: WORD COUNTS STATUS */}
+          <div className="hidden md:flex items-center gap-4 text-xs font-medium text-gray-600">
+            <span>
+              Task 1:{" "}
+              <strong
+                className={
+                  answers[sortedTasks[0]?.id]?.trim() ? "text-black" : "text-gray-400"
+                }
+              >
+                {countWords(answers[sortedTasks[0]?.id] || "")} words
+              </strong>
+            </span>
+            <span className="text-gray-300">|</span>
+            <span>
+              Task 2:{" "}
+              <strong
+                className={
+                  answers[sortedTasks[1]?.id]?.trim() ? "text-black" : "text-gray-400"
+                }
+              >
+                {countWords(answers[sortedTasks[1]?.id] || "")} words
+              </strong>
+            </span>
+          </div>
+
+          {/* RIGHT: SUBMIT TEST */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowSubmitModal(true)}
+              disabled={submitMutation.isPending}
+              className={`flex items-center gap-1.5 px-5 py-2 text-xs md:text-sm font-black border transition-all select-none shadow-sm ${
+                !submitMutation.isPending
+                  ? "bg-black border-black hover:bg-gray-800 text-white cursor-pointer"
+                  : "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <IconUpload size={16} />
+              <span>{submitMutation.isPending ? "SUBMITTING..." : "SUBMIT EXAM"}</span>
+            </button>
+          </div>
+        </footer>
+
+        {/* 4. CONFIRMATION SUBMISSION MODAL */}
+        {showSubmitModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4 select-none">
+            <div className="bg-white rounded-none border-2 border-black shadow-2xl p-6 w-full max-w-[480px] flex flex-col font-sans animate-fadeIn">
+              <h3 className="font-bold text-lg text-black mb-2 flex items-center gap-2">
+                <IconAlertCircle size={20} className="text-black shrink-0" />
+                Submit Writing Assessment
+              </h3>
+
+              <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                Are you sure you want to finish and submit your writing test responses? You will
+                not be able to modify your essays once submitted.
+              </p>
+
+              <div className="border border-gray-200 p-3 mb-5 space-y-2 bg-gray-50 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">Task 1 Response:</span>
+                  <span
+                    className={
+                      answers[sortedTasks[0]?.id]?.trim()
+                        ? "text-black font-bold"
+                        : "text-red-500 font-medium"
+                    }
+                  >
+                    {answers[sortedTasks[0]?.id]?.trim()
+                      ? `${countWords(answers[sortedTasks[0]?.id])} words`
+                      : "No response entered"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">Task 2 Response:</span>
+                  <span
+                    className={
+                      answers[sortedTasks[1]?.id]?.trim()
+                        ? "text-black font-bold"
+                        : "text-red-500 font-medium"
+                    }
+                  >
+                    {answers[sortedTasks[1]?.id]?.trim()
+                      ? `${countWords(answers[sortedTasks[1]?.id])} words`
+                      : "No response entered"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                >
+                  RETURN TO EXAM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doSubmit(answers)}
+                  className="px-5 py-2 bg-black hover:bg-gray-800 text-white text-xs font-black transition cursor-pointer"
+                >
+                  YES, SUBMIT TEST
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }

@@ -3,25 +3,15 @@
 import { useUser } from "@/hooks/useUser";
 import AuthButtons from "./AuthButtons";
 import UserAvatar from "./UserAvatar";
-import SearchBar from "./SearchBar";
-import NotificationsButton from "./NotificationsButton";
 import NavLinks from "./Navlinks ";
 import { getDashboardRoute } from "./utils";
 import { desktopNavItems } from "./navConfig";
 import type { NavItem } from "./types";
 import Logo from "../Logo/Logo";
+import AccountLoadingState from "./AccountLoadingState";
 
-
-interface Props {
-  showSearch?: boolean;
-  notificationCount?: number;
-}
-
-export default function DesktopNav({
-  showSearch = true,
-  notificationCount = 2,
-}: Props) {
-  const { user } = useUser();
+export default function DesktopNav() {
+  const { user, isLoading } = useUser();
   const dashboardRoute = getDashboardRoute(user?.role);
 
   const navItems: NavItem[] = desktopNavItems
@@ -34,7 +24,7 @@ export default function DesktopNav({
 
   return (
     <div className="hidden lg:block w-full">
-      <div className="mx-auto flex h-17 max-w-7xl items-center gap-6 px-6 xl:px-8">
+      <div className="mx-auto flex h-20 max-w-7xl items-center gap-6 px-6 xl:px-8">
         {/* Left: Logo */}
         <Logo />
 
@@ -43,20 +33,12 @@ export default function DesktopNav({
           <NavLinks items={navItems} orientation="horizontal" />
         </div>
 
-        {/* Right: Search, actions */}
+        {/* Right: Account actions */}
         <div className="flex shrink-0 items-center gap-2 xl:gap-3">
-          {showSearch && (
-            <div className="hidden xl:block">
-              <SearchBar compact />
-            </div>
-          )}
-
-          <NotificationsButton count={notificationCount} />
-
-          {user ? (
-            <>
-              <UserAvatar />
-            </>
+          {isLoading ? (
+            <AccountLoadingState />
+          ) : user ? (
+            <UserAvatar />
           ) : (
             <AuthButtons />
           )}

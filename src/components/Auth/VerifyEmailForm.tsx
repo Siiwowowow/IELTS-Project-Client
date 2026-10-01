@@ -20,6 +20,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { authDebug } from "@/lib/authDebug";
 
 const VerifyEmailForm = () => {
   const router = useRouter();
@@ -50,6 +51,7 @@ const VerifyEmailForm = () => {
   const form = useForm({
     defaultValues: { otp: "" },
     onSubmit: async ({ value }) => {
+      authDebug.info("EMAIL_VERIFICATION_SUBMITTED");
       setServerError(null);
       setOtpError(false);
       
@@ -67,6 +69,7 @@ const VerifyEmailForm = () => {
         })) as { success: boolean; message?: string };
 
         if (!result.success) {
+          authDebug.error("EMAIL_VERIFICATION_FAILED", { message: result.message });
           setServerError(result.message ?? "Verification failed");
           setOtpError(true);
           toast.error(result.message);
@@ -74,11 +77,13 @@ const VerifyEmailForm = () => {
         }
 
         setVerified(true);
+        authDebug.info("EMAIL_VERIFICATION_SUCCEEDED");
         toast.success("Email verified successfully!");
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Verification failed";
         setServerError(msg);
+        authDebug.error("EMAIL_VERIFICATION_ACTION_CRASHED", { message: msg });
         setOtpError(true);
         toast.error(msg);
       }

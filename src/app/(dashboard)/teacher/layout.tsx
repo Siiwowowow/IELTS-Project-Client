@@ -25,8 +25,8 @@ export default function TeacherLayout({
   return (
     <SidebarProvider>
       <TeacherSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/55 px-6 bg-white/70 backdrop-blur-md sticky top-0 z-10">
+      <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/55 px-4 sm:px-6 bg-white/70 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all" />
             <Separator orientation="vertical" className="mx-2 h-4 bg-slate-200" />
@@ -51,7 +51,7 @@ export default function TeacherLayout({
             </Button>
           </Link>
         </header>
-        <div className="flex flex-1 flex-col gap-6 p-6 bg-slate-50/50 min-h-[calc(100vh-4rem)]">
+        <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6 bg-slate-50/50 min-h-[calc(100vh-4rem)] min-w-0 max-w-full overflow-x-hidden">
           {children}
         </div>
       </SidebarInset>

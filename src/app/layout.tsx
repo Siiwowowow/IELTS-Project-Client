@@ -1,36 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import QueryProviders from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { AuthMainShell } from "@/components/Auth/AuthMainShell";
+import { RouteProgressBar } from "@/components/shared/RouteProgressBar";
 import { Toaster } from "sonner";
-import { getUserInfo } from "@/services/auth.services";
-
-export const dynamic = "force-dynamic";
 
 const anekBangla = localFont({
   src: "../../public/Font/AnekBangla-VariableFont_wdth,wght.ttf",
   variable: "--font-anek-bangla",
   display: "swap",
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
+  // Auth routes use Inter, so preloading this root font there produces an
+  // unused-font warning. The font still loads normally on routes that use it.
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -44,19 +29,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getUserInfo();
-
   return (
-    <html lang="en" suppressHydrationWarning className={`${anekBangla.variable} ${geistSans.variable} ${geistMono.variable} ${inter.variable} scroll-smooth`} data-scroll-behavior="smooth">
+    <html lang="en" suppressHydrationWarning className={`${anekBangla.variable} scroll-smooth`} data-scroll-behavior="smooth">
       <body className={`flex flex-col min-h-screen ${anekBangla.className} font-anek-bangla antialiased`}>
         <QueryProviders>
-          <AuthProvider initialUser={user}>
+          <AuthProvider>
             <TooltipProvider>
+              <Suspense fallback={null}>
+                <RouteProgressBar />
+              </Suspense>
               <AuthMainShell>{children}</AuthMainShell>
               <Toaster richColors position="top-right" />
             </TooltipProvider>

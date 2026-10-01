@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import Logo from "../Logo/Logo";
 import UserAvatar from "./UserAvatar";
+import AccountLoadingState from "./AccountLoadingState";
 
 interface Props {
   onMenuOpen: () => void;
@@ -13,14 +14,16 @@ interface Props {
 }
 
 export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
 
   return (
-    <div className="flex h-16 w-full items-center justify-between gap-3 px-4 md:hidden">
+    <div className="flex h-18 w-full items-center justify-between gap-3 px-4 md:hidden">
       <Logo compact />
 
       <div className="flex items-center gap-2">
-        {user ? (
+        {isLoading ? (
+          <AccountLoadingState compact />
+        ) : user ? (
           <UserAvatar compact />
         ) : (
           <Button
@@ -38,7 +41,7 @@ export default function MobileNav({ onMenuOpen, drawerOpen = false }: Props) {
           aria-label="Open navigation menu"
           aria-expanded={drawerOpen}
           aria-controls="nav-mobile-drawer"
-          className="flex size-9 items-center justify-center rounded-xl border border-neutral-200/80 bg-neutral-50/60 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
+          className="flex size-9 items-center justify-center rounded-xl border border-neutral-300 bg-white text-neutral-900 transition-colors hover:bg-neutral-100 cursor-pointer shadow-xs"
         >
           <Menu className="size-4.5" strokeWidth={2} />
         </button>

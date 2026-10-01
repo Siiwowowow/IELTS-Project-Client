@@ -1,67 +1,46 @@
 "use client";
 
-import * as React from "react";
 import {
-  IconLayoutDashboard,
-  IconUser,
   IconBook2,
   IconHeadset,
+  IconLayoutDashboard,
+  IconLogout,
   IconMicrophone,
   IconPencil,
-  IconLogout,
   IconTrophy,
-  IconCrown, // Added for the premium aesthetic
+  IconUser,
 } from "@tabler/icons-react";
-
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "../shared/Logo/Logo";
 
-const mainNavItems = [
+const navigation = [
   {
-    title: "Dashboard",
-    url: "/student/dashboard",
-    icon: IconLayoutDashboard,
-  },
-];
-
-const practiceItems = [
-  {
-    title: "Reading",
-    url: "/practice/reading",
-    icon: IconBook2,
+    label: "Overview",
+    items: [{ title: "Dashboard", url: "/student/dashboard", icon: IconLayoutDashboard }],
   },
   {
-    title: "Listening",
-    url: "/practice/listening",
-    icon: IconHeadset,
-  },
-  {
-    title: "Writing",
-    url: "/practice/writing",
-    icon: IconPencil,
-  },
-  {
-    title: "Speaking",
-    url: "/practice/speaking",
-    icon: IconMicrophone,
-  },
-  {
-    title: "Mock Tests",
-    url: "/student/mock-tests",
-    icon: IconTrophy,
+    label: "Practice",
+    items: [
+      { title: "Reading", url: "/practice/reading", icon: IconBook2 },
+      { title: "Listening", url: "/practice/listening", icon: IconHeadset },
+      { title: "Writing", url: "/practice/writing", icon: IconPencil },
+      { title: "Speaking", url: "/practice/speaking", icon: IconMicrophone },
+      { title: "Mock Tests", url: "/student/mock-tests", icon: IconTrophy },
+    ],
   },
 ];
 
@@ -70,152 +49,46 @@ export function StudentSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar className="border-r border-slate-200/60 bg-linear-to-b from-slate-50/90 to-white/95 backdrop-blur-xl shadow-xs text-black">
-      {/* Premium Header */}
-      <SidebarHeader className="p-4 border-b border-slate-200/50 bg-slate-50/40">
-        <Link
-          href="/"
-          className="flex items-center gap-2.5 font-bold hover:opacity-80 transition-opacity group"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-red-600 to-red-500 text-white shadow-md shadow-red-200/50 ring-1 ring-red-500/20 group-hover:scale-105 transition-transform duration-200">
-            <IconCrown size={20} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-black tracking-wider uppercase text-slate-900">
-              IELTS Prep
-            </span>
-            <span className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase -mt-0.5">
-              Premium Academic
-            </span>
-          </div>
-        </Link>
+    <Sidebar className="border-r border-neutral-200 bg-white text-neutral-900">
+      <SidebarHeader className="flex h-16 justify-center border-b border-neutral-200 px-4">
+        <Logo compact />
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-3 space-y-4">
-        {/* Overview Group */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-bold uppercase tracking-widest text-slate-400 px-3 mb-2">
-            Overview
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2.5">
-              {mainNavItems.map((item) => {
-                const isActive = pathname === item.url || (item.url !== "/student/dashboard" && pathname.startsWith(item.url));
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.title}
-                      className={`w-full relative transition-all duration-200 text-base rounded-lg px-3 py-2.5 flex items-center gap-3 group border border-transparent ${
-                        isActive
-                          ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20 hover:bg-red-600"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-white hover:shadow-xs hover:border-slate-200/60 hover:translate-x-0.5 font-medium"
-                      }`}
-                    >
-                      <Link href={item.url}>
-                        {isActive && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-white" />
-                        )}
-                        <item.icon
-                          size={20}
-                          className={
-                            isActive
-                              ? "text-white scale-105 transition-transform duration-200"
-                              : "text-slate-400 group-hover:text-slate-900 transition-colors duration-200"
-                          }
-                        />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Practice Zone Group */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-bold uppercase tracking-widest text-slate-400 px-3 mb-2">
-            Practice Zone
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2.5">
-              {practiceItems.map((item) => {
-                const isActive = pathname === item.url || (item.url !== "/student/dashboard" && pathname.startsWith(item.url));
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.title}
-                      className={`w-full relative transition-all duration-200 text-base rounded-lg px-3 py-2.5 flex items-center gap-3 group border border-transparent ${
-                        isActive
-                          ? "bg-red-600 text-white font-bold shadow-sm shadow-red-500/20 hover:bg-red-600"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-white hover:shadow-xs hover:border-slate-200/60 hover:translate-x-0.5 font-medium"
-                      }`}
-                    >
-                      <Link href={item.url}>
-                        {isActive && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-white" />
-                        )}
-                        <item.icon
-                          size={20}
-                          className={
-                            isActive
-                              ? "text-white scale-105 transition-transform duration-200"
-                              : "text-slate-400 group-hover:text-slate-900 transition-colors duration-200"
-                          }
-                        />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="px-3 py-5">
+        {navigation.map((section) => (
+          <SidebarGroup key={section.label} className="p-0 [&+&]:mt-6">
+            <SidebarGroupLabel className="mb-2 h-auto px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              {section.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {section.items.map((item) => {
+                  const isActive = pathname === item.url || (item.url !== "/student/dashboard" && pathname.startsWith(item.url));
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.title} className={`h-10 rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700" : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"}`}>
+                        <Link href={item.url}>
+                          <item.icon size={18} strokeWidth={1.8} />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
-      {/* Premium User Footer Section */}
-      <SidebarFooter className="p-3 border-t border-slate-200/50 bg-slate-50/40">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {/* Premium Card Layout */}
-            <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200/55 p-3 mb-3 shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100/50 shadow-inner">
-                  <IconUser size={20} />
-                  {/* Miniature absolute crown badge on avatar */}
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-white">
-                    ★
-                  </span>
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-slate-800 truncate">
-                      {user?.name || "Premium Student"}
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                    {user?.email || "Target Band: 7.5"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Logout Trigger */}
-            <SidebarMenuButton
-              onClick={logout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-red-600 bg-red-50/50 hover:bg-red-500/10 border border-red-500/10 rounded-lg transition-colors duration-200 font-bold"
-            >
-              <IconLogout size={18} />
-              <span className="text-sm">Log out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-t border-neutral-200 p-3">
+        <div className="flex items-center gap-3 rounded-lg p-2">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-neutral-100 text-neutral-600"><IconUser size={18} /></span>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-800">{user?.name || "Student"}</p><p className="truncate text-xs text-neutral-400">{user?.email || "IELTS candidate"}</p></div>
+        </div>
+        <SidebarMenuButton onClick={logout} className="mt-1 h-9 rounded-lg px-3 text-sm font-medium text-neutral-500 hover:bg-red-50 hover:text-red-600">
+          <IconLogout size={17} /><span>Log out</span>
+        </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
   );

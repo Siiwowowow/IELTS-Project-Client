@@ -14,4 +14,9 @@ export interface PaginationMeta {
 export interface ApiErrorResponse {
     success: boolean;
     message: string;
+    debug?: {
+        requestId: string;
+        code: string;
+        status?: number;
+    };
 }

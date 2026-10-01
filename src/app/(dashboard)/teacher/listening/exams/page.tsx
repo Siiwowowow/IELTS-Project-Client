@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   IconNotebook,
-  IconLoader2,
   IconAlertCircle,
   IconTrash,
   IconEdit,
@@ -22,6 +21,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
+import { ExamCardSkeleton } from "@/components/shared/ExamCardSkeleton";
 
 export default function MyListeningExamsPage() {
   const router = useRouter();
@@ -98,12 +98,7 @@ export default function MyListeningExamsPage() {
           </h2>
         </div>
 
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-gray-200 shadow-sm gap-3">
-            <IconLoader2 size={36} className="animate-spin text-[#1B3A6B]" />
-            <p className="text-sm font-semibold text-gray-500">Loading exams list...</p>
-          </div>
-        )}
+        {isLoading && <ExamCardSkeleton count={6} />}
 
         {isError && (
           <div className="flex items-center gap-4 p-5 bg-rose-50 border border-rose-100 rounded-2xl text-rose-800">

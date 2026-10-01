@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Crown } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export const TargetScoreSection: React.FC = () => {
   const [selectedScore, setSelectedScore] = useState("8.5");
@@ -102,7 +102,6 @@ export const TargetScoreSection: React.FC = () => {
             src="/banner/target_brand.png"
             alt="IELTS Target Band Scores 6.5 to 9.0"
             fill
-            priority
             sizes="(max-width: 1400px)  100vw, 1360px"
             className="object-cover object-center select-none pointer-events-none"
           />
@@ -195,82 +194,67 @@ export const TargetScoreSection: React.FC = () => {
             </p>
           </div>
 
-          {/* Interactive Mobile Score Paper Cards (Horizontal Grid / Scroll) */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 my-2">
+          {/* The banner and labels share one responsive canvas so every score
+              stays attached to its paper at every mobile width. */}
+          <div className="relative my-2 aspect-[2.75/1] w-full overflow-hidden rounded-xl border border-white/5">
+            <Image
+              src="/banner/target_brand.png"
+              alt="IELTS target band score papers"
+              width={2172}
+              height={724}
+              sizes="(max-width: 767px) 165vw, 1px"
+              className="pointer-events-none absolute right-0 top-1/2 h-auto w-[165%] max-w-none -translate-y-1/2 select-none"
+            />
+
             {scores.map((s) => {
               const isSelected = selectedScore === s.band;
+              const mobileLeft: Record<string, string> = {
+                "6.5": "8.5%",
+                "7": "22.2%",
+                "7.5": "37.8%",
+                "8.5": "54.5%",
+                "8": "68.7%",
+                "9": "82.5%",
+              };
+              const mobileTop: Record<string, string> = {
+                "6.5": "59%",
+                "7": "56%",
+                "7.5": "53%",
+                "8.5": "50.5%",
+                "8": "49%",
+                "9": "46.5%",
+              };
 
               return (
                 <button
                   key={s.band}
                   onClick={() => setSelectedScore(s.band)}
-                  className={`relative flex flex-col items-center justify-center p-3 rounded-xl transition-all select-none cursor-pointer ${
-                    s.isFeatured
-                      ? "bg-[#e52828] text-white shadow-md shadow-red-900/40"
-                      : "bg-[#f5f2ea] text-[#101828] shadow-sm"
+                  style={{ left: mobileLeft[s.band], top: mobileTop[s.band] }}
+                  className={`absolute z-10 flex w-[12%] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center transition-transform select-none cursor-pointer ${
+                    s.isFeatured ? "text-white" : "text-[#101828]"
                   } ${
                     isSelected
-                      ? "ring-2 ring-white scale-105 z-10"
-                      : "opacity-90 hover:opacity-100"
+                      ? "scale-110 drop-shadow-[0_3px_5px_rgba(0,0,0,0.45)]"
+                      : "hover:scale-105"
                   }`}
+                  aria-label={`Select band score ${s.band} ${s.label}`}
                 >
-                  {/* Tape Badge */}
-                  <span
-                    className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 rounded-xs ${s.tapeColor}`}
-                  />
-
-                  {/* Crown for 8.5 */}
-                  {s.isFeatured && (
-                    <Crown className="w-4 h-4 text-amber-300 fill-amber-300 -mt-1 mb-0.5" />
-                  )}
-
-                  <span className="text-xl font-black leading-none tracking-tight">
+                  <span className="text-[clamp(13px,5vw,22px)] font-black leading-none tracking-tight">
                     {s.band}
                   </span>
 
                   <span
-                    className={`mt-1 text-[8px] font-black uppercase tracking-tighter leading-tight ${
+                    className={`mt-0.5 text-[clamp(4px,1.35vw,6px)] font-black uppercase tracking-tighter leading-[1.05] ${
                       s.isFeatured ? "text-white/90" : "text-zinc-600"
                     }`}
                   >
-                    {s.label} {s.sub}
+                    {s.label}
+                    <br />
+                    {s.sub}
                   </span>
                 </button>
               );
             })}
-          </div>
-
-          {/* Bottom Illustration Banner View */}
-          <div className="relative mt-5 w-full h-[180px] sm:h-[220px] rounded-xl overflow-hidden border border-white/5">
-            <Image
-              src="/banner/target_brand.png"
-              alt="Target Banner Illustration"
-              fill
-              sizes="100vw"
-              className="object-cover object-[80%_center] select-none pointer-events-none"
-            />
-            {/* Mobile "GO BIGGER" Doodle */}
-            <div className="absolute top-2.5 right-3 z-10 flex flex-col items-center pointer-events-none select-none">
-              <span className="font-black uppercase text-[#ff3333] text-[11px] leading-tight tracking-wider -rotate-6 text-center drop-shadow-sm font-jakarta">
-                GO
-                <br />
-                BIGGER
-              </span>
-              <svg
-                className="w-4 h-4 text-[#ff3333] mt-0.5 -rotate-12 drop-shadow-sm"
-                viewBox="0 0 40 40"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M8 8 C 10 18, 16 26, 26 28 M26 28 L 18 28 M 26 28 L 24 20"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
           </div>
 
           {/* Mobile Centered Bottom CTA Button */}

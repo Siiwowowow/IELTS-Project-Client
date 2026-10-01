@@ -16,6 +16,7 @@ const FOOTER_GROUPS = [
     links: [
       { label: "IELTS", href: "#skills" },
       { label: "Vocabulary", href: "#vocabulary" },
+      { label: "Band Calculator", href: "#band-calculator" },
       { label: "Daily Practice", href: "#daily-practice" },
       { label: "Mock Tests", href: "/mock-tests/full" },
       { label: "University", href: "#university" },
@@ -77,30 +78,31 @@ const SOCIALS = [
 
 export function FooterSection() {
   return (
-    <footer className="relative overflow-hidden bg-[#070808] pb-8 pt-16 text-white sm:pt-20">
+    <footer className="relative overflow-hidden bg-white pb-8 pt-14 text-neutral-900 border-t border-neutral-200 sm:pt-16 font-jakarta">
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div className="absolute left-[8%] top-0 h-72 w-72 rounded-full bg-[#ef3d2f]/8 blur-[110px]" />
-        <div className="absolute bottom-0 right-[8%] h-72 w-72 rounded-full bg-[#1769e8]/7 blur-[120px]" />
+        <div className="absolute left-[8%] top-0 h-72 w-72 rounded-full bg-[#ef3d2f]/5 blur-[120px]" />
+        <div className="absolute bottom-0 right-[8%] h-72 w-72 rounded-full bg-[#1769e8]/4 blur-[130px]" />
         {BACKGROUND_ICONS.map(({ icon: Icon, className }, index) => (
           <Icon
             key={index}
-            className={`absolute stroke-[1.1] text-white/[0.045] ${className}`}
+            className={`premium-icon-float absolute stroke-[1.1] text-neutral-900/[0.035] ${className}`}
+            style={{ animationDelay: `${index * -1.4}s` }}
           />
         ))}
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 sm:px-7 lg:px-8">
-        <div className="grid gap-12 border-b border-white/10 pb-12 md:grid-cols-12 md:gap-8 lg:pb-16">
+        <div className="grid gap-12 border-b border-neutral-200 pb-12 md:grid-cols-12 md:gap-8 lg:pb-14">
           <div className="md:col-span-5">
             <div className="w-fit overflow-hidden">
               <Logo />
             </div>
-            <p className="mt-3 max-w-sm text-sm font-medium leading-6 text-white/55">
+            <p className="mt-3 max-w-sm text-sm font-medium leading-6 text-neutral-600">
               Focused IELTS preparation for ambitious learners ready to build
               better English and reach their target score.
             </p>
 
-            <div className="mt-7 flex items-center gap-3">
+            <div className="mt-6 flex items-center gap-3">
               {SOCIALS.map(({ label, href, path, viewBox = "0 0 24 24" }) => (
                 <Link
                   key={label}
@@ -108,7 +110,7 @@ export function FooterSection() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={label}
-                  className="grid size-10 place-items-center border border-white/12 bg-white/[0.03] text-white/60 transition-colors hover:border-[#ef3d2f] hover:bg-[#ef3d2f] hover:text-white"
+                  className="grid size-9 place-items-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-700 transition-all hover:border-[#ef3d2f] hover:bg-[#ef3d2f] hover:text-white shadow-xs"
                 >
                   <svg
                     viewBox={viewBox}
@@ -125,7 +127,7 @@ export function FooterSection() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-7">
             {FOOTER_GROUPS.map((group) => (
               <div key={group.title}>
-                <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-white">
+                <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-neutral-900">
                   {group.title}
                 </h3>
                 <ul className="mt-5 space-y-3">
@@ -133,7 +135,7 @@ export function FooterSection() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm font-medium text-white/48 transition-colors hover:text-[#ff4a3d]"
+                        className="text-sm font-semibold text-neutral-600 transition-colors hover:text-[#ef3d2f]"
                       >
                         {link.label}
                       </Link>
@@ -145,9 +147,11 @@ export function FooterSection() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 pt-7 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 pt-6 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between font-medium">
           <p>© 2026 Engsight. All rights reserved.</p>
-          <p className="uppercase tracking-[0.16em]">Learn · Practice · Improve</p>
+          <p className="uppercase tracking-[0.16em] text-neutral-400 font-semibold">
+            Learn · Practice · Improve
+          </p>
         </div>
       </div>
     </footer>

@@ -4,26 +4,24 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import Logo from "../Logo/Logo";
-import NotificationsButton from "./NotificationsButton";
 import UserAvatar from "./UserAvatar";
 import AuthButtons from "./AuthButtons";
 import NavLinks from "./Navlinks ";
 import { getDashboardRoute } from "./utils";
 import { desktopNavItems } from "./navConfig";
 import type { NavItem } from "./types";
+import AccountLoadingState from "./AccountLoadingState";
 
 interface Props {
   onMenuOpen: () => void;
   drawerOpen?: boolean;
-  notificationCount?: number;
 }
 
 export default function TabletNav({
   onMenuOpen,
   drawerOpen = false,
-  notificationCount = 2,
 }: Props) {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const dashboardRoute = getDashboardRoute(user?.role);
 
   const compactItems: NavItem[] = desktopNavItems
@@ -32,7 +30,7 @@ export default function TabletNav({
 
   return (
     <div className="hidden md:block lg:hidden w-full">
-      <div className="flex h-16 items-center justify-between gap-4 px-5">
+      <div className="flex h-18 items-center justify-between gap-4 px-5">
         <Logo />
 
         <div className="flex min-w-0 flex-1 items-center justify-center overflow-x-auto scrollbar-hide">
@@ -40,8 +38,9 @@ export default function TabletNav({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <NotificationsButton count={notificationCount} />
-          {user ? (
+          {isLoading ? (
+            <AccountLoadingState />
+          ) : user ? (
             <>
               <UserAvatar />
               <Link
@@ -62,7 +61,7 @@ export default function TabletNav({
             aria-label="Open navigation menu"
             aria-expanded={drawerOpen}
             aria-controls="nav-mobile-drawer"
-            className="flex size-9 items-center justify-center rounded-xl border border-neutral-200/80 bg-neutral-50/60 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
+            className="flex size-9 items-center justify-center rounded-xl border border-neutral-300 bg-white text-neutral-900 transition-colors hover:bg-neutral-100 cursor-pointer shadow-xs"
           >
             <Menu className="size-4.5" strokeWidth={2} />
           </button>

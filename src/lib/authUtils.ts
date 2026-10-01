@@ -39,8 +39,8 @@ export const adminRoutes: RouteConfig = {
 
 // Common Protected Routes
 export const commonProtectedRoutes: RouteConfig = {
-  exact: ["/change-password"],
-  pattern: [],
+  exact: ["/change-password", "/practice/vocabulary"],
+  pattern: [/^\/practice(?:\/.*)?$/, /^\/mock-tests(?:\/.*)?$/],
 };
 
 export const isRouteMatches = (pathname: string, routes: RouteConfig): boolean => {
@@ -81,6 +81,7 @@ export const isValidRedirectForRole = (redirectPath: string, role: UserRole): bo
 
   // SUPER_ADMIN can access admin routes
   if (routeOwner === "ADMIN" && (role === "SUPER_ADMIN" || role === "ADMIN")) return true;
+  if (routeOwner === "TEACHER" && (role === "SUPER_ADMIN" || role === "ADMIN")) return true;
   if (routeOwner === role) return true;
 
   return false;
@@ -88,5 +89,8 @@ export const isValidRedirectForRole = (redirectPath: string, role: UserRole): bo
 
 // ✅ লগইন বা রেজিস্ট্রেশনের পর রিডাইরেক্ট
 export const getRedirectAfterLogin = (role: UserRole, redirectPath?: string): string => {
-  return "/";
+  if (redirectPath && redirectPath.startsWith("/") && isValidRedirectForRole(redirectPath, role)) {
+    return redirectPath;
+  }
+  return getDefaultDashboardRoute(role);
 };

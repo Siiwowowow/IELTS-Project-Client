@@ -16,6 +16,19 @@ export interface IRefreshTokenData {
     token: string;
 }
 
+function parseJwtPayload(token: string): any {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = Buffer.from(base64, "base64").toString("utf-8");
+        return JSON.parse(jsonPayload);
+    } catch {
+        return null;
+    }
+}
+
 export async function getNewTokensWithRefreshToken(refreshToken: string, sessionToken?: string): Promise<IRefreshTokenData | null> {
     try {
         const cookieHeader = [
@@ -25,6 +38,7 @@ export async function getNewTokensWithRefreshToken(refreshToken: string, session
 
         const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
             method: "POST",
+            cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
                 Cookie: cookieHeader
@@ -80,6 +94,7 @@ async function refreshAndGetTokens(
 
         const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
             method: "POST",
+            cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
                 Cookie: cookieHeader
@@ -118,9 +133,6 @@ export async function getUserInfo() {
         const sessionToken = cookieStore.get("better-auth.session_token")?.value;
 
         // If no accessToken but we have a refreshToken, get new tokens.
-        // Use the RETURNED values directly — do NOT re-read cookieStore,
-        // because cookieStore.get() still returns the old request cookies
-        // after a set() call within the same request.
         if (!accessToken && refreshToken) {
             const newTokens = await refreshAndGetTokens(refreshToken, sessionToken);
             if (newTokens) {
@@ -132,46 +144,56 @@ export async function getUserInfo() {
             return null;
         }
 
-        // Send ONLY the accessToken — this forces the backend checkAuth
-        // middleware to use the JWT verification path, which is reliable.
-        // Sending better-auth.session_token would trigger auth.api.getSession()
-        // which can fail if the session has expired in the DB, causing 401
-        // even when the JWT is perfectly valid.
-        console.log("getUserInfo fetching URL:", `${BASE_API_URL}/auth/me`, "accessToken:", accessToken ? accessToken.substring(0, 15) + "..." : "null");
-        let res = await fetch(`${BASE_API_URL}/auth/me`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                Cookie: `accessToken=${accessToken}`
-            }
-        });
+        try {
+            let res = await fetch(`${BASE_API_URL}/auth/me`, {
+                method: "GET",
+                cache: "no-store",
+                headers: {
+                    "Content-Type": "application/json",
+                    Cookie: `accessToken=${accessToken}`
+                }
+            });
 
-        // 401 fallback: accessToken might be expired, try refreshing
-        if (res.status === 401 && refreshToken) {
-            const newTokens = await refreshAndGetTokens(refreshToken, sessionToken);
-            if (newTokens) {
-                res = await fetch(`${BASE_API_URL}/auth/me`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Cookie: `accessToken=${newTokens.accessToken}`
-                    }
-                });
+            // 401 fallback: accessToken might be expired, try refreshing
+            if (res.status === 401 && refreshToken) {
+                const newTokens = await refreshAndGetTokens(refreshToken, sessionToken);
+                if (newTokens) {
+                    res = await fetch(`${BASE_API_URL}/auth/me`, {
+                        method: "GET",
+                        cache: "no-store",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Cookie: `accessToken=${newTokens.accessToken}`
+                        }
+                    });
+                }
             }
+
+            if (res.ok) {
+                const { data } = await res.json();
+                return data;
+            }
+        } catch (fetchErr) {
+            console.warn("fetch /auth/me network issue, checking JWT payload fallback:", fetchErr);
         }
 
-        if (!res.ok) {
-            if (res.status === 404 || res.status === 401) {
-                // Silent return to let the middleware handle clean logout
-                return null;
-            }
-            const errText = await res.text();
-            console.error("Failed to fetch user info:", res.status, res.statusText, "Body:", errText);
-            return null;
+        // Resilient fallback: If server round-trip fails, extract user info from valid JWT
+        const payload = parseJwtPayload(accessToken);
+        if (payload && payload.exp && payload.exp * 1000 > Date.now()) {
+            return {
+                id: payload.userId || payload.id,
+                name: payload.name || "User",
+                email: payload.email,
+                image: null,
+                role: payload.role,
+                status: payload.status,
+                isDeleted: payload.isDeleted,
+                emailVerified: payload.emailVerified,
+                needPasswordChange: payload.needPasswordChange,
+            };
         }
 
-        const { data } = await res.json();
-        return data;
+        return null;
     } catch (error) {
         console.error("Error fetching user info:", error);
         return null;
@@ -184,6 +206,7 @@ export async function logoutUser() {
         cookieStore.delete("accessToken");
         cookieStore.delete("refreshToken");
         cookieStore.delete("better-auth.session_token");
+        cookieStore.delete("__Secure-better-auth.session_token");
         return true;
     } catch (error) {
         console.error("Logout failed", error);

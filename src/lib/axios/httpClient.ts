@@ -2,14 +2,15 @@
 import { ApiResponse } from '@/types/api.types';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if(!API_BASE_URL) {
-    throw new Error('API_BASE_URL is not defined in environment variables');
-}
+const getBaseURL = () => {
+    if (typeof window !== 'undefined') {
+        return '/api/v1';
+    }
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api/v1';
+};
 
 const instance = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: getBaseURL(),
     timeout: 30000,
     withCredentials: true,
     headers: {
@@ -31,7 +32,12 @@ instance.interceptors.response.use(
     }
 );
 
-const axiosInstance = () => instance;
+const axiosInstance = () => {
+    if (typeof window !== 'undefined') {
+        instance.defaults.baseURL = '/api/v1';
+    }
+    return instance;
+};
 
 export interface ApiRequestOptions {
     params?: Record<string, unknown>;
@@ -48,8 +54,9 @@ const httpGet = async <TData>(endpoint: string, options?: ApiRequestOptions) : P
             timeout: options?.timeout,
         });
         return response.data;
-    } catch (error) {       
-        console.error(`GET request to ${endpoint} failed:`, error);
+    } catch (error: unknown) {       
+        const err = error as { response?: { data?: unknown }; message?: string };
+        console.error(`GET request to ${endpoint} failed:`, err?.response?.data || err.message);
         throw error;
     }
 }

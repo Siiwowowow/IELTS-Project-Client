@@ -31,6 +31,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { authDebug } from "@/lib/authDebug";
 
 const BAND_OPTIONS = ["5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5", "9.0"];
 
@@ -52,6 +53,7 @@ const RegisterForm = () => {
       examType: "ACADEMIC" as "ACADEMIC" | "GENERAL",
     },
     onSubmit: async ({ value }) => {
+      authDebug.info("REGISTRATION_SUBMITTED");
       setServerError(null);
       setIsLoading(true);
 
@@ -83,6 +85,7 @@ const RegisterForm = () => {
         };
 
         if (!result.success) {
+          authDebug.error("REGISTRATION_FAILED", { message: result.message });
           setServerError(result.message ?? "Registration failed");
           toast.error(result.message);
           setIsLoading(false);
@@ -90,12 +93,17 @@ const RegisterForm = () => {
         }
 
         setRegisterSuccess(true);
+        authDebug.info("REGISTRATION_SUCCEEDED", { nextStep: "email-verification" });
         toast.success("Account created! Check your email to verify.");
         setTimeout(() => {
           router.push(`/verify-email?email=${encodeURIComponent(value.email)}`);
         }, 1200);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Registration failed";
+        authDebug.error("REGISTRATION_ACTION_CRASHED", {
+          message,
+          errorType: err instanceof Error ? err.name : typeof err,
+        });
         setServerError(message);
         toast.error(message);
       } finally {

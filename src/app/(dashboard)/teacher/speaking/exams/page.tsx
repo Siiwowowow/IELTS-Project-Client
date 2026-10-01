@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   IconNotebook,
-  IconLoader2,
   IconAlertCircle,
   IconTrash,
   IconEdit,
@@ -22,6 +21,7 @@ import {
   IconMicrophone,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
+import { ExamCardSkeleton } from "@/components/shared/ExamCardSkeleton";
 
 export default function MySpeakingExamsPage() {
   const router = useRouter();
@@ -98,12 +98,7 @@ export default function MySpeakingExamsPage() {
           </h2>
         </div>
 
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-gray-200 shadow-xs gap-3">
-            <IconLoader2 size={36} className="animate-spin text-rose-600" />
-            <p className="text-sm font-semibold text-gray-500">Loading exams list...</p>
-          </div>
-        )}
+        {isLoading && <ExamCardSkeleton count={6} />}
 
         {isError && (
           <div className="flex items-center gap-4 p-5 bg-rose-50 border border-rose-100 rounded-2xl text-rose-800">
@@ -125,7 +120,7 @@ export default function MySpeakingExamsPage() {
             <div className="max-w-xs space-y-1">
               <p className="font-bold text-gray-800">No Speaking Exams Found</p>
               <p className="text-xs text-gray-500 font-medium">
-                You haven't created any speaking mock exams yet. Start by crafting your first one!
+                You haven&apos;t created any speaking mock exams yet. Start by crafting your first one!
               </p>
             </div>
             <Link

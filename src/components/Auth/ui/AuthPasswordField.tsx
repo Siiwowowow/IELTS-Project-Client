@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { forwardRef, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -26,8 +26,7 @@ export const AuthPasswordField = forwardRef<
     showStrength,
     strengthSlot,
     id: idProp,
-    value,
-    defaultValue,
+    placeholder,
     ...props
   },
   ref
@@ -35,53 +34,29 @@ export const AuthPasswordField = forwardRef<
   const generatedId = useId();
   const id = idProp ?? generatedId;
   const [show, setShow] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const hasValue =
-    value !== undefined && value !== ""
-      ? String(value).length > 0
-      : defaultValue !== undefined && String(defaultValue).length > 0;
-  const floated = focused || hasValue;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
+      <label htmlFor={id} className="block text-[13px] font-bold text-slate-700">
+        {label}
+      </label>
       <div className="relative">
+        <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-slate-400" />
         <input
           ref={ref}
           id={id}
           type={show ? "text" : "password"}
-          value={value}
-          defaultValue={defaultValue}
           aria-invalid={!!error}
-          onFocus={(e) => {
-            setFocused(true);
-            props.onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setFocused(false);
-            props.onBlur?.(e);
-          }}
           className={cn(
-            "peer w-full rounded-xl border bg-white px-4 pb-2.5 pt-6 pr-12 text-[15px] text-neutral-900 outline-none transition-all duration-200",
-            "placeholder:text-transparent",
-            "border-neutral-200 hover:border-neutral-300",
-            "focus:border-[#DC2626] focus:shadow-[0_0_0_3px_rgba(220,38,38,0.12)]",
+            "h-12 w-full rounded-xl border bg-slate-50/70 pl-11 pr-12 text-sm font-medium text-slate-950 outline-none transition-all duration-200",
+            "border-slate-200 placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 hover:bg-white",
+            "focus:border-[#e3262e] focus:bg-white focus:shadow-[0_0_0_4px_rgba(227,38,46,0.09)]",
             error && "border-red-400 focus:border-red-500",
             className
           )}
-          placeholder={label}
+          placeholder={placeholder ?? `Enter your ${label.toLowerCase()}`}
           {...props}
         />
-        <label
-          htmlFor={id}
-          className={cn(
-            "pointer-events-none absolute left-4 text-neutral-500 transition-all duration-200",
-            floated
-              ? "top-2 text-[11px] font-medium text-[#DC2626]"
-              : "top-1/2 -translate-y-1/2 text-sm"
-          )}
-        >
-          {label}
-        </label>
         <Button
           type="button"
           variant="ghost"
