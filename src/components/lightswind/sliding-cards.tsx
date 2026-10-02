@@ -9,6 +9,7 @@ export type CardContent = {
   description?: string;
   icon?: React.ReactNode;
   bgClass?: string;
+  theme?: "light" | "dark";
 };
 
 type SlidingCardsProps = {
@@ -48,9 +49,9 @@ const SlidingCards: React.FC<SlidingCardsProps> = ({
 
     const updatePositions = () => {
       cardsRef.current.forEach((card, i) => {
-        const offset = i + 1;
+        const offset = i;
         card.style.zIndex = `${100 - offset}`;
-        card.style.transform = `perspective(700px) translateZ(${-12 * offset}px) translateY(${7 * offset}px) translateX(0px) rotateY(0deg)`;
+        card.style.transform = `perspective(900px) translateZ(${-16 * offset}px) translateY(${8 * offset}px) translateX(${4 * offset}px) rotate(${offset * 0.35}deg)`;
         card.style.opacity = `1`;
       });
     };
@@ -131,20 +132,21 @@ const SlidingCards: React.FC<SlidingCardsProps> = ({
     <section
       ref={cardStackRef}
       className={cn(
-        "relative w-64 h-[22rem] grid place-content-center touch-none select-none",
+        "relative grid w-full place-content-center touch-pan-y select-none",
         className
       )}
     >
-      {cards.map(({ id, icon, bgClass = "bg-gradient-to-br from-pink-300 to-orange-200" }, index) => (
+      {cards.map(({ id, icon, bgClass = "bg-gradient-to-br from-pink-300 to-orange-200", theme = "light" }, index) => (
         <article
           key={id}
+          data-card-theme={theme}
           onClick={() => { if (!didSwipeRef.current) onCardClick?.(index); }}
           className={cn(
-            "card absolute inset-4 grid place-content-center rounded-xl border border-gray-400 shadow-md cursor-grab transition-transform ease-in-out",
+            "card absolute inset-x-1 top-1 bottom-8 grid place-content-center overflow-hidden rounded-2xl border-2 border-neutral-950 shadow-[6px_6px_0_#171717] cursor-grab transition-transform ease-in-out sm:inset-x-4 sm:top-4 sm:bottom-8",
             bgClass
           )}
         >
-          <span className={cn("aspect-square grid place-content-center", cardSize)}>
+          <span className={cn("grid min-h-0 min-w-0 place-content-stretch", cardSize)}>
             {icon || (
               <svg
                 className="w-full h-full fill-white drop-shadow-md"

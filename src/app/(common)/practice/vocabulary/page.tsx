@@ -210,14 +210,28 @@ export default function VocabularyPracticePage() {
     setMode("sentence");
   };
 
-  const speak = (word: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-GB";
-    utterance.rate = 0.82;
-    window.speechSynthesis.speak(utterance);
-  };
+  const speak = useCallback((word: string) => {
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      toast.error("Pronunciation is not supported by this browser.");
+      return;
+    }
+    const synthesizer = window.speechSynthesis;
+    synthesizer.cancel();
+    synthesizer.resume();
+    const play = () => {
+      const utterance = new SpeechSynthesisUtterance(word);
+      const voices = synthesizer.getVoices();
+      utterance.voice = voices.find((voice) => voice.lang.toLowerCase() === "en-gb")
+        ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en"))
+        ?? null;
+      utterance.lang = utterance.voice?.lang || "en-GB";
+      utterance.rate = 0.82;
+      utterance.pitch = 1;
+      synthesizer.speak(utterance);
+    };
+    if (synthesizer.getVoices().length === 0) window.setTimeout(play, 60);
+    else play();
+  }, []);
 
   const checkTranslation = () => {
     const expected = direction === "en-bn" ? current.bangla : current.word;
@@ -275,17 +289,17 @@ export default function VocabularyPracticePage() {
       </section>
 
       <div className="mx-auto max-w-7xl overflow-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <nav className="flex max-w-full gap-1.5 overflow-x-auto pb-2 sm:gap-2" aria-label="Vocabulary practice modes">
+        <nav className="grid w-full grid-cols-3 gap-2 pb-2 sm:flex sm:max-w-full sm:gap-2 sm:overflow-x-auto" aria-label="Vocabulary practice modes">
           {modes.map((item) => (
             <button
               key={item.id}
               onClick={() => setMode(item.id)}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors sm:h-10 sm:gap-2 sm:px-4 sm:text-sm ${
+              className={`inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 text-[10px] font-semibold transition-colors sm:h-10 sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm ${
                 mode === item.id ? "bg-neutral-900 text-white" : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100"
               }`}
             >
-              <item.icon size={17} />
-              {item.label}
+              <item.icon className="size-3.5 shrink-0 sm:size-[17px]" />
+              <span className="min-w-0 truncate">{item.label}</span>
               {item.id === "bookmarks" && bookmarkedIds.length > 0 && (
                 <span
                   className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold leading-none ${
@@ -532,10 +546,9 @@ function LearnPanel({
       } else if (containerWidth >= 480) {
         return { width: 205, height: 350 };
       } else {
-        // Keep a readable, standard-size page on phones. Open spreads can pan
-        // horizontally instead of forcing both pages into the narrow viewport.
-        const safeWidth = Math.min(180, Math.max(150, Math.floor(containerWidth * 0.76)));
-        return { width: safeWidth, height: Math.round(safeWidth * 1.5) };
+        // Keep both leaves visible instead of making the open book horizontally scroll.
+        const safeWidth = Math.max(108, Math.floor((containerWidth - 44) / 2));
+        return { width: safeWidth, height: Math.round(safeWidth * 1.48) };
       }
     };
 
@@ -672,7 +685,7 @@ function LearnPanel({
   return (
     <div ref={containerRef} className="w-full flex flex-col items-center">
       {/* 3D Book Pageflip Container with generous side padding */}
-      <div className="flex min-h-64 w-full items-center justify-start overflow-x-auto overflow-y-visible px-0 pb-5 pt-3 [scrollbar-width:thin] sm:min-h-105 sm:justify-center sm:px-4 sm:py-5 md:px-8 lg:overflow-visible">
+      <div className="flex min-h-52 w-full items-center justify-center overflow-hidden px-0 pb-5 pt-3 sm:min-h-105 sm:px-4 sm:py-5 md:px-8 lg:overflow-visible">
         {pageDims ? <ThreeDImagePageflip
           ref={bookRef}
           pages={pages}
@@ -687,11 +700,7 @@ function LearnPanel({
           showControls={false}
           defaultTurnedIndex={Math.min(Math.max(1, currentIndex + 1), words.length)}
           onPageChange={handlePageChange}
-          style={{
-            width: `${pageDims.width * 2 + 40}px`,
-            minWidth: `${pageDims.width * 2 + 40}px`,
-            marginInline: "auto",
-          }}
+          style={{ marginInline: "auto" }}
         /> : <div className="h-64 w-full max-w-md rounded-xl bg-neutral-100 sm:h-96" aria-label="Preparing vocabulary book" role="status" />}
       </div>
 
@@ -1121,13 +1130,24 @@ function BookBackCover({
 
 function Flashcard({ words, position, onSpeak, onNext, onPrevious }: { words: VocabularyWord[]; position: number; onSpeak: (word: string) => void; onNext: () => void; onPrevious: () => void }) {
   const visibleCards = Array.from({ length: Math.min(5, words.length) }, (_, offset) => words[(position + offset) % words.length]);
-  const gradients = ["bg-linear-to-br from-amber-50 to-orange-100", "bg-linear-to-br from-blue-50 to-indigo-100", "bg-linear-to-br from-emerald-50 to-teal-100", "bg-linear-to-br from-rose-50 to-pink-100", "bg-linear-to-br from-violet-50 to-purple-100"];
+  const gradients = [
+    "bg-[#ff5e5b]",
+    "bg-[#d00000]",
+    "bg-[#ffff3f]",
+    "bg-[#fe6a86]",
+    "bg-[#c86bfa]",
+    "bg-[#80ffdb]",
+    "bg-[#b8c0ff]",
+    "bg-[#ef476f]",
+    "bg-[#fae0e4]",
+  ];
   const cards = visibleCards.map((word, cardIndex) => ({
     id: word.id,
-    bgClass: gradients[cardIndex % gradients.length],
+    bgClass: gradients[(position + cardIndex) % gradients.length],
+    theme: "dark" as const,
     icon: <div className="flex h-full w-full flex-col p-6 text-left sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">{word.topic} · {word.level}</p><h2 className="mt-3 text-3xl font-bold tracking-tight text-neutral-950 sm:text-4xl">{word.word}</h2><p className="mt-1 text-sm text-neutral-500">{word.pronunciation} · {word.partOfSpeech}</p></div><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onSpeak(word.word); }} className="grid size-10 shrink-0 place-items-center rounded-full bg-white/75 text-neutral-600 shadow-sm hover:text-red-600" aria-label={`Pronounce ${word.word}`}><Volume2 size={19} /></button></div><div className="mt-6 border-t border-black/10 pt-5"><p className="text-xl font-bold text-neutral-900">{word.bangla}</p><p className="mt-2 text-sm leading-6 text-neutral-600">{word.definition}</p></div><div className="mt-auto rounded-xl bg-white/65 p-4"><p className="text-sm font-medium leading-6 text-neutral-700">{word.example}</p><p className="mt-1 text-xs leading-5 text-neutral-500">{word.exampleBangla}</p></div><div className="mt-4 flex flex-wrap gap-1.5">{word.collocations.slice(0, 3).map((item) => <span key={item} className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-medium text-neutral-600">{item}</span>)}</div></div>,
   }));
-  return <div className="mx-auto max-w-3xl py-2"><div className="flex justify-center overflow-hidden py-4"><SlidingCards key={visibleCards[0]?.id} cards={cards} cardSize="h-full w-full" className="h-112.5 w-full max-w-xl" onCardClick={() => onNext()} onSwipe={(direction) => direction === "left" ? onNext() : onPrevious()} /></div><p className="mt-1 text-center text-xs text-neutral-400">Swipe a card or use the controls below</p><div className="mt-5 flex items-center justify-between"><button onClick={onPrevious} className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-600 hover:bg-neutral-50"><ChevronLeft size={17} /> Previous</button><span className="text-xs font-medium text-neutral-400">{position + 1} of {words.length}</span><button onClick={onNext} className="inline-flex h-10 items-center gap-2 rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-red-600">Next <ChevronRight size={17} /></button></div></div>;
+  return <div className="mx-auto w-full max-w-3xl py-2"><div className="flex w-full justify-center overflow-hidden px-1 py-4 sm:px-4"><SlidingCards key={visibleCards[0]?.id} cards={cards} cardSize="h-full w-full" className="h-112.5 w-full max-w-xl" onCardClick={() => onNext()} onSwipe={(direction) => direction === "left" ? onNext() : onPrevious()} /></div><p className="mt-1 text-center text-xs text-neutral-400">Swipe a card or use the controls below</p><div className="mt-5 flex items-center justify-between"><button onClick={onPrevious} className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-600 hover:bg-neutral-50"><ChevronLeft size={17} /> Previous</button><span className="text-xs font-medium text-neutral-400">{position + 1} of {words.length}</span><button onClick={onNext} className="inline-flex h-10 items-center gap-2 rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-red-600">Next <ChevronRight size={17} /></button></div></div>;
 }
 
 function TranslationPanel({ word, direction, answer, onAnswer, state, onCheck }: { word: VocabularyWord; direction: Direction; answer: string; onAnswer: (value: string) => void; state: "idle" | "correct" | "wrong"; onCheck: () => void }) {
