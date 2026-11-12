@@ -95,9 +95,7 @@ const RegisterForm = () => {
         setRegisterSuccess(true);
         authDebug.info("REGISTRATION_SUCCEEDED", { nextStep: "email-verification" });
         toast.success("Account created! Check your email to verify.");
-        setTimeout(() => {
-          router.push(`/verify-email?email=${encodeURIComponent(value.email)}`);
-        }, 1200);
+        router.push(`/verify-email?email=${encodeURIComponent(value.email)}`);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Registration failed";
         authDebug.error("REGISTRATION_ACTION_CRASHED", {

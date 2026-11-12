@@ -389,6 +389,32 @@ export default function WritingReviewPage({ params }: Props) {
     setAssessmentProgress("আপনার উত্তর প্রস্তুত করা হচ্ছে...");
 
     try {
+      let currentAttempt = attempt;
+      if (!currentAttempt || !currentAttempt.responses?.length) {
+        try {
+          const freshAttemptRes = await writingService.getAttemptReview(attemptId);
+          currentAttempt = freshAttemptRes?.data;
+        } catch {}
+      }
+
+      const currentExam = fullExam || currentAttempt?.exam;
+      const currentExamTasks = currentExam?.tasks
+        ? [...currentExam.tasks].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+        : [];
+      const currentResponses = currentAttempt?.responses
+        ? [...currentAttempt.responses].sort((a: any, b: any) => {
+            const orderA =
+              a.task?.order ??
+              (a.taskId ? currentExamTasks.find((t: any) => t.id === a.taskId)?.order : 0) ??
+              0;
+            const orderB =
+              b.task?.order ??
+              (b.taskId ? currentExamTasks.find((t: any) => t.id === b.taskId)?.order : 0) ??
+              0;
+            return orderA - orderB;
+          })
+        : [];
+
       let pending: PendingWritingAssessment | null = null;
 
       // 1. Try sessionStorage
@@ -410,29 +436,46 @@ export default function WritingReviewPage({ params }: Props) {
       }
 
       // 3. Fallback: Reconstruct directly from attempt.responses & fullExam.tasks
-      if (!pending && sortedResponses.length > 0) {
+      if (!pending && currentResponses.length > 0) {
         pending = {
           version: 1,
           attemptId,
-          tasks: sortedResponses.map((res: any) => {
+          tasks: currentResponses.map((res: any) => {
             const task =
-              examTasks.find((t: any) => t.id === res.taskId) ||
+              currentExamTasks.find((t: any) => t.id === res.taskId) ||
               res.task ||
-              examTasks.find((t: any) => t.taskType === "TASK_1") ||
+              currentExamTasks.find((t: any) => t.taskType === "TASK_1") ||
               {};
             return {
               taskId: res.taskId,
               request: {
-                examType: fullExam?.examType ?? "ACADEMIC",
+                examType: currentExam?.examType ?? "ACADEMIC",
                 taskType: task.taskType || "TASK_2",
-                prompt: task.instruction || "",
-                essay: res.response || "",
+                prompt: task.instruction || "IELTS Writing Task",
+                essay: res.essay ?? res.response ?? "",
                 minWords: task.minWords ?? (task.taskType === "TASK_1" ? 150 : 250),
                 imageUrl: task.imageUrl || null,
               },
             };
           }),
         };
+      }
+
+      if (pending && currentResponses.length > 0) {
+        pending.tasks = pending.tasks.map((item) => {
+          const matchingRes = currentResponses.find((r: any) => r.taskId === item.taskId);
+          const matchingTask =
+            currentExamTasks.find((t: any) => t.id === item.taskId) || matchingRes?.task;
+          return {
+            ...item,
+            request: {
+              ...item.request,
+              prompt: item.request.prompt || matchingTask?.instruction || "IELTS Writing Task",
+              essay: item.request.essay || matchingRes?.essay || matchingRes?.response || "",
+              imageUrl: item.request.imageUrl ?? matchingTask?.imageUrl ?? null,
+            },
+          };
+        });
       }
 
       if (!pending || pending.tasks.length === 0) {
@@ -470,19 +513,30 @@ export default function WritingReviewPage({ params }: Props) {
       localStorage.setItem(writingAssessmentStorageKey(attemptId), JSON.stringify(completed));
       try {
         sessionStorage.removeItem(pendingWritingAssessmentStorageKey(attemptId));
+        localStorage.removeItem(pendingWritingAssessmentStorageKey(attemptId));
       } catch {}
       setAiAssessment(completed);
 
       // Auto-save official grades to database!
-      const grades = sortedResponses.map((res: any) => {
+      const grades = currentResponses.map((res: any) => {
         const tAssess = taskAssessments[res.taskId];
-        const isT1 = tAssess?.taskType === "TASK_1";
-        const ta = isT1
-          ? (tAssess?.criteria as any)?.taskAchievement?.score ?? 6.0
-          : (tAssess?.criteria as any)?.taskResponse?.score ?? 6.0;
-        const cc = tAssess?.criteria?.coherenceCohesion?.score ?? 6.0;
-        const lr = tAssess?.criteria?.lexicalResource?.score ?? 6.0;
-        const gra = tAssess?.criteria?.grammaticalRangeAccuracy?.score ?? 6.0;
+        const ta =
+          tAssess?.taskAchievement?.score ??
+          (tAssess?.criteria as any)?.taskAchievement?.score ??
+          (tAssess?.criteria as any)?.taskResponse?.score ??
+          0;
+        const cc =
+          tAssess?.coherenceCohesion?.score ??
+          (tAssess?.criteria as any)?.coherenceCohesion?.score ??
+          0;
+        const lr =
+          tAssess?.lexicalResource?.score ??
+          (tAssess?.criteria as any)?.lexicalResource?.score ??
+          0;
+        const gra =
+          tAssess?.grammaticalRangeAccuracy?.score ??
+          (tAssess?.criteria as any)?.grammaticalRangeAccuracy?.score ??
+          0;
         return {
           responseId: res.id,
           taskAchievement: Number(ta),
@@ -496,7 +550,7 @@ export default function WritingReviewPage({ params }: Props) {
       if (grades.length > 0) {
         try {
           await writingService.gradeAttempt(attemptId, { grades });
-          queryClient.invalidateQueries({ queryKey: ["writing-attempt-review", attemptId] });
+          await queryClient.invalidateQueries({ queryKey: ["writing-attempt-review", attemptId] });
         } catch (dbErr) {
           console.warn("Auto-saving writing grades to DB failed:", dbErr);
         }
@@ -574,14 +628,18 @@ export default function WritingReviewPage({ params }: Props) {
     );
   }
 
-  if (assessmentError) {
+  if (assessmentError && !attempt && !isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-7 text-center shadow-sm space-y-4">
           <IconAlertCircle size={38} className="mx-auto text-rose-600" />
           <h1 className="text-xl font-black text-gray-900">Assessment সম্পন্ন হয়নি</h1>
           <p className="text-sm leading-relaxed text-gray-600">{assessmentError}</p>
-          <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-black px-5 py-2.5 text-sm font-bold text-white">
+          <button
+            type="button"
+            onClick={() => void runAssessment()}
+            className="rounded-lg bg-black px-5 py-2.5 text-sm font-bold text-white cursor-pointer"
+          >
             আবার চেষ্টা করুন
           </button>
         </div>

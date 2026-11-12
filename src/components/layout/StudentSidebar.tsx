@@ -8,7 +8,6 @@ import {
   IconMicrophone,
   IconPencil,
   IconTrophy,
-  IconUser,
 } from "@tabler/icons-react";
 import {
   Sidebar,
@@ -21,11 +20,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "../shared/Logo/Logo";
+import { SidebarProfile } from "./SidebarProfile";
 
 const navigation = [
   {
@@ -49,9 +50,12 @@ export function StudentSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar className="border-r border-neutral-200 bg-white text-neutral-900">
-      <SidebarHeader className="flex h-16 justify-center border-b border-neutral-200 px-4">
-        <Logo compact />
+    <Sidebar collapsible="icon" className="border-r border-neutral-200 bg-white text-neutral-900">
+      <SidebarHeader className="flex h-16 flex-row items-center justify-between border-b border-neutral-200 px-4 group-data-[collapsible=icon]:px-2">
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="group-data-[collapsible=icon]:hidden"><Logo compact /></div>
+          <SidebarTrigger className="shrink-0" />
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="px-3 py-5">
@@ -81,11 +85,13 @@ export function StudentSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-neutral-200 p-3">
-        <div className="flex items-center gap-3 rounded-lg p-2">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-neutral-100 text-neutral-600"><IconUser size={18} /></span>
-          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-neutral-800">{user?.name || "Student"}</p><p className="truncate text-xs text-neutral-400">{user?.email || "IELTS candidate"}</p></div>
-        </div>
+      <SidebarFooter className="group-data-[collapsible=icon]:p-2 border-t border-neutral-200 p-3">
+        <SidebarProfile
+          name={user?.name}
+          email={user?.email}
+          image={user?.uploadedImage || user?.image}
+          role="Student"
+        />
         <SidebarMenuButton onClick={logout} className="mt-1 h-9 rounded-lg px-3 text-sm font-medium text-neutral-500 hover:bg-red-50 hover:text-red-600">
           <IconLogout size={17} /><span>Log out</span>
         </SidebarMenuButton>

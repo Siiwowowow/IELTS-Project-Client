@@ -5,6 +5,21 @@ import { setTokenInCookies } from "@/lib/tokenUtils";
 import { cookies } from "next/headers";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const AUTH_REQUEST_TIMEOUT_MS = 8_000;
+
+async function fetchWithAuthTimeout(
+    url: string,
+    init: RequestInit
+): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+
+    try {
+        return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 if (!BASE_API_URL) {
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
@@ -36,7 +51,7 @@ export async function getNewTokensWithRefreshToken(refreshToken: string, session
             sessionToken ? `better-auth.session_token=${sessionToken}` : ""
         ].filter(Boolean).join("; ");
 
-        const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
+        const res = await fetchWithAuthTimeout(`${BASE_API_URL}/auth/refresh-token`, {
             method: "POST",
             cache: "no-store",
             headers: {
@@ -92,7 +107,7 @@ async function refreshAndGetTokens(
             sessionToken ? `better-auth.session_token=${sessionToken}` : ""
         ].filter(Boolean).join("; ");
 
-        const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
+        const res = await fetchWithAuthTimeout(`${BASE_API_URL}/auth/refresh-token`, {
             method: "POST",
             cache: "no-store",
             headers: {
@@ -145,7 +160,7 @@ export async function getUserInfo() {
         }
 
         try {
-            let res = await fetch(`${BASE_API_URL}/auth/me`, {
+            let res = await fetchWithAuthTimeout(`${BASE_API_URL}/auth/me`, {
                 method: "GET",
                 cache: "no-store",
                 headers: {
@@ -158,7 +173,7 @@ export async function getUserInfo() {
             if (res.status === 401 && refreshToken) {
                 const newTokens = await refreshAndGetTokens(refreshToken, sessionToken);
                 if (newTokens) {
-                    res = await fetch(`${BASE_API_URL}/auth/me`, {
+                    res = await fetchWithAuthTimeout(`${BASE_API_URL}/auth/me`, {
                         method: "GET",
                         cache: "no-store",
                         headers: {

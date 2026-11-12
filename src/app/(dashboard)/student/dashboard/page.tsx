@@ -44,6 +44,7 @@ export default function StudentDashboard() {
   const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ["student-dashboard"],
     queryFn: mockTestService.getStudentDashboard,
+    retry: false,
   });
   const dashboard = response?.data;
 

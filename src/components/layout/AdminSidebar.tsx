@@ -7,7 +7,6 @@ import {
   IconSettings,
   IconBook,
   IconVocabulary,
-  IconUserCircle,
   IconLogout,
 } from "@tabler/icons-react"
 
@@ -22,11 +21,13 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/providers/AuthProvider"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Logo from "../shared/Logo/Logo"
+import { SidebarProfile } from "./SidebarProfile"
 
 const adminItems = [
   {
@@ -61,9 +62,12 @@ export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar className="border-r border-slate-200/60 bg-linear-to-b from-slate-50/90 to-white/95 backdrop-blur-xl shadow-xs text-black">
-      <SidebarHeader className="p-4 border-b border-slate-200/50 bg-white">
-        <Logo compact />
+    <Sidebar collapsible="icon" className="border-r border-slate-200/60 bg-linear-to-b from-slate-50/90 to-white/95 backdrop-blur-xl shadow-xs text-black">
+      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-slate-200/50 bg-white">
+        <div className="flex items-center justify-between gap-2">
+          <div className="group-data-[collapsible=icon]:hidden"><Logo compact /></div>
+          <SidebarTrigger className="shrink-0" />
+        </div>
       </SidebarHeader>
       <SidebarContent className="px-2 py-3 space-y-4">
         <SidebarGroup>
@@ -106,32 +110,15 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-3 border-t border-slate-200/50 bg-slate-50/40">
+      <SidebarFooter className="p-3 group-data-[collapsible=icon]:p-2 border-t border-slate-200/50 bg-slate-50/40">
+        <SidebarProfile
+          name={user?.name}
+          email={user?.email}
+          image={user?.uploadedImage || user?.image}
+          role="Admin"
+        />
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Premium Card Layout */}
-            <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200/55 p-3 mb-3 shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-inner">
-                  <IconUserCircle size={20} />
-                  {/* Miniature absolute crown badge on avatar */}
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-extrabold text-white ring-2 ring-white">
-                    ★
-                  </span>
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-slate-800 truncate">
-                      {user?.name || "Admin"}
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                    {user?.email}
-                  </span>
-                </div>
-              </div>
-            </div>
-            {/* Logout Trigger */}
             <SidebarMenuButton
               onClick={logout}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 bg-red-50/50 hover:bg-red-500/10 border border-red-500/10 rounded-lg transition-colors duration-200 font-bold"

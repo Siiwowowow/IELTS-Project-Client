@@ -99,13 +99,23 @@ export default function StudentMockTestAttemptPage({ params }: Props) {
           const responses = review.data.responses || [];
           const grades = responses.map((res: any) => {
             const tAssess = parsed.tasks[res.taskId];
-            const isT1 = tAssess?.taskType === "TASK_1";
-            const ta = isT1
-              ? (tAssess?.criteria as any)?.taskAchievement?.score ?? 6.0
-              : (tAssess?.criteria as any)?.taskResponse?.score ?? 6.0;
-            const cc = tAssess?.criteria?.coherenceCohesion?.score ?? 6.0;
-            const lr = tAssess?.criteria?.lexicalResource?.score ?? 6.0;
-            const gra = tAssess?.criteria?.grammaticalRangeAccuracy?.score ?? 6.0;
+            const ta =
+              tAssess?.taskAchievement?.score ??
+              (tAssess?.criteria as any)?.taskAchievement?.score ??
+              (tAssess?.criteria as any)?.taskResponse?.score ??
+              0;
+            const cc =
+              tAssess?.coherenceCohesion?.score ??
+              (tAssess?.criteria as any)?.coherenceCohesion?.score ??
+              0;
+            const lr =
+              tAssess?.lexicalResource?.score ??
+              (tAssess?.criteria as any)?.lexicalResource?.score ??
+              0;
+            const gra =
+              tAssess?.grammaticalRangeAccuracy?.score ??
+              (tAssess?.criteria as any)?.grammaticalRangeAccuracy?.score ??
+              0;
             return {
               responseId: res.id,
               taskAchievement: Number(ta),
@@ -142,8 +152,8 @@ export default function StudentMockTestAttemptPage({ params }: Props) {
       const assessmentResult = await writingService.assessTask({
         examType: review.data.exam?.examType ?? "ACADEMIC",
         taskType: task.taskType || (isT1 ? "TASK_1" : "TASK_2"),
-        prompt: task.instruction || "",
-        essay: resp.response || "",
+        prompt: task.instruction || "IELTS Writing Task",
+        essay: resp.essay ?? resp.response ?? "",
         minWords: task.minWords ?? (isT1 ? 150 : 250),
         imageUrl: task.imageUrl || null,
       });
@@ -166,7 +176,7 @@ export default function StudentMockTestAttemptPage({ params }: Props) {
     const rawOverall =
       t1Band !== undefined && t2Band !== undefined
         ? (t1Band + t2Band * 2) / 3
-        : t2Band ?? t1Band ?? 6.0;
+        : t2Band ?? t1Band ?? 0;
 
     const completed: StoredWritingAssessment = {
       version: 1,
@@ -181,13 +191,23 @@ export default function StudentMockTestAttemptPage({ params }: Props) {
     // Grade attempt in database
     const grades = responses.map((res: any) => {
       const tAssess = taskAssessments[res.taskId];
-      const isT1 = tAssess?.taskType === "TASK_1";
-      const ta = isT1
-        ? (tAssess?.criteria as any)?.taskAchievement?.score ?? 6.0
-        : (tAssess?.criteria as any)?.taskResponse?.score ?? 6.0;
-      const cc = tAssess?.criteria?.coherenceCohesion?.score ?? 6.0;
-      const lr = tAssess?.criteria?.lexicalResource?.score ?? 6.0;
-      const gra = tAssess?.criteria?.grammaticalRangeAccuracy?.score ?? 6.0;
+      const ta =
+        tAssess?.taskAchievement?.score ??
+        (tAssess?.criteria as any)?.taskAchievement?.score ??
+        (tAssess?.criteria as any)?.taskResponse?.score ??
+        0;
+      const cc =
+        tAssess?.coherenceCohesion?.score ??
+        (tAssess?.criteria as any)?.coherenceCohesion?.score ??
+        0;
+      const lr =
+        tAssess?.lexicalResource?.score ??
+        (tAssess?.criteria as any)?.lexicalResource?.score ??
+        0;
+      const gra =
+        tAssess?.grammaticalRangeAccuracy?.score ??
+        (tAssess?.criteria as any)?.grammaticalRangeAccuracy?.score ??
+        0;
       return {
         responseId: res.id,
         taskAchievement: Number(ta),

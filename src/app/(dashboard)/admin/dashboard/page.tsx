@@ -47,10 +47,11 @@ export default function AdminDashboardPage() {
   const [status, setStatus] = useState("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
 
-  const overview = useQuery({ queryKey: ["admin-overview"], queryFn: adminService.getOverview });
+  const overview = useQuery({ queryKey: ["admin-overview"], queryFn: adminService.getOverview, retry: false });
   const users = useQuery({
     queryKey: ["managed-users", search, role, status, includeDeleted],
     queryFn: () => adminService.getUsers({ search: search || undefined, role: role || undefined, status: status || undefined, includeDeleted, limit: 8 }),
+    retry: false,
   });
 
   const refresh = () => {
@@ -134,7 +135,7 @@ export default function AdminDashboardPage() {
           <table className="w-full min-w-[800px] text-left">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-400"><tr><th className="px-5 py-3 font-bold">Account</th><th className="px-5 py-3 font-bold">Role</th><th className="px-5 py-3 font-bold">Status</th><th className="px-5 py-3 font-bold">Joined</th><th className="px-5 py-3 text-right font-bold">Actions</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {users.isLoading ? <tr><td colSpan={5} className="p-14 text-center"><Loader2 className="mx-auto size-5 animate-spin text-slate-400" /></td></tr> : visibleUsers.length ? visibleUsers.map((user) => (
+              {users.isLoading ? <tr><td colSpan={5} className="p-14 text-center"><Loader2 className="mx-auto size-5 animate-spin text-slate-400" /></td></tr> : users.isError ? <tr><td colSpan={5} className="p-8 text-center text-sm text-red-700">Could not load users. <button type="button" onClick={() => void users.refetch()} className="font-bold underline">Try again</button></td></tr> : visibleUsers.length ? visibleUsers.map((user) => (
                 <tr key={user.id} className="transition hover:bg-slate-50/70">
                   <td className="px-5 py-4"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-slate-100 text-sm font-black text-slate-600">{(user.name || user.email)[0].toUpperCase()}</span><div><p className="text-sm font-bold text-slate-800">{user.name || "Unnamed user"}</p><p className="mt-0.5 text-xs text-slate-400">{user.email}</p></div></div></td>
                   <td className="px-5 py-4 text-sm font-semibold text-slate-600">{user.role === "TEACHER" ? "Teacher" : "Student"}</td>

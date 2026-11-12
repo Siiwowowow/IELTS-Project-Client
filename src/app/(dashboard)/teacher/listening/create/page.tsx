@@ -31,20 +31,14 @@ import { parseBoldText } from "@/lib/utils";
 import { ListeningQuestionRenderer } from "@/components/Listening/ListeningQuestionRenderer";
 import type { IListeningQuestionGroup } from "@/types/listening.types";
 import { FloatingSelectionToolbar } from "@/components/shared/FloatingSelectionToolbar";
+import { ListeningJsonImportDialog } from "@/components/Listening/ListeningJsonImportDialog";
+import {
+  LISTENING_QUESTION_TYPES,
+  serializeListeningImportJson,
+  type ListeningImportResult,
+} from "@/lib/listeningJsonImport";
 
-// List of all IELTS question types supported
-const QUESTION_GROUP_TYPES = [
-  { value: "SENTENCE_COMPLETION", label: "Sentence Completion" },
-  { value: "MULTIPLE_CHOICE", label: "Single MCQ (One Correct Answer)" },
-  { value: "MULTIPLE_CHOICE_MULTIPLE", label: "Double MCQ (Choose Two Answers)" },
-  { value: "MATCHING_FEATURES", label: "Matching Features (A–G List)" },
-  { value: "SHORT_ANSWER", label: "Short Answer" },
-  { value: "TABLE_COMPLETION", label: "Table Completion" },
-  { value: "FLOW_CHART_COMPLETION", label: "Flow Chart Completion" },
-  { value: "DIAGRAM_LABELLING", label: "Diagram / Map Labelling" },
-  { value: "SUMMARY_COMPLETION", label: "Summary Completion" },
-  { value: "NOTES_COMPLETION", label: "Notes Completion" },
-];
+const QUESTION_GROUP_TYPES = LISTENING_QUESTION_TYPES;
 
 const LISTENING_CREATOR_DRAFT_KEY = "ielts-listening-creator-draft-v1";
 const DIAGRAM_LABEL_OPTIONS = ["A", "B", "C", "D", "E", "F", "G"];
@@ -199,6 +193,47 @@ const getEmptyExamForm = (): ExamForm => ({
   ],
 });
 
+function getExamFormFromInitialExam(initialExam: any): ExamForm {
+  const exam = initialExam?.data ?? initialExam;
+  const sections = [1, 2, 3, 4].map((order) => {
+    const section = exam.sections?.find((item: any) => Number(item.order) === order);
+    if (!section) return getBlankSectionState(order, `Section ${order}`);
+    return {
+      title: section.title || `Section ${order}`,
+      audioUrl: section.audioUrl || "",
+      youtubeUrl: section.youtubeUrl || "",
+      script: section.script || "",
+      instruction: section.instruction || "",
+      order,
+      questionGroups: (section.questionGroups ?? []).map((group: any, groupIndex: number) => ({
+        type: group.type || "SENTENCE_COMPLETION",
+        instruction: group.instruction || "",
+        passageSegment: group.passageSegment || "",
+        options: group.options ?? [],
+        imageUrl: group.imageUrl || "",
+        order: Number(group.order) || groupIndex + 1,
+        questions: (group.questions ?? []).map((question: any) => ({
+          questionNumber: Number(question.questionNumber) || 1,
+          questionText: question.questionText || "",
+          options: question.options ?? [],
+          correctAnswer: question.correctAnswer || "",
+          explanation: question.explanation || "",
+        })),
+      })),
+    };
+  });
+  const firstSectionWithAudio = sections.find((section) => section.audioUrl);
+  return {
+    title: exam.title || "",
+    description: exam.description || "",
+    duration: Number(exam.duration) || 30,
+    isPublished: Boolean(exam.isPublished),
+    audioUrl: exam.audioUrl || firstSectionWithAudio?.audioUrl || "",
+    youtubeUrl: exam.youtubeUrl || sections.find((section) => section.youtubeUrl)?.youtubeUrl || "",
+    sections,
+  };
+}
+
 const getQuestionRangeLabel = (questions: Question[], sectionIndex: number) => {
   const numbers = questions.map((question) => question.questionNumber).filter(Number.isFinite).sort((a, b) => a - b);
   const fallback = getSectionQuestionRange(sectionIndex);
@@ -209,8 +244,17 @@ const getQuestionRangeLabel = (questions: Question[], sectionIndex: number) => {
 };
 
 const getDefaultGroupInstructions = (type: string) => {
+  if (type === "SENTENCE_COMPLETION") {
+    return ["Complete the sentences below.", "Write **NO MORE THAN TWO WORDS** for each answer."];
+  }
   if (type === "NOTES_COMPLETION") {
     return ["Complete the notes below.", "Write **NO MORE THAN TWO WORDS** for each answer."];
+  }
+  if (type === "SUMMARY_COMPLETION") {
+    return ["Complete the summary below.", "Write **NO MORE THAN TWO WORDS** for each answer."];
+  }
+  if (type === "SHORT_ANSWER") {
+    return ["Answer the questions below.", "Write **NO MORE THAN THREE WORDS** for each answer."];
   }
   if (type === "TABLE_COMPLETION") {
     return ["Complete the table below.", "Write **ONE WORD AND/OR A NUMBER** for each answer."];
@@ -439,9 +483,10 @@ function isListeningDraftEmpty(form: Partial<ExamForm>): boolean {
 type ListeningCreatorWorkspaceProps = {
   embedded?: boolean;
   onExamReady?: (exam: any) => void;
+  initialExam?: any;
 };
 
-export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: ListeningCreatorWorkspaceProps = {}) {
+export function ListeningCreatorWorkspace({ embedded = false, onExamReady, initialExam }: ListeningCreatorWorkspaceProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -449,7 +494,17 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   const localDraftKey = `${LISTENING_CREATOR_DRAFT_KEY}:${editExamId ?? "new"}`;
 
   // Form State
-  const [formState, setFormState] = useState<ExamForm>(getEmptyExamForm);
+  const [formState, setFormState] = useState<ExamForm>(() =>
+    initialExam ? getExamFormFromInitialExam(initialExam) : getEmptyExamForm()
+  );
+  const [newQuestionGroupType, setNewQuestionGroupType] = useState<string>("SENTENCE_COMPLETION");
+  const [bulkJsonText, setBulkJsonText] = useState("");
+  const updateFormState = (updater: React.SetStateAction<ExamForm>) => {
+    setBulkJsonText("");
+    setFormState(updater);
+  };
+  const currentQuestionJson = serializeListeningImportJson(formState);
+  const bulkJsonEditorText = bulkJsonText.trim() ? bulkJsonText : currentQuestionJson;
 
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -458,10 +513,14 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   const [isDraftHydrated, setIsDraftHydrated] = useState(false);
   const restoredLocalDraft = useRef(false);
   const latestFormState = useRef(formState);
+  const latestBulkJsonText = useRef(bulkJsonText);
 
   useEffect(() => {
     latestFormState.current = formState;
   }, [formState]);
+  useEffect(() => {
+    latestBulkJsonText.current = bulkJsonText;
+  }, [bulkJsonText]);
 
   const handleGroupImageUpload = async (sectionIdx: number, groupIdx: number, file: File) => {
     if (!file) return;
@@ -472,7 +531,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
     try {
       const res = await listeningService.uploadAudio(formData);
-      setFormState((prev) => {
+      updateFormState((prev) => {
         const nextSecs = [...prev.sections];
         nextSecs[sectionIdx].questionGroups[groupIdx].imageUrl = res.data.url;
         return { ...prev, sections: nextSecs };
@@ -554,9 +613,11 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
       ?? (!editExamId ? window.localStorage.getItem(LISTENING_CREATOR_DRAFT_KEY) : null);
     if (savedDraft) {
       try {
-        const parsedDraft = JSON.parse(savedDraft) as { formState?: ExamForm; savedAt?: string };
-        if (parsedDraft.formState && !isListeningDraftEmpty(parsedDraft.formState)) {
+        const parsedDraft = JSON.parse(savedDraft) as { formState?: ExamForm; bulkJsonText?: string; savedAt?: string };
+        if (parsedDraft.formState &&
+          (!isListeningDraftEmpty(parsedDraft.formState) || Boolean(parsedDraft.bulkJsonText?.trim()))) {
           setFormState(parsedDraft.formState);
+          setBulkJsonText(parsedDraft.bulkJsonText || "");
           setLastDraftSavedAt(parsedDraft.savedAt || null);
           restoredLocalDraft.current = true;
           window.localStorage.setItem(localDraftKey, savedDraft);
@@ -576,7 +637,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   useEffect(() => {
     if (embedded || !isDraftHydrated) return;
     const timeoutId = window.setTimeout(() => {
-      if (isListeningDraftEmpty(formState)) {
+      if (isListeningDraftEmpty(formState) && !bulkJsonText.trim()) {
         try {
           window.localStorage.removeItem(localDraftKey);
           setLastDraftSavedAt(null);
@@ -585,22 +646,23 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
       }
       const savedAt = new Date().toISOString();
       try {
-        window.localStorage.setItem(localDraftKey, JSON.stringify({ formState, savedAt }));
+        window.localStorage.setItem(localDraftKey, JSON.stringify({ formState, bulkJsonText, savedAt }));
         setLastDraftSavedAt(savedAt);
       } catch {
         toast.error("Draft could not be saved in this browser.");
       }
     }, 700);
     return () => window.clearTimeout(timeoutId);
-  }, [embedded, formState, isDraftHydrated, localDraftKey]);
+  }, [embedded, formState, bulkJsonText, isDraftHydrated, localDraftKey]);
 
   useEffect(() => {
     if (embedded || !isDraftHydrated) return;
     const persistBeforeExit = () => {
-      if (isListeningDraftEmpty(latestFormState.current)) return;
+      if (isListeningDraftEmpty(latestFormState.current) && !latestBulkJsonText.current.trim()) return;
       try {
         window.localStorage.setItem(localDraftKey, JSON.stringify({
           formState: latestFormState.current,
+          bulkJsonText: latestBulkJsonText.current,
           savedAt: new Date().toISOString(),
         }));
       } catch {}
@@ -613,9 +675,17 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
     window.localStorage.removeItem(localDraftKey);
     window.localStorage.removeItem(LISTENING_CREATOR_DRAFT_KEY);
     restoredLocalDraft.current = false;
+    setBulkJsonText("");
     setFormState(getEmptyExamForm());
     setActiveSectionIdx(0);
     setLastDraftSavedAt(null);
+  };
+
+  const handleCancelDraft = () => {
+    if (!window.confirm("Cancel and clear this listening exam draft? This cannot be undone.")) return;
+    clearPublishedForm();
+    if (editExamId) router.replace("/teacher/listening/exams");
+    toast.info("Draft cleared. You can start again.");
   };
 
   // Mutations
@@ -634,10 +704,22 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
   const updateMutation = useMutation({
     mutationFn: (payload: any) => listeningService.updateExam(editExamId!, payload),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      const cachedExams = queryClient.getQueryData<Awaited<ReturnType<typeof listeningService.getAllExams>>>(["teacher-listening-exams"]);
+      if (cachedExams) {
+        queryClient.setQueryData(["teacher-listening-exams"], {
+          ...cachedExams,
+          data: cachedExams.data.map((exam) =>
+            exam.id === editExamId
+            ? { ...response.data, _count: { sections: response.data.sections?.length ?? formState.sections.length } }
+              : exam,
+          ),
+        });
+      }
       clearPublishedForm();
       toast.success("Listening Exam updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["teacher-listening-exams"] });
+      queryClient.setQueryData(["listening-exam-edit", editExamId], response);
       router.push("/teacher/listening/exams");
     },
     onError: (err: any) => {
@@ -657,7 +739,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
     try {
       const res = await listeningService.uploadAudio(formData);
-      setFormState((prev) => ({ ...prev, audioUrl: res.data.url }));
+      updateFormState((prev) => ({ ...prev, audioUrl: res.data.url }));
       toast.success("Audio file uploaded successfully!");
     } catch (err: any) {
       toast.error("Failed to upload audio file: " + (err?.response?.data?.message || err.message));
@@ -668,13 +750,13 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
   // State modifiers
   const handleInputChange = (field: keyof ExamForm, val: any) => {
-    setFormState((prev) => ({ ...prev, [field]: val }));
+    updateFormState((prev) => ({ ...prev, [field]: val }));
   };
 
   const saveLocalDraft = () => {
     const savedAt = new Date().toISOString();
     try {
-      window.localStorage.setItem(localDraftKey, JSON.stringify({ formState, savedAt }));
+      window.localStorage.setItem(localDraftKey, JSON.stringify({ formState, bulkJsonText, savedAt }));
       setLastDraftSavedAt(savedAt);
       toast.success("Draft saved on this device.");
     } catch {
@@ -682,24 +764,77 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
     }
   };
 
+  const handleJsonImport = (
+    result: ListeningImportResult,
+    { replaceExisting }: { replaceExisting: boolean },
+  ) => {
+    updateFormState((current) => {
+      const importedSections = new Map(result.sections.map((section) => [section.order, section]));
+      const sections = current.sections.map((section) => {
+        const imported = importedSections.get(section.order);
+        if (!imported) return section;
+
+        const importedGroups: QuestionGroup[] = imported.questionGroups.map((group) => ({
+          ...group,
+          questions: group.questions.map((question) => ({ ...question })),
+        }));
+        const questionGroups = replaceExisting
+          ? importedGroups
+          : [
+              ...section.questionGroups.map((group) => ({
+                ...group,
+                questions: group.questions.filter((question) =>
+                  !importedGroups.some((importedGroup) =>
+                    importedGroup.questions.some((importedQuestion) =>
+                      importedQuestion.questionNumber === question.questionNumber,
+                    ),
+                  ),
+                ),
+              })).filter((group) => group.questions.length > 0),
+              ...importedGroups,
+            ];
+
+        return {
+          ...section,
+          ...imported.fields,
+          questionGroups: questionGroups.map((group, index) => ({ ...group, order: index + 1 })),
+        };
+      });
+
+      return {
+        ...current,
+        ...result.exam,
+        sections,
+      };
+    });
+    setBulkJsonText("");
+    const questionCount = result.sections.reduce(
+      (total, section) => total + section.questionGroups.reduce((count, group) => count + group.questions.length, 0),
+      0,
+    );
+    toast.success(`Imported ${questionCount} questions into ${result.sections.length} section(s).`);
+  };
+
   const handleSectionChange = (sectionIdx: number, field: keyof Section, val: any) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       nextSecs[sectionIdx] = { ...nextSecs[sectionIdx], [field]: val };
       return { ...prev, sections: nextSecs };
     });
   };
 
-  const addQuestionGroup = (sectionIdx: number) => {
-    setFormState((prev) => {
+  const addQuestionGroup = (sectionIdx: number, type: string) => {
+    updateFormState((prev) => {
       const section = prev.sections[sectionIdx];
       const order = section.questionGroups.length + 1;
+      const [instructionOne, instructionTwo] = getDefaultGroupInstructions(type);
+      const questionRange = getQuestionRangeLabel([], sectionIdx);
       
       const newGroup: QuestionGroup = {
-        type: "SENTENCE_COMPLETION",
-        instruction: "Write NO MORE THAN TWO WORDS for each answer.",
+        type,
+        instruction: `${questionRange}|||${instructionOne}|||${instructionTwo}|||`,
         passageSegment: "",
-        options: [],
+        options: type === "DIAGRAM_LABELLING" ? [...DIAGRAM_LABEL_OPTIONS] : [],
         imageUrl: "",
         order,
         questions: [],
@@ -714,7 +849,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   };
 
   const removeQuestionGroup = (sectionIdx: number, groupIdx: number) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const section = nextSecs[sectionIdx];
       
@@ -727,7 +862,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   };
 
   const handleGroupChange = (sectionIdx: number, groupIdx: number, field: keyof QuestionGroup, val: any) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const group = nextSecs[sectionIdx].questionGroups[groupIdx];
       
@@ -758,7 +893,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   };
 
   const handleQuestionTypeChange = (sectionIdx: number, groupIdx: number, type: string) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSections = [...prev.sections];
       const group = nextSections[sectionIdx].questionGroups[groupIdx];
       group.type = type;
@@ -797,7 +932,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
   // Add / Remove Questions inside group
   const addQuestionToGroup = (sectionIdx: number, groupIdx: number) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const section = prev.sections[sectionIdx];
       const group = section.questionGroups[groupIdx];
       const usedNumbers = new Set(
@@ -829,7 +964,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   };
 
   const removeQuestionFromGroup = (sectionIdx: number, groupIdx: number, qIdx: number) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const group = nextSecs[sectionIdx].questionGroups[groupIdx];
       
@@ -857,7 +992,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
       }
     }
 
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const group = nextSecs[sectionIdx].questionGroups[groupIdx];
       
@@ -868,7 +1003,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
   // MCQ choices handlers
   const handleAddMCQOption = (sectionIdx: number, groupIdx: number, qIdx: number) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const section = prev.sections[sectionIdx];
       const group = section.questionGroups[groupIdx];
       const q = group.questions[qIdx];
@@ -894,7 +1029,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
   };
 
   const handleRemoveMCQOption = (sectionIdx: number, groupIdx: number, qIdx: number, optionIdx: number) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const group = nextSecs[sectionIdx].questionGroups[groupIdx];
       const q = group.questions[qIdx];
@@ -918,7 +1053,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
     optionIdx: number,
     val: string
   ) => {
-    setFormState((prev) => {
+    updateFormState((prev) => {
       const nextSecs = [...prev.sections];
       const group = nextSecs[sectionIdx].questionGroups[groupIdx];
       const q = group.questions[qIdx];
@@ -1032,8 +1167,8 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
       isPublished: isPublishing,
       sections: sectionsForSubmission.map((s) => ({
         title: s.title,
-        audioUrl: formState.audioUrl,
-        youtubeUrl: formState.youtubeUrl || "",
+        audioUrl: s.audioUrl || formState.audioUrl,
+        youtubeUrl: s.youtubeUrl || formState.youtubeUrl || "",
         script: s.script || "",
         instruction: s.instruction || "",
         order: s.order,
@@ -1149,6 +1284,21 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
               {lastDraftSavedAt ? "Draft saved" : "Auto-draft on"}
             </span>
 
+            <ListeningJsonImportDialog
+            activeSection={activeSectionIdx + 1}
+            jsonText={bulkJsonEditorText}
+            onJsonTextChange={setBulkJsonText}
+            onImport={handleJsonImport}
+            />
+
+            <button
+            type="button"
+            onClick={handleCancelDraft}
+            className="rounded-lg border border-rose-200 bg-white/10 px-3.5 py-2.5 text-xs font-black text-white transition hover:bg-rose-500/20"
+            >
+            Cancel
+            </button>
+
             <button
               type="button"
               onClick={saveLocalDraft}
@@ -1164,7 +1314,7 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
               className="flex items-center gap-1.5 rounded-lg bg-[#24549a] px-4.5 py-2.5 text-xs font-black text-white shadow transition hover:bg-[#1b3f74] disabled:opacity-50"
             >
               {isPending ? <IconLoader2 size={14} className="animate-spin" /> : <IconCheck size={14} />}
-              <span>{editExamId ? "Update Exam" : "Publish Exam"}</span>
+              <span>{isPending ? (editExamId ? "Updating..." : "Publishing...") : (editExamId ? "Update Exam" : "Publish Exam")}</span>
             </button>
           </div>
         </div>
@@ -1363,6 +1513,17 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
                   </div>
                 </div>
               </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium text-gray-500">
+                  Add or update Listening question groups with one JSON import.
+                </p>
+                <ListeningJsonImportDialog
+                  activeSection={activeSectionIdx + 1}
+                  jsonText={bulkJsonEditorText}
+                  onJsonTextChange={setBulkJsonText}
+                  onImport={handleJsonImport}
+                />
+              </div>
             </div>
           )}
           
@@ -1424,17 +1585,32 @@ export function ListeningCreatorWorkspace({ embedded = false, onExamReady }: Lis
 
               {/* SECTION QUESTIONS & BLOCKS */}
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold uppercase text-gray-500 tracking-wider">
-                    Question Blocks ({activeSection.questionGroups.length})
-                  </h3>
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-slate-50 p-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-1.5 sm:min-w-0 sm:flex-1">
+                    <h3 className="text-sm font-extrabold uppercase text-gray-700 tracking-wider">
+                      Question Blocks ({activeSection.questionGroups.length})
+                    </h3>
+                    <label htmlFor="listening-new-question-type" className="text-xs font-bold text-gray-600">
+                      Select a question type to add
+                    </label>
+                    <select
+                      id="listening-new-question-type"
+                      value={newQuestionGroupType}
+                      onChange={(event) => setNewQuestionGroupType(event.target.value)}
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm font-bold text-gray-800 outline-none focus:border-[#1B3A6B]"
+                    >
+                      {QUESTION_GROUP_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => addQuestionGroup(activeSectionIdx)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B3A6B] hover:bg-[#152e54] text-white text-xs font-bold rounded shadow transition active:scale-95"
+                    onClick={() => addQuestionGroup(activeSectionIdx, newQuestionGroupType)}
+                    className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#1B3A6B] px-4 text-xs font-bold text-white shadow transition hover:bg-[#152e54] active:scale-95"
                   >
                     <IconPlus size={14} />
-                    <span>Add Question Block</span>
+                    <span>Add Selected Type</span>
                   </button>
                 </div>
 

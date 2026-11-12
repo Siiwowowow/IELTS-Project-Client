@@ -60,10 +60,16 @@ import WritingTask2Form from "@/components/Writing/WritingTask2Form";
 import { SpeakingQuestionPaper } from "@/components/Speaking/SpeakingQuestionPaper";
 import { SpeakingCueCardBuilder } from "@/components/Speaking/SpeakingCueCardBuilder";
 import { FullMockTestPreview, type MockPreviewMode } from "@/components/MockTest/FullMockTestPreview";
+import { FullMockModuleJsonDialog } from "@/components/MockTest/FullMockModuleJsonDialog";
 import { ReadingSectionTabs } from "@/components/Reading/ReadingSectionTabs";
 import { FloatingSelectionToolbar } from "@/components/shared/FloatingSelectionToolbar";
 import { ListeningCreatorWorkspace } from "@/app/(dashboard)/teacher/listening/create/page";
 import { ReadingCreatorWorkspace } from "@/app/(dashboard)/teacher/dashboard/page";
+import {
+  serializeFullMockJson,
+  type FullMockJsonPayload,
+  type FullMockModuleJsonPayload,
+} from "@/lib/fullMockJson";
 
 // --- Types ---
 type TabType = "listening" | "reading" | "writing" | "speaking";
@@ -985,6 +991,14 @@ function WriteTaskPanel({
 
 const FULL_MOCK_DRAFT_KEY = "ielts-full-mock-creator-draft-v1";
 
+function getJsonFingerprint(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  }
+  return `${value.length}:${(hash >>> 0).toString(16)}`;
+}
+
 interface FullMockDraftState {
   mockTitle: string;
   mockDescription: string;
@@ -1002,6 +1016,10 @@ interface FullMockDraftState {
   speakDesc: string;
   speakDuration: number;
   speakingParts: any[];
+  writingJsonDraftText?: string;
+  writingJsonDraftSource?: string;
+  speakingJsonDraftText?: string;
+  speakingJsonDraftSource?: string;
 }
 
 function isFullMockDraftEmpty(draft: Partial<FullMockDraftState>): boolean {
@@ -1033,8 +1051,9 @@ function isFullMockDraftEmpty(draft: Partial<FullMockDraftState>): boolean {
           )
       )
   );
+  const hasJsonDraft = Boolean(draft.writingJsonDraftText?.trim() || draft.speakingJsonDraftText?.trim());
 
-  return !hasCustomTitle && !hasCustomDesc && !hasListening && !hasReading && !hasWritingContent && !hasSpeakingContent;
+  return !hasCustomTitle && !hasCustomDesc && !hasListening && !hasReading && !hasWritingContent && !hasSpeakingContent && !hasJsonDraft;
 }
 
 export default function CreateFullMockTestPage() {
@@ -1042,9 +1061,32 @@ export default function CreateFullMockTestPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabType>("listening");
+  const [visitedTabs, setVisitedTabs] = useState<TabType[]>(["listening"]);
   const [mockPreviewMode, setMockPreviewMode] = useState<MockPreviewMode | null>(null);
   const [sharedListeningExam, setSharedListeningExam] = useState<any>(null);
   const [sharedReadingExam, setSharedReadingExam] = useState<any>(null);
+  const [listeningImportRevision, setListeningImportRevision] = useState(0);
+  const [readingImportRevision, setReadingImportRevision] = useState(0);
+  const [writingJsonDraftText, setWritingJsonDraftText] = useState("");
+  const [writingJsonDraftSource, setWritingJsonDraftSource] = useState("");
+  const [speakingJsonDraftText, setSpeakingJsonDraftText] = useState("");
+  const [speakingJsonDraftSource, setSpeakingJsonDraftSource] = useState("");
+  const skipInitialListeningSyncRef = useRef(false);
+  const skipInitialReadingSyncRef = useRef(false);
+  const handleListeningExamReady = React.useCallback((exam: any) => {
+    if (skipInitialListeningSyncRef.current) {
+      skipInitialListeningSyncRef.current = false;
+      return;
+    }
+    setSharedListeningExam(exam);
+  }, []);
+  const handleReadingExamReady = React.useCallback((exam: any) => {
+    if (skipInitialReadingSyncRef.current) {
+      skipInitialReadingSyncRef.current = false;
+      return;
+    }
+    setSharedReadingExam(exam);
+  }, []);
   const showLegacyModuleBuilders = false;
 
   // Global Mock Test Meta
@@ -1831,6 +1873,10 @@ export default function CreateFullMockTestPage() {
     },
   ]);
 
+  useEffect(() => {
+    setVisitedTabs((previous) => previous.includes(activeTab) ? previous : [...previous, activeTab]);
+  }, [activeTab]);
+
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const [isDraftHydrated, setIsDraftHydrated] = useState(false);
   const restoredDraftRef = useRef(false);
@@ -1849,8 +1895,21 @@ export default function CreateFullMockTestPage() {
           if (draft.isPublished !== undefined) setIsPublished(draft.isPublished);
           if (draft.isPremium !== undefined) setIsPremium(draft.isPremium);
           if (draft.activeTab) setActiveTab(draft.activeTab);
-          if (draft.sharedListeningExam) setSharedListeningExam(draft.sharedListeningExam);
-          if (draft.sharedReadingExam) setSharedReadingExam(draft.sharedReadingExam);
+          if (draft.sharedListeningExam) {
+            setSharedListeningExam(draft.sharedListeningExam);
+            skipInitialListeningSyncRef.current = true;
+            setListeningImportRevision((revision) => revision + 1);
+          }
+          if (draft.sharedReadingExam) {
+            setSharedReadingExam(draft.sharedReadingExam);
+            skipInitialReadingSyncRef.current = true;
+            setReadingImportRevision((revision) => revision + 1);
+          }
+          setVisitedTabs((previous) => Array.from(new Set([
+            ...previous,
+            ...(draft.activeTab ? [draft.activeTab] : []),
+            ...(draft.sharedReadingExam ? ["reading" as const] : []),
+          ])));
           if (draft.writeTitle !== undefined) setWriteTitle(draft.writeTitle);
           if (draft.writeDesc !== undefined) setWriteDesc(draft.writeDesc);
           if (draft.writeExamType !== undefined) setWriteExamType(draft.writeExamType);
@@ -1860,6 +1919,10 @@ export default function CreateFullMockTestPage() {
           if (draft.speakDesc !== undefined) setSpeakDesc(draft.speakDesc);
           if (draft.speakDuration !== undefined) setSpeakDuration(draft.speakDuration);
           if (draft.speakingParts) setSpeakingParts(draft.speakingParts);
+          if (draft.writingJsonDraftText !== undefined) setWritingJsonDraftText(draft.writingJsonDraftText);
+          if (draft.writingJsonDraftSource !== undefined) setWritingJsonDraftSource(draft.writingJsonDraftSource);
+          if (draft.speakingJsonDraftText !== undefined) setSpeakingJsonDraftText(draft.speakingJsonDraftText);
+          if (draft.speakingJsonDraftSource !== undefined) setSpeakingJsonDraftSource(draft.speakingJsonDraftSource);
 
           setLastDraftSavedAt(parsed.savedAt || null);
           restoredDraftRef.current = true;
@@ -1893,6 +1956,10 @@ export default function CreateFullMockTestPage() {
       speakDesc,
       speakDuration,
       speakingParts,
+      writingJsonDraftText,
+      writingJsonDraftSource,
+      speakingJsonDraftText,
+      speakingJsonDraftSource,
     };
   }, [
     mockTitle,
@@ -1911,6 +1978,10 @@ export default function CreateFullMockTestPage() {
     speakDesc,
     speakDuration,
     speakingParts,
+    writingJsonDraftText,
+    writingJsonDraftSource,
+    speakingJsonDraftText,
+    speakingJsonDraftSource,
   ]);
 
   // Debounced auto-save effect
@@ -1957,6 +2028,10 @@ export default function CreateFullMockTestPage() {
     speakDesc,
     speakDuration,
     speakingParts,
+    writingJsonDraftText,
+    writingJsonDraftSource,
+    speakingJsonDraftText,
+    speakingJsonDraftSource,
   ]);
 
   // Immediate save on page unload
@@ -2002,6 +2077,21 @@ export default function CreateFullMockTestPage() {
     setSpeakTitle("Cambridge IELTS Speaking Practice Test 1");
     setSpeakDesc("A Cambridge IELTS-style Speaking test covering Part 1, Part 2, and Part 3.");
     setSpeakDuration(15);
+    setSpeakingParts([
+      { partNumber: 1, title: "Part 1: Introduction and Interview", instruction: "", preparationTime: 0, speakingTime: 60, order: 1, questions: [] },
+      { partNumber: 2, title: "Part 2: Individual Long Turn (Cue Card)", instruction: "", preparationTime: 60, speakingTime: 120, order: 2, questions: [{ questionText: "Cue Card Long Turn Response", order: 1 }] },
+      { partNumber: 3, title: "Part 3: Two-way Discussion", instruction: "", preparationTime: 0, speakingTime: 60, order: 3, questions: [] },
+    ]);
+    setWritingJsonDraftText("");
+    setWritingJsonDraftSource("");
+    setSpeakingJsonDraftText("");
+    setSpeakingJsonDraftSource("");
+    setActiveTab("listening");
+    setVisitedTabs(["listening"]);
+    setListeningImportRevision((revision) => revision + 1);
+    setReadingImportRevision((revision) => revision + 1);
+    skipInitialListeningSyncRef.current = false;
+    skipInitialReadingSyncRef.current = false;
     setLastDraftSavedAt(null);
     toast.success("Full Mock Test draft cleared.");
   };
@@ -2254,9 +2344,9 @@ export default function CreateFullMockTestPage() {
       return;
     }
 
-    // Force Part 2 to have a dummy question so it passes backend checks if empty
+    // Keep imported Part 2 questions; add the standard placeholder only when none exist.
     const validatedSpeakingParts = speakingParts.map((p) => {
-      if (p.partNumber === 2) {
+      if (p.partNumber === 2 && p.questions.length === 0) {
         return {
           ...p,
           questions: [{ questionText: "Cue Card Long Turn Response", order: 1 }],
@@ -2472,6 +2562,195 @@ export default function CreateFullMockTestPage() {
         ),
       }
     : { title: readTitle, passages: Object.values(passages).slice(0, passageCount), questions: readingQuestions };
+
+  const generatedFullMockJson = React.useMemo(() => {
+    const readingPassages = [1, 2, 3].map((passageIndex) => {
+      const passage = passages[passageIndex as 1 | 2 | 3];
+      const questionGroups = readingQuestions
+        .filter((question) => question.passageIndex === passageIndex)
+        .reduce((groups: any[], question) => {
+          let group = groups[groups.length - 1];
+          if (!group || group.type !== question.typeCode || !areInstructionsCompatible(group.instruction, question.instruction)) {
+            group = {
+              type: question.typeCode,
+              instruction: question.instruction || "",
+              passageSegment: question.passageSegment || "",
+              options: question.groupOptions || [],
+              imageUrl: question.groupImageUrl || "",
+              order: groups.length + 1,
+              questions: [],
+            };
+            groups.push(group);
+          }
+          group.questions.push({
+            questionNumber: question.questionNumber,
+            questionText: question.text || "",
+            options: question.options || [],
+            correctAnswer: question.correctAnswer || "",
+            explanation: question.explanation || "",
+          });
+          return groups;
+        }, []);
+      return {
+        title: passage.title || "",
+        body: passage.body || "",
+        instruction: passage.instruction || "",
+        pdfUrl: passage.pdf?.url || "",
+        imageUrl: passage.image || "",
+        order: passageIndex,
+        questionGroups,
+      };
+    });
+
+    const payload: FullMockJsonPayload = {
+      title: resolvedMockTitle,
+      description: mockDescription,
+      isPublished,
+      isPremium,
+      listeningExam: sharedListeningExam || {
+        title: listeningFormState.title,
+        description: listeningFormState.description,
+        duration: Number(listeningFormState.duration),
+        audioUrl: listeningFormState.audioUrl,
+        youtubeUrl: listeningFormState.youtubeUrl,
+        sections: listeningFormState.sections.map((section) => ({
+          title: section.title,
+          audioUrl: section.audioUrl || listeningFormState.audioUrl,
+          youtubeUrl: section.youtubeUrl || listeningFormState.youtubeUrl || "",
+          script: section.script || "",
+          instruction: section.instruction || "",
+          order: section.order,
+          questionGroups: section.questionGroups.map((group) => ({
+            type: group.type,
+            instruction: group.instruction,
+            passageSegment: group.passageSegment,
+            options: group.options,
+            imageUrl: group.imageUrl || "",
+            order: group.order,
+            questions: group.questions.map((question) => ({
+              questionNumber: Number(question.questionNumber),
+              questionText: question.questionText,
+              options: question.options,
+              correctAnswer: question.correctAnswer,
+              explanation: question.explanation,
+            })),
+          })),
+        })),
+      },
+      readingExam: sharedReadingExam || {
+        title: readTitle,
+        description: readDesc,
+        duration: Number(readDuration),
+        passages: readingPassages,
+      },
+      writingExam: {
+        title: writeTitle,
+        description: writeDesc,
+        duration: Number(writeDuration),
+        examType: writeExamType,
+        tasks: writingTasks.map((task) => ({
+          taskType: task.taskType,
+          instruction: task.instruction || "",
+          imageUrl: task.imageUrl || "",
+          pdfUrl: task.pdfUrl || "",
+          minWords: Number(task.minWords),
+          modelAnswer: task.modelAnswer || "",
+          order: task.order,
+        })),
+      },
+      speakingExam: {
+        title: speakTitle,
+        description: speakDesc,
+        duration: Number(speakDuration),
+        parts: speakingParts.map((part) => ({
+          partNumber: part.partNumber,
+          title: part.title,
+          instruction: part.instruction || "",
+          preparationTime: Number(part.preparationTime),
+          speakingTime: Number(part.speakingTime),
+          order: part.order,
+          questions: (part.questions || []).map((question: any) => ({
+            questionText: question.questionText || "",
+            audioUrl: question.audioUrl || "",
+            order: question.order,
+          })),
+        })),
+      },
+    };
+    return serializeFullMockJson(payload);
+  }, [
+    resolvedMockTitle,
+    mockDescription,
+    isPublished,
+    isPremium,
+    sharedListeningExam,
+    listeningFormState,
+    sharedReadingExam,
+    readTitle,
+    readDesc,
+    readDuration,
+    passages,
+    readingQuestions,
+    writeTitle,
+    writeDesc,
+    writeDuration,
+    writeExamType,
+    writingTasks,
+    speakTitle,
+    speakDesc,
+    speakDuration,
+    speakingParts,
+  ]);
+  const generatedFullMockPayload = React.useMemo(
+    () => JSON.parse(generatedFullMockJson) as FullMockJsonPayload,
+    [generatedFullMockJson],
+  );
+  const generatedWritingJson = React.useMemo(
+    () => JSON.stringify(generatedFullMockPayload.writingExam, null, 2),
+    [generatedFullMockPayload],
+  );
+  const generatedSpeakingJson = React.useMemo(
+    () => JSON.stringify(generatedFullMockPayload.speakingExam, null, 2),
+    [generatedFullMockPayload],
+  );
+  const writingJsonFingerprint = React.useMemo(() => getJsonFingerprint(generatedWritingJson), [generatedWritingJson]);
+  const speakingJsonFingerprint = React.useMemo(() => getJsonFingerprint(generatedSpeakingJson), [generatedSpeakingJson]);
+  const currentWritingJson = writingJsonDraftSource === writingJsonFingerprint ? writingJsonDraftText : generatedWritingJson;
+  const currentSpeakingJson = speakingJsonDraftSource === speakingJsonFingerprint ? speakingJsonDraftText : generatedSpeakingJson;
+
+  const handleWritingJsonTextChange = (value: string) => {
+    setWritingJsonDraftText(value);
+    setWritingJsonDraftSource(writingJsonFingerprint);
+  };
+  const handleSpeakingJsonTextChange = (value: string) => {
+    setSpeakingJsonDraftText(value);
+    setSpeakingJsonDraftSource(speakingJsonFingerprint);
+  };
+
+  const handleImportFullMockModuleJson = (payload: FullMockModuleJsonPayload) => {
+    if ("tasks" in payload) {
+      setWriteTitle(payload.title || "");
+      setWriteDesc(payload.description || "");
+      setWriteDuration(Number(payload.duration) || 60);
+      setWriteExamType(payload.examType === "GENERAL_TRAINING" ? "GENERAL_TRAINING" : "ACADEMIC");
+      setWritingTasks(payload.tasks.map((task) => ({ ...task })));
+      setActiveWritingTaskIdx(0);
+      setWritingJsonDraftText("");
+      setWritingJsonDraftSource("");
+    } else {
+      setSpeakTitle(payload.title || "");
+      setSpeakDesc(payload.description || "");
+      setSpeakDuration(Number(payload.duration) || 15);
+      setSpeakingParts(payload.parts.map((part) => ({
+        ...part,
+        questions: part.questions.map((question) => ({ ...question })),
+      })));
+      setActiveSpeakingTab(1);
+      setSpeakingJsonDraftText("");
+      setSpeakingJsonDraftSource("");
+    }
+    toast.success(`${"tasks" in payload ? "Writing" : "Speaking"} JSON imported into the Full Mock builder.`);
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 px-4 py-5 font-sans">
@@ -2698,6 +2977,7 @@ export default function CreateFullMockTestPage() {
                   type="button"
                   onClick={() => {
                     setActiveTab(tab.id as TabType);
+                    setVisitedTabs((previous) => previous.includes(tab.id as TabType) ? previous : [...previous, tab.id as TabType]);
                     if (tab.id === "reading") {
                       // auto select type null to prevent errors
                       setSelectedQuestionType(null);
@@ -2723,9 +3003,14 @@ export default function CreateFullMockTestPage() {
             {/* ========================================================== */}
             {/* TAB: LISTENING (Hubuhu matching standalone create form) */}
             {/* ========================================================== */}
-            {activeTab === "listening" && (
-              <div>
-                <ListeningCreatorWorkspace embedded onExamReady={setSharedListeningExam} />
+            {visitedTabs.includes("listening") && (
+              <div className={activeTab === "listening" ? "" : "hidden"}>
+                <ListeningCreatorWorkspace
+                  key={`listening-${listeningImportRevision}`}
+                  embedded
+                  initialExam={sharedListeningExam}
+                  onExamReady={handleListeningExamReady}
+                />
               </div>
             )}
 
@@ -3251,9 +3536,14 @@ export default function CreateFullMockTestPage() {
             {/* ========================================================== */}
             {/* TAB: READING (Hubuhu matching standalone create form) */}
             {/* ========================================================== */}
-            {activeTab === "reading" && (
-              <div>
-                <ReadingCreatorWorkspace embedded onExamReady={setSharedReadingExam} />
+            {visitedTabs.includes("reading") && (
+              <div className={activeTab === "reading" ? "" : "hidden"}>
+                <ReadingCreatorWorkspace
+                  key={`reading-${readingImportRevision}`}
+                  embedded
+                  initialExam={sharedReadingExam}
+                  onExamReady={handleReadingExamReady}
+                />
               </div>
             )}
 
@@ -4733,9 +5023,17 @@ export default function CreateFullMockTestPage() {
                       <h4 className="flex items-center gap-2 text-base font-black text-black"><IconFileText size={18} /> IELTS Writing Overview</h4>
                       <p className="mt-1 text-xs font-medium text-gray-400">Configure the two official IELTS writing tasks.</p>
                     </div>
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black">
-                      {[writingTasks[0].instruction, writingTasks[1].instruction].filter((value) => value.trim()).length} / 2 Tasks Ready
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black">
+                        {[writingTasks[0].instruction, writingTasks[1].instruction].filter((value) => value.trim()).length} / 2 Tasks Ready
+                      </span>
+                      <FullMockModuleJsonDialog
+                        module="writingExam"
+                        jsonText={currentWritingJson}
+                        onJsonTextChange={handleWritingJsonTextChange}
+                        onImport={handleImportFullMockModuleJson}
+                      />
+                    </div>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -4860,6 +5158,12 @@ export default function CreateFullMockTestPage() {
                       <h4 className="flex items-center gap-2 text-base font-black text-black"><IconMicrophone size={18} /> IELTS Speaking Overview</h4>
                       <p className="mt-1 text-xs font-medium text-gray-400">Configure all three official IELTS speaking parts.</p>
                     </div>
+                    <FullMockModuleJsonDialog
+                      module="speakingExam"
+                      jsonText={currentSpeakingJson}
+                      onJsonTextChange={handleSpeakingJsonTextChange}
+                      onImport={handleImportFullMockModuleJson}
+                    />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>

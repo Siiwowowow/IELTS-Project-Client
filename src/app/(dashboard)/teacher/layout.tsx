@@ -4,7 +4,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,8 +27,7 @@ export default function TeacherLayout({
       <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/55 px-4 sm:px-6 bg-white/70 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all" />
-            <Separator orientation="vertical" className="mx-2 h-4 bg-slate-200" />
+            <SidebarTrigger className="md:hidden -ml-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">

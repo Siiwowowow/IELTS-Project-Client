@@ -37,7 +37,8 @@ export const loginAction = async (
   try {
     const response = await httpClient.post<ILoginResponse>(
       "/auth/login",
-      parsedPayload.data
+      parsedPayload.data,
+      { timeout: 15_000 }
     );
 
     const { accessToken, refreshToken, token, user } = response.data;

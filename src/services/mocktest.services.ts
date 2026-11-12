@@ -18,7 +18,7 @@ export const mockTestService = {
 
   /** Get the authenticated student's calculated dashboard data. */
   getStudentDashboard: () =>
-    httpClient.get<IStudentDashboard>('/mock-tests/student/dashboard'),
+    httpClient.get<IStudentDashboard>('/mock-tests/student/dashboard', { timeout: 15_000 }),
 
   /** Get Full Mock Test by ID */
   getMockTestById: (id: string) =>

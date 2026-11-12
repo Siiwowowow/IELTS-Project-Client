@@ -49,15 +49,29 @@ export function FullMockTestPreview({ isOpen, mode, onClose, title, listening, r
                   {(listening.sections || []).map((section: any, sectionIndex: number) => (
                     <section key={sectionIndex} className="space-y-3">
                       <div className="border-b border-slate-300 pb-2"><h3 className="font-bold">Section {sectionIndex + 1}: {section.title}</h3>{section.instruction && <p className="mt-1 text-sm text-slate-600">{section.instruction}</p>}</div>
-                      {(section.questionGroups || []).map((group: any, groupIndex: number) => (
-                        <ListeningQuestionRenderer
-                          key={group.id || groupIndex}
-                          group={group}
-                          answers={previewAnswers}
-                          onAnswer={answerPreviewQuestion}
-                          sectionIndex={sectionIndex}
-                        />
-                      ))}
+                      {(section.questionGroups || []).map((group: any, groupIndex: number) => {
+                        const groupId = group.id || `full-preview-listening-group-${sectionIndex}-${groupIndex}`;
+                        const previewGroup = {
+                          ...group,
+                          id: groupId,
+                          sectionId: group.sectionId || `full-preview-listening-section-${sectionIndex}`,
+                          questions: (group.questions || []).map((question: any, questionIndex: number) => ({
+                            ...question,
+                            id: question.id || `full-preview-listening-question-${sectionIndex}-${groupIndex}-${question.questionNumber ?? questionIndex + 1}-${questionIndex}`,
+                            groupId: question.groupId || groupId,
+                          })),
+                        };
+
+                        return (
+                          <ListeningQuestionRenderer
+                            key={groupId}
+                            group={previewGroup}
+                            answers={previewAnswers}
+                            onAnswer={answerPreviewQuestion}
+                            sectionIndex={sectionIndex}
+                          />
+                        );
+                      })}
                     </section>
                   ))}
                 </div>

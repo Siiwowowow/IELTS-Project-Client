@@ -820,14 +820,23 @@ function NotesCompletion({
   const items = React.useMemo(() => {
     const lines = passageSegment.split("\n");
     const parsedItems: {
-      type: "title" | "heading" | "example" | "divider" | "note";
+      type: "title" | "heading" | "example" | "divider" | "note" | "plain" | "spacer";
       text: string;
       indentLevel: number;
     }[] = [];
 
-    lines.forEach((line) => {
+    lines.forEach((line, index) => {
       const trimmed = line.trim();
-      if (!trimmed) return;
+      if (!trimmed) {
+        if (
+          parsedItems.length > 0 &&
+          index < lines.length - 1 &&
+          parsedItems[parsedItems.length - 1].type !== "spacer"
+        ) {
+          parsedItems.push({ type: "spacer", text: "", indentLevel: 0 });
+        }
+        return;
+      }
 
       const leadingSpaces = line.match(/^\s*/)?.[0].length ?? 0;
       let indentLevel = 0;
@@ -849,13 +858,6 @@ function NotesCompletion({
           text,
           indentLevel: 0,
         });
-      } else if (trimmed.startsWith("-") || trimmed.startsWith("*") || trimmed.startsWith("+")) {
-        const text = trimmed.replace(/^[-*+]\s*/, "");
-        parsedItems.push({
-          type: "note",
-          text,
-          indentLevel,
-        });
       } else if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
         const text = trimmed.substring(2, trimmed.length - 2);
         parsedItems.push({
@@ -863,15 +865,23 @@ function NotesCompletion({
           text,
           indentLevel: 0,
         });
-      } else {
+      } else if (trimmed.startsWith("-") || trimmed.startsWith("*") || trimmed.startsWith("+")) {
+        const text = trimmed.replace(/^[-*+]\s*/, "");
         parsedItems.push({
           type: "note",
+          text,
+          indentLevel,
+        });
+      } else {
+        parsedItems.push({
+          type: "plain",
           text: trimmed,
           indentLevel,
         });
       }
     });
 
+    while (parsedItems[parsedItems.length - 1]?.type === "spacer") parsedItems.pop();
     return parsedItems;
   }, [passageSegment]);
 
@@ -915,6 +925,20 @@ function NotesCompletion({
         }
         if (item.type === "divider") {
           return <hr key={idx} className="my-4 border-0 border-t border-gray-400" />;
+        }
+        if (item.type === "spacer") {
+          return <div key={idx} className="h-3" aria-hidden="true" />;
+        }
+        if (item.type === "plain") {
+          return (
+            <p
+              key={idx}
+              className="text-sm text-black leading-7 my-1"
+              style={{ paddingLeft: `${item.indentLevel * 1.5}rem` }}
+            >
+              {renderTableCellContent(item.text, group.questions, answers, onAnswer, group.options, true)}
+            </p>
+          );
         }
 
         return (

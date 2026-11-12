@@ -9,14 +9,14 @@ const GROQ_TIMEOUT_MS = 210_000;
 const requestSchema = z.object({
   examType: z.enum(["ACADEMIC", "GENERAL_TRAINING"]),
   taskType: z.enum(["TASK_1", "TASK_2"]),
-  prompt: z.string().trim().min(10).max(15_000),
+  prompt: z.string().trim().min(1).max(15_000),
   essay: z.string().max(20_000),
   minWords: z.number().int().min(1).max(1_000),
   imageUrl: z.string().max(2_048).nullable().optional(),
 });
 
 const criterionSchema = z.object({
-  score: z.number().min(0).max(9),
+  score: z.number(),
   rationaleBn: z.string(),
   strengths: z.array(z.string()),
   improvements: z.array(z.string()),
@@ -24,8 +24,8 @@ const criterionSchema = z.object({
 
 const assessmentSchema = z.object({
   taskType: z.enum(["TASK_1", "TASK_2"]),
-  wordCount: z.number().int().nonnegative(),
-  taskBandScore: z.number().min(0).max(9),
+  wordCount: z.number(),
+  taskBandScore: z.number(),
   taskAchievement: criterionSchema,
   coherenceCohesion: criterionSchema,
   lexicalResource: criterionSchema,
@@ -59,12 +59,12 @@ const assessmentSchema = z.object({
     }),
   ),
   sentenceAnalysis: z.object({
-    simpleCount: z.number().int().nonnegative(),
-    compoundCount: z.number().int().nonnegative(),
-    complexCount: z.number().int().nonnegative(),
-    compoundComplexCount: z.number().int().nonnegative(),
-    fragmentCount: z.number().int().nonnegative(),
-    runOnCount: z.number().int().nonnegative(),
+    simpleCount: z.number(),
+    compoundCount: z.number(),
+    complexCount: z.number(),
+    compoundComplexCount: z.number(),
+    fragmentCount: z.number(),
+    runOnCount: z.number(),
     feedbackBn: z.string(),
   }),
   cohesionAnalysis: z.object({
@@ -257,7 +257,7 @@ Rules:
 - Relevance, task coverage, position development, overview and factual accuracy affect Task Achievement/Response. Organization, progression, referencing and connectors affect Coherence and Cohesion. Word choice, collocation, spelling and register affect Lexical Resource. Sentence variety, grammar and punctuation affect Grammatical Range and Accuracy.
 - Consider error density, repetition, severity and whether meaning remains clear. A few slips in an otherwise controlled response must not be punished like systematic errors. Conversely, memorized or ornate language must not earn credit when it is inaccurate or irrelevant.
 - Check whether the response actually answers the supplied question. Put off-topic material in relevanceIssues as IRRELEVANT or UNSUPPORTED_CLAIM.
-- For Academic Task 1 with an image, inspect the visual itself. Verify reported numbers, units, dates, categories, trends and comparisons against it. Record false reporting as INACCURATE_DATA and important omitted overview/key features as MISSED_KEY_FEATURE. Material data errors must reduce Task Achievement.
+- For Academic Task 1 when VERIFIED VISUAL EVIDENCE is provided, verify reported numbers, units, dates, categories, trends and comparisons against it. Record false reporting as INACCURATE_DATA and important omitted overview/key features as MISSED_KEY_FEATURE. Material data errors must reduce Task Achievement. When VERIFIED VISUAL EVIDENCE is not provided, judge Task 1 based on the prompt instructions, overview clarity, comparisons and reporting structure without assuming unseen numbers are wrong.
 - For Task 1, distinguish overview from detail and apply under-length penalties appropriately. For Task 2, verify that all parts of the prompt are addressed and ideas are relevant, extended and supported.
 - Give explanations, rationale, summary and improvement advice in clear Bangla. Keep English examples in English.
 - correctedEssay should correct errors while preserving ideas and structure.
@@ -271,7 +271,13 @@ function countWords(value: string) {
 }
 
 function clampHalfBand(value: number) {
+  if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(9, Math.round(value * 2) / 2));
+}
+
+function clampCount(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
 }
 
 async function callGroq(apiKey: string, body: string) {
@@ -299,13 +305,45 @@ async function callGroq(apiKey: string, body: string) {
 
     if (![429, 503].includes(response.status) || attempt === 2) break;
     const retryAfterSeconds = Number.parseFloat(response.headers.get("retry-after") ?? "");
-    const fallbackMs = attempt === 0 ? 20_000 : 45_000;
+    const fallbackMs = attempt === 0 ? 10_000 : 25_000;
     const retryMs = Number.isFinite(retryAfterSeconds)
-      ? Math.min(60_000, Math.max(10_000, retryAfterSeconds * 1_000 + 1_500))
+      ? Math.min(45_000, Math.max(5_000, retryAfterSeconds * 1_000 + 1_000))
       : fallbackMs;
     await new Promise((resolve) => setTimeout(resolve, retryMs));
   }
   return response;
+}
+
+async function resolveVisionInputUrl(imageUrl: string, requestUrl: string): Promise<string | null> {
+  try {
+    const resolved = new URL(imageUrl, requestUrl);
+    if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+      return null;
+    }
+    const imgResponse = await fetch(resolved.toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (!imgResponse.ok) {
+      console.warn(`Task 1 image unreachable (${imgResponse.status}): ${resolved.toString()}`);
+      return null;
+    }
+    const contentType = (imgResponse.headers.get("content-type") || "image/png").split(";")[0].trim();
+    if (!contentType.startsWith("image/")) {
+      console.warn(`Task 1 image has non-image content-type (${contentType}): ${resolved.toString()}`);
+      return null;
+    }
+    const buffer = await imgResponse.arrayBuffer();
+    if (buffer.byteLength === 0) return null;
+    if (buffer.byteLength <= 3_500_000) {
+      return `data:${contentType};base64,${Buffer.from(buffer).toString("base64")}`;
+    }
+    return resolved.toString();
+  } catch (err) {
+    console.warn("Failed to prefetch Task 1 image for vision analysis:", err);
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -331,70 +369,82 @@ export async function POST(request: Request) {
 
   try {
     if (parsedBody.imageUrl) {
-      const resolvedImageUrl = new URL(parsedBody.imageUrl, request.url);
-      if (resolvedImageUrl.protocol === "http:" || resolvedImageUrl.protocol === "https:") {
-        const visionBody = JSON.stringify({
-          model: "qwen/qwen3.8-27b",
-          reasoning_effort: "none",
-          temperature: 0.1,
-          max_completion_tokens: 700,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Read this IELTS Writing Task 1 visual carefully. Extract all titles, labels, units, dates, categories and numerical values. Then state the main trends, highest/lowest values and key comparisons. Be concise and factual. Do not assess the essay.",
-                },
-                { type: "image_url", image_url: { url: resolvedImageUrl.toString() } },
-              ],
-            },
-          ],
-        });
-        const visionResponse = await callGroq(apiKey, visionBody);
-        if (!visionResponse?.ok) {
-          const visionError = await visionResponse?.json().catch(() => null);
-          console.error("Groq vision error", visionResponse?.status, visionError);
-          return NextResponse.json(
-            { message: "The task image could not be analysed. Please wait a minute and try again." },
-            { status: visionResponse?.status === 429 ? 429 : 502 },
-          );
+      try {
+        const visionInputUrl = await resolveVisionInputUrl(parsedBody.imageUrl, request.url);
+        if (visionInputUrl) {
+          const visionBody = JSON.stringify({
+            model: "qwen/qwen3.8-27b",
+            reasoning_effort: "none",
+            temperature: 0.1,
+            max_completion_tokens: 700,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Read this IELTS Writing Task 1 visual carefully. Extract all titles, labels, units, dates, categories and numerical values. Then state the main trends, highest/lowest values and key comparisons. Be concise and factual. Do not assess the essay.",
+                  },
+                  { type: "image_url", image_url: { url: visionInputUrl } },
+                ],
+              },
+            ],
+          });
+          const visionResponse = await callGroq(apiKey, visionBody);
+          if (visionResponse?.ok) {
+            const visionCompletion = await visionResponse.json().catch(() => null);
+            const visualEvidence = visionCompletion?.choices?.[0]?.message?.content;
+            if (typeof visualEvidence === "string" && visualEvidence.trim()) {
+              userPrompt += `\n\nVERIFIED VISUAL EVIDENCE:\n${visualEvidence}`;
+            }
+          } else {
+            const visionError = await visionResponse?.json().catch(() => null);
+            console.warn("Groq vision skipped (non-fatal):", visionResponse?.status, visionError);
+          }
         }
-        const visionCompletion = await visionResponse.json();
-        const visualEvidence = visionCompletion?.choices?.[0]?.message?.content;
-        if (typeof visualEvidence === "string" && visualEvidence.trim()) {
-          userPrompt += `\n\nVERIFIED VISUAL EVIDENCE:\n${visualEvidence}`;
-        }
+      } catch (visionErr) {
+        console.warn("Vision step failed (continuing with text assessment):", visionErr);
       }
     }
 
-    const requestBody = JSON.stringify({
-      model: "openai/gpt-oss-20b",
-      reasoning_effort: "low",
-      temperature: 0.2,
-      max_completion_tokens: 8_192,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "ielts_writing_assessment",
-          strict: true,
-          schema: responseJsonSchema,
+    const buildAssessmentRequestBody = (model: string) =>
+      JSON.stringify({
+        model,
+        reasoning_effort: "low",
+        temperature: 0.2,
+        max_completion_tokens: 8_192,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "ielts_writing_assessment",
+            strict: true,
+            schema: responseJsonSchema,
+          },
         },
-      },
-    });
+      });
 
-    const groqResponse = await callGroq(apiKey, requestBody);
+    let groqResponse = await callGroq(apiKey, buildAssessmentRequestBody("openai/gpt-oss-20b"));
+
+    if (!groqResponse?.ok) {
+      console.warn(
+        "Primary model openai/gpt-oss-20b failed with status",
+        groqResponse?.status,
+        "— retrying with openai/gpt-oss-120b",
+      );
+      groqResponse = await callGroq(apiKey, buildAssessmentRequestBody("openai/gpt-oss-120b"));
+    }
 
     if (!groqResponse?.ok) {
       const groqError = await groqResponse?.json().catch(() => null);
       const status = groqResponse?.status ?? 502;
-      const message = status === 429
-        ? "Groq free-tier limit reached. Please wait a minute and try again."
-        : "Groq is temporarily unavailable. Please try again.";
+      const message =
+        status === 429
+          ? "Groq free-tier limit reached. Please wait a minute and try again."
+          : "Groq is temporarily unavailable. Please try again.";
       console.error("Groq assessment error", status, groqError);
       return NextResponse.json({ message }, { status: status === 429 ? 429 : 502 });
     }
@@ -420,6 +470,14 @@ export async function POST(request: Request) {
       assessment.grammaticalRangeAccuracy.score,
     );
     assessment.taskBandScore = clampHalfBand(criterionAverage);
+    assessment.sentenceAnalysis.simpleCount = clampCount(assessment.sentenceAnalysis.simpleCount);
+    assessment.sentenceAnalysis.compoundCount = clampCount(assessment.sentenceAnalysis.compoundCount);
+    assessment.sentenceAnalysis.complexCount = clampCount(assessment.sentenceAnalysis.complexCount);
+    assessment.sentenceAnalysis.compoundComplexCount = clampCount(
+      assessment.sentenceAnalysis.compoundComplexCount,
+    );
+    assessment.sentenceAnalysis.fragmentCount = clampCount(assessment.sentenceAnalysis.fragmentCount);
+    assessment.sentenceAnalysis.runOnCount = clampCount(assessment.sentenceAnalysis.runOnCount);
 
     return NextResponse.json({ assessment });
   } catch (error) {

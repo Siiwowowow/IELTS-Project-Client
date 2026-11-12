@@ -22,8 +22,8 @@ export type AdminOverview = {
 };
 
 export const adminService = {
-  getOverview: () => httpClient.get<AdminOverview>("/admin/management/overview"),
-  getUsers: (params: { search?: string; role?: string; status?: string; includeDeleted?: boolean; limit?: number }) => httpClient.get<ManagedUser[]>("/admin/management/users", { params }),
+  getOverview: () => httpClient.get<AdminOverview>("/admin/management/overview", { timeout: 15_000 }),
+  getUsers: (params: { search?: string; role?: string; status?: string; includeDeleted?: boolean; limit?: number }) => httpClient.get<ManagedUser[]>("/admin/management/users", { params, timeout: 15_000 }),
   updateStatus: (id: string, status: ManagedStatus) => httpClient.patch<ManagedUser>(`/admin/management/users/${id}/status`, { status }),
   deleteUser: (id: string) => httpClient.delete<ManagedUser>(`/admin/management/users/${id}`),
 };

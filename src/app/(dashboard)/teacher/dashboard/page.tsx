@@ -2,6 +2,7 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect, Suspense } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -65,6 +66,8 @@ import { QuestionRenderer } from '@/components/Reading/QuestionRenderer'
 import { ReadingSectionTabs } from '@/components/Reading/ReadingSectionTabs'
 import { FloatingSelectionToolbar } from '@/components/shared/FloatingSelectionToolbar'
 import type { IQuestionGroup, QuestionGroupType } from '@/types/reading.types'
+import { ReadingJsonImportDialog } from '@/components/Reading/ReadingJsonImportDialog'
+import { serializeReadingImportJson, type ReadingImportResult } from '@/lib/readingJsonImport'
 
 // Tab definitions for IELTS modules (removed)
 
@@ -81,23 +84,24 @@ function getNumberWord(n: number): string {
 
 // All Official IELTS Reading Question Types
 const readingQuestionTypes = [
-  { code: "R-MCQ", title: "Multiple Choice (Single Answer — Choose 1)", desc: "Standard MCQ with one single correct answer.", type: "MULTIPLE_CHOICE" },
-  { code: "R-MMCQ", title: "Multiple Choice (Choose 2 or 3 Letters)", desc: "Choose TWO or THREE correct answers from list options (e.g. A–E or A–G).", type: "MULTIPLE_CHOICE_MULTIPLE" },
   { code: "R-TFN", title: "True / False / Not Given", desc: "Identify if statements agree with factual passage details.", type: "TRUE_FALSE_NOT_GIVEN" },
   { code: "R-YNN", title: "Yes / No / Not Given", desc: "Identify if statements agree with the writer's opinions/views.", type: "YES_NO_NOT_GIVEN" },
+  { code: "R-NCOMP", title: "Complete the notes", desc: "Complete a notes outline with missing words.", type: "NOTES_COMPLETION" },
   { code: "R-MHDG", title: "List of Headings", desc: "Add a heading list, then choose the correct heading for each paragraph.", type: "MATCHING_HEADINGS" },
   { code: "R-MINF", title: "Matching Information", desc: "Decide which paragraph/section contains specific details.", type: "MATCHING_INFORMATION" },
   { code: "R-NMATCH", title: "Name Matching", desc: "Match each statement with the correct person or people from a named list.", type: "MATCHING_FEATURES" },
   { code: "R-MFT", title: "Matching Features", desc: "Match options/names with details or findings.", type: "MATCHING_FEATURES" },
   { code: "R-MSE", title: "Matching Sentence Endings", desc: "Complete sentences by matching with correct endings.", type: "MATCHING_SENTENCE_ENDINGS" },
   { code: "R-SCOMP", title: "Sentence Completion", desc: "Fill in blanks at the end of sentences.", type: "SENTENCE_COMPLETION" },
-  { code: "R-SCO", title: "Summary Completion (With Options)", desc: "Complete summary using words from a provided options list.", type: "SUMMARY_COMPLETION_WITH_OPTIONS" },
-  { code: "R-SCWO", title: "Summary Completion (Without Options)", desc: "Complete summary using direct words from the text.", type: "SUMMARY_COMPLETION_WITHOUT_OPTIONS" },
   { code: "R-NCOMP", title: "Notes Completion", desc: "Complete a notes outline with missing words.", type: "NOTES_COMPLETION" },
   { code: "R-TABLE", title: "Table Completion", desc: "Complete table cells with matching words/phrases.", type: "TABLE_COMPLETION" },
+  { code: "R-SCWO", title: "Summary Completion (Without Options)", desc: "Complete summary using direct words from the text.", type: "SUMMARY_COMPLETION_WITHOUT_OPTIONS" },
+  { code: "R-SCO", title: "Summary Completion (With Options)", desc: "Complete summary using words from a provided options list.", type: "SUMMARY_COMPLETION_WITH_OPTIONS" },
+  { code: "R-MCQ", title: "Multiple Choice (Single Answer — Choose 1)", desc: "Standard MCQ with one single correct answer.", type: "MULTIPLE_CHOICE" },
+  { code: "R-MMCQ", title: "Multiple Choice (Choose 2 or 3 Letters)", desc: "Choose TWO or THREE correct answers from list options (e.g. A–E or A–G).", type: "MULTIPLE_CHOICE_MULTIPLE" },
+  { code: "R-SAQ", title: "Short Answer Questions", desc: "Answer comprehension questions in a few words.", type: "SHORT_ANSWER" },
   { code: "R-FLOW", title: "Flow Chart Completion", desc: "Label stages of a sequence in a flowchart.", type: "FLOW_CHART_COMPLETION" },
   { code: "R-DIAG", title: "Diagram Label Completion", desc: "Label parts of a diagram or illustration.", type: "DIAGRAM_LABELLING" },
-  { code: "R-SAQ", title: "Short Answer Questions", desc: "Answer comprehension questions in a few words.", type: "SHORT_ANSWER" }
 ]
 
 const defaultQuestionInstructions: Record<string, string> = {
@@ -212,6 +216,7 @@ interface ReadingCreatorDraft {
   exampleAnswer: string;
   questionImage: string | null;
   questionImageName: string;
+  bulkJsonText?: string;
   scompAltAnswer1?: string;
   scompAltAnswer2?: string;
 }
@@ -248,7 +253,8 @@ function isReadingDraftEmpty(draft: Partial<ReadingCreatorDraft>): boolean {
     draft.passageSegment?.trim() ||
     draft.groupOptions?.trim() ||
     draft.mcqOptA?.trim() ||
-    draft.mcqOptB?.trim()
+    draft.mcqOptB?.trim() ||
+    draft.bulkJsonText?.trim()
   );
   return !hasMetadata && !hasQuestions && !hasPassageContent && !hasFormInput;
 }
@@ -591,31 +597,55 @@ function ReadingPassagePreview({ passageNumber, passage }: { passageNumber: numb
 type ReadingCreatorWorkspaceProps = {
   embedded?: boolean;
   onExamReady?: (exam: any) => void;
+  initialExam?: any;
 };
 
-function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreatorWorkspaceProps = {}) {
+function TeacherDashboardContent({ embedded = false, onExamReady, initialExam }: ReadingCreatorWorkspaceProps = {}) {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const editId = searchParams.get('edit')
   const localDraftKey = `${READING_CREATOR_DRAFT_KEY}:${editId ?? "new"}`
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const initialExamData = initialExam?.data ?? initialExam
 
   const [selectedQuestionType, setSelectedQuestionType] = useState<string | null>(null)
   
   // Exam metadata states
-  const [examTitle, setExamTitle] = useState('Cambridge IELTS Academic Reading Practice Test 1')
-  const [examDescription, setExamDescription] = useState('A Cambridge IELTS-style Academic Reading test with three passages and realistic question types for computer-based practice.')
-  const [examDuration, setExamDuration] = useState(60)
-  const [passageCount, setPassageCount] = useState<1 | 2 | 3>(3)
+  const [examTitle, setExamTitle] = useState(() => initialExamData?.title || 'Cambridge IELTS Academic Reading Practice Test 1')
+  const [examDescription, setExamDescription] = useState(() => initialExamData?.description || 'A Cambridge IELTS-style Academic Reading test with three passages and realistic question types for computer-based practice.')
+  const [examDuration, setExamDuration] = useState(() => initialExamData?.duration || 60)
+  const [passageCount, setPassageCount] = useState<1 | 2 | 3>(() =>
+    Math.max(1, Math.min(3, initialExamData?.passages?.length || 3)) as 1 | 2 | 3
+  )
 
   // 3 Passages independent states
   const [activePassage, setActivePassage] = useState<1 | 2 | 3>(1)
-  const [passages, setPassages] = useState<Record<1 | 2 | 3, PassageData>>(getDefaultPassages)
+  const [passages, setPassages] = useState<Record<1 | 2 | 3, PassageData>>(() => {
+    const initialPassages = getDefaultPassages()
+    initialExamData?.passages?.forEach((passage: any) => {
+      const index = Number(passage.order) as 1 | 2 | 3
+      if (![1, 2, 3].includes(index)) return
+      const recovered = recoverPassageFields(passage)
+      initialPassages[index] = {
+        title: passage.title || "",
+        subtitle: recovered.subtitle,
+        body: recovered.body,
+        instruction: passage.instruction || "",
+        pdf: passage.pdfUrl ? { name: "Uploaded PDF", size: "Unknown", url: passage.pdfUrl } : null,
+        image: passage.imageUrl || null,
+        imageName: passage.imageUrl ? "Uploaded Image" : "",
+      }
+    })
+    return initialPassages
+  })
 
   // Uploading states
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingQImage, setUploadingQImage] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [bulkJsonText, setBulkJsonText] = useState('')
+  const [bulkJsonDialogVersion, setBulkJsonDialogVersion] = useState(0)
 
   // PDF & Image input references
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -685,7 +715,36 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
   const passageBodyRef = useRef<HTMLTextAreaElement>(null)
 
   // Compiled questions for all passages (Target 40)
-  const [compiledQuestions, setCompiledQuestions] = useState<QuestionItem[]>([])
+  const [compiledQuestions, setCompiledQuestions] = useState<QuestionItem[]>(() =>
+    (initialExamData?.passages ?? []).flatMap((passage: any) =>
+      (passage.questionGroups ?? []).flatMap((group: any) =>
+        (group.questions ?? []).map((question: any) => {
+          let correctAnswer = question.correctAnswer
+          if (["MULTIPLE_CHOICE", "MULTIPLE_CHOICE_MULTIPLE"].includes(group.type) && question.options?.length) {
+            const optionIndex = question.options.indexOf(question.correctAnswer)
+            if (optionIndex >= 0) correctAnswer = String.fromCharCode(65 + optionIndex)
+          }
+          return {
+            id: question.id || `q-${passage.order}-${question.questionNumber}`,
+            passageIndex: Number(passage.order) as 1 | 2 | 3,
+            type: readingQuestionTypes.find((type) => type.type === group.type)?.title || group.type,
+            typeCode: group.type,
+            questionNumber: question.questionNumber,
+            text: question.questionText || "",
+            instruction: group.instruction || "",
+            correctAnswer: correctAnswer || "",
+            explanation: question.explanation || "",
+            options: question.options || undefined,
+            groupOptions: group.options || undefined,
+            passageSegment: group.passageSegment || undefined,
+            groupImageUrl: group.imageUrl || undefined,
+          }
+        }),
+      ),
+    )
+  )
+  const currentQuestionJson = serializeReadingImportJson(compiledQuestions, passages)
+  const bulkJsonEditorText = bulkJsonText.trim() ? bulkJsonText : currentQuestionJson
   const nextQuestionNumber = compiledQuestions.reduce(
     (highest, question) => Math.max(highest, question.questionNumber),
     0
@@ -707,6 +766,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
       setExamTitle(exam.title || "")
       setExamDescription(exam.description || "")
       setExamDuration(exam.duration || 60)
+      setBulkJsonText('')
       
       const initialPassages = getDefaultPassages()
       
@@ -818,6 +878,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           if (draft.exampleAnswer !== undefined) setExampleAnswer(draft.exampleAnswer)
           if (draft.questionImage !== undefined) setQuestionImage(draft.questionImage)
           if (draft.questionImageName !== undefined) setQuestionImageName(draft.questionImageName)
+          if (draft.bulkJsonText !== undefined) setBulkJsonText(draft.bulkJsonText)
           if (draft.scompAltAnswer1 !== undefined) setScompAltAnswer1(draft.scompAltAnswer1)
           if (draft.scompAltAnswer2 !== undefined) setScompAltAnswer2(draft.scompAltAnswer2)
 
@@ -873,6 +934,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
       exampleAnswer,
       questionImage,
       questionImageName,
+      bulkJsonText,
       scompAltAnswer1,
       scompAltAnswer2,
     }
@@ -908,6 +970,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
     exampleAnswer,
     questionImage,
     questionImageName,
+    bulkJsonText,
     scompAltAnswer1,
     scompAltAnswer2,
   ])
@@ -973,6 +1036,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
     exampleAnswer,
     questionImage,
     questionImageName,
+    bulkJsonText,
   ])
 
   // Immediate save on page unload / navigation
@@ -1055,25 +1119,38 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
     setExampleAnswer('')
     setQuestionImage(null)
     setQuestionImageName('')
+    setBulkJsonText('')
+    setBulkJsonDialogVersion((version) => version + 1)
+    setSummaryAnswers({})
+    setMultiMcqAnswerCount(2)
     setLastDraftSavedAt(null)
-  }
-
-  const handleDiscardDraft = () => {
-    if (!window.confirm("Are you sure you want to discard this draft and reset all fields?")) return
-    clearDraftAndResetForm()
-    toast.info("Draft discarded and form reset.")
+    latestDraftRef.current = null
   }
 
   const hasDraftContent = Boolean(
     examTitle.trim() ||
     examDescription.trim() ||
+    bulkJsonText.trim() ||
     compiledQuestions.length > 0 ||
     Object.values(passages).some(p => p.title.trim() || p.body.trim()) ||
     questionText.trim()
   )
+
+  const handleDiscardDraft = () => {
+    if (hasDraftContent && !window.confirm("Cancel and clear this exam draft? This cannot be undone.")) return
+    clearDraftAndResetForm()
+    if (editId) {
+      try {
+        window.localStorage.removeItem(`${READING_CREATOR_DRAFT_KEY}:new`)
+      } catch {}
+      router.replace('/teacher/dashboard')
+    }
+    toast.info("Draft cleared. You can start a new exam.")
+  }
   
   // Helper: Update active passage field
   const updatePassageField = (field: keyof PassageData, value: any) => {
+    setBulkJsonText('')
     setPassages({
       ...passages,
       [activePassage]: {
@@ -1211,6 +1288,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
         });
       }
       
+      setBulkJsonText('')
       setCompiledQuestions([...compiledQuestions, ...generatedQs]);
       
       // Reset Form for checkboxes
@@ -1331,6 +1409,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           correctAnswer: answersByNumber.get(questionNumber) ?? "",
         }));
 
+      setBulkJsonText('')
       setCompiledQuestions([...updatedQuestions, ...missingQuestions].sort((a, b) => a.questionNumber - b.questionNumber));
       setTableAnswers({});
       setCorrectAnswer("");
@@ -1387,6 +1466,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           groupOptions: selectedTypeDetails.type === "SUMMARY_COMPLETION_WITHOUT_OPTIONS" ? undefined : newQ.groupOptions,
         }));
 
+      setBulkJsonText('')
       setCompiledQuestions([...updatedQuestions, ...missingQuestions].sort((a, b) => a.questionNumber - b.questionNumber));
       setSummaryAnswers({});
       setCorrectAnswer("");
@@ -1429,6 +1509,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
     )
 
     // Create missing placeholders once; subsequent submissions update their answers in order.
+    setBulkJsonText('')
     setCompiledQuestions([...updatedQuestions, ...questionsToAdd].sort((a, b) => a.questionNumber - b.questionNumber))
     
     // Reset Form
@@ -1452,8 +1533,46 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
     toast.success(`Question ${qNum} added!`)
   }
 
+  // Bulk import from JSON (creates every question group in one go)
+  const handleJsonImport = (result: ReadingImportResult, { replaceExisting }: { replaceExisting: boolean }) => {
+    const touchedPassages = new Set<number>([
+      ...result.questions.map((q) => q.passageIndex),
+      ...Object.keys(result.passages).map(Number),
+    ])
+    const importedKeys = new Set(result.questions.map((q) => `${q.passageIndex}-${q.questionNumber}`))
+
+    setCompiledQuestions((current) =>
+      [
+        ...current.filter((q) =>
+          replaceExisting
+            ? !touchedPassages.has(q.passageIndex)
+            : !importedKeys.has(`${q.passageIndex}-${q.questionNumber}`)
+        ),
+        ...result.questions,
+      ].sort((a, b) => a.passageIndex - b.passageIndex || a.questionNumber - b.questionNumber)
+    )
+
+    if (Object.keys(result.passages).length > 0) {
+      setPassages((current) => {
+        const next = { ...current }
+        for (const [key, fields] of Object.entries(result.passages)) {
+          const idx = Number(key) as 1 | 2 | 3
+          next[idx] = { ...next[idx], ...fields }
+        }
+        return next
+      })
+    }
+
+    const maxPassage = Math.max(passageCount, ...Array.from(touchedPassages)) as 1 | 2 | 3
+    if (maxPassage > passageCount) setPassageCount(maxPassage)
+
+    setBulkJsonText('')
+    toast.success(`Imported ${result.questions.length} questions (${result.groups.length} groups).`)
+  }
+
   // Delete Question
   const handleDeleteQuestion = (id: string) => {
+    setBulkJsonText('')
     setCompiledQuestions(compiledQuestions.filter(q => q.id !== id))
   }
 
@@ -1474,7 +1593,10 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           const isSameType =
             currentGroup &&
             currentGroup.type === q.typeCode &&
-            areInstructionsCompatible(currentGroup.instruction, q.instruction);
+            areInstructionsCompatible(currentGroup.instruction, q.instruction) &&
+            currentGroup.passageSegment === (q.passageSegment || "") &&
+            currentGroup.imageUrl === (q.groupImageUrl || "") &&
+            JSON.stringify(currentGroup.options || []) === JSON.stringify(q.groupOptions || []);
           if (isSameType) {
             if ((!currentGroup.options || currentGroup.options.length === 0) && q.groupOptions && q.groupOptions.length > 0) {
               currentGroup.options = q.groupOptions;
@@ -1570,11 +1692,21 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
       }
 
       if (editId) {
-        await readingService.updateExam(editId, examPayload)
+        const response = await readingService.updateExam(editId, examPayload)
+        const cachedExams = queryClient.getQueryData<Awaited<ReturnType<typeof readingService.getAllExams>>>(["teacher-exams"])
+        if (cachedExams) {
+          queryClient.setQueryData(["teacher-exams"], {
+            ...cachedExams,
+            data: cachedExams.data.map((exam) =>
+              exam.id === editId
+                ? { ...response.data, _count: { passages: mappedPassages.length } }
+                : exam
+            ),
+          })
+        }
         toast.success("Congratulations! IELTS Exam updated successfully.")
         clearDraftAndResetForm()
         router.push("/teacher/exams")
-        router.refresh()
       } else {
         await readingService.createExam(examPayload)
         toast.success("Congratulations! IELTS Exam created successfully.")
@@ -1600,7 +1732,10 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
         const isSameType =
           currentGroup &&
           currentGroup.type === q.typeCode &&
-          areInstructionsCompatible(currentGroup.instruction, q.instruction)
+          areInstructionsCompatible(currentGroup.instruction, q.instruction) &&
+          currentGroup.passageSegment === (q.passageSegment || "") &&
+          currentGroup.imageUrl === (q.groupImageUrl || "") &&
+          JSON.stringify(currentGroup.options || []) === JSON.stringify(q.groupOptions || [])
 
         if (isSameType) {
           if ((!currentGroup.options || currentGroup.options.length === 0) && q.groupOptions && q.groupOptions.length > 0) {
@@ -1894,50 +2029,6 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 z-10">
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
-              </span>
-              {lastDraftSavedAt
-                ? `Draft auto-saved (${new Date(lastDraftSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
-                : "Auto-draft active"}
-            </span>
-
-            <button
-              type="button"
-              onClick={saveLocalDraftManual}
-              className="cursor-pointer rounded-lg border border-indigo-400/30 bg-white/10 px-3.5 py-2 text-xs font-black text-white transition hover:bg-white/20 active:scale-95"
-              title="Save draft immediately to local storage"
-            >
-              Save Draft
-            </button>
-
-            {hasDraftContent && (
-              <button
-                type="button"
-                onClick={handleDiscardDraft}
-                className="cursor-pointer rounded-lg border border-rose-400/30 bg-rose-500/10 px-3.5 py-2 text-xs font-black text-rose-200 transition hover:bg-rose-500/20 active:scale-95"
-                title="Discard draft and reset all inputs"
-              >
-                Reset Draft
-              </button>
-            )}
-
-            <Button 
-              onClick={handlePublishPaper}
-              disabled={isPublishing}
-              className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-blue-400/30 bg-[#24549a] px-5 py-2 text-xs font-black text-white shadow transition hover:bg-[#1b3f74] disabled:bg-slate-800 disabled:text-slate-500"
-            >
-              {isPublishing ? (
-                <IconLoader2 size={16} className="animate-spin" />
-              ) : (
-                <IconSparkles size={16} className="animate-pulse text-indigo-200" />
-              )}
-              <span>Publish Mock Exam</span>
-            </Button>
-          </div>
         </div>
       ) : (
         <div className="flex items-center justify-between pb-3 border-b border-gray-200">
@@ -1950,10 +2041,67 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           </span>
         </div>
       )}
+      {!embedded && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50">
+              <span className="absolute size-2 animate-ping rounded-full bg-amber-400 opacity-75" />
+              <span className="relative size-2 rounded-full bg-amber-500" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-slate-800">Draft workspace</p>
+              <p className="truncate text-xs text-slate-500">
+                {lastDraftSavedAt
+                  ? `Auto-saved at ${new Date(lastDraftSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : "Changes are saved automatically on this device."}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ReadingJsonImportDialog
+              key={bulkJsonDialogVersion}
+              activePassage={activePassage}
+              nextQuestionNumber={nextQuestionNumber}
+              typeCatalog={readingQuestionTypes}
+              defaultInstructions={defaultQuestionInstructions}
+              jsonText={bulkJsonEditorText}
+              onJsonTextChange={setBulkJsonText}
+              onImport={handleJsonImport}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveLocalDraftManual}
+              className="h-11 border-slate-300 font-bold text-slate-700"
+              title="Save draft immediately to this device"
+            >
+              Save Draft
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDiscardDraft}
+              className="h-11 border-rose-200 font-bold text-rose-700 hover:bg-rose-50"
+              title="Cancel and clear the draft"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePublishPaper}
+              disabled={isPublishing}
+              className="h-11 gap-2 bg-[#24549a] px-5 font-black text-white shadow hover:bg-[#1b3f74] disabled:bg-slate-300"
+            >
+              {isPublishing ? <IconLoader2 size={16} className="animate-spin" /> : <IconSparkles size={16} />}
+              {isPublishing ? (editId ? "Updating Exam..." : "Publishing Exam...") : (editId ? "Update Exam" : "Publish Mock Exam")}
+            </Button>
+          </div>
+        </div>
+      )}
         <div className="grid gap-6 lg:grid-cols-3 animate-fadeIn">
           
           {/* Main Workspace Column (8) */}
-          <div className={`${embedded ? "lg:col-span-3" : "lg:col-span-2"} space-y-6`}>
+          <div className="order-2 space-y-6 lg:col-span-3">
             
             {/* Exam metadata specifications */}
             {!embedded && <Card className="rounded-2xl border-gray-200 bg-white shadow-sm">
@@ -2011,6 +2159,21 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
                   <CardDescription className="text-xs font-medium text-gray-400">
                     Monitoring standard IELTS Academic question counts across the 3 passages.
                   </CardDescription>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-gray-500">
+                      Add or update Reading passages and questions with one JSON import.
+                    </p>
+                    <ReadingJsonImportDialog
+                      key={bulkJsonDialogVersion}
+                      activePassage={activePassage}
+                      nextQuestionNumber={nextQuestionNumber}
+                      typeCatalog={readingQuestionTypes}
+                      defaultInstructions={defaultQuestionInstructions}
+                      jsonText={bulkJsonEditorText}
+                      onJsonTextChange={setBulkJsonText}
+                      onImport={handleJsonImport}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                   <div className="space-y-1.5">
@@ -2246,8 +2409,8 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
                         className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm font-bold text-gray-800 outline-none focus:border-[#1B3A6B]"
                       >
                         <option value="">Select a Reading question type</option>
-                        {readingQuestionTypes.map((type) => (
-                          <option key={type.code} value={type.code}>{type.title}</option>
+                        {readingQuestionTypes.map((type, index) => (
+                          <option key={`${type.code}-${index}`} value={type.code}>{type.title}</option>
                         ))}
                       </select>
                     </div>
@@ -2259,6 +2422,13 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
                         {readingQuestionTypes.find((type) => type.code === selectedQuestionType)?.desc || "Choose a format to open its question builder."}
                       </p>
                     </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-3">
+                    <p className="text-[11px] font-semibold text-gray-500">
+                      {embedded
+                        ? "Have many questions? Import their JSON in one step."
+                        : "Use Bulk Import (JSON) in the draft toolbar above to add or edit imported questions."}
+                    </p>
                   </div>
                 </div>
 
@@ -4016,10 +4186,10 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
           </div>
 
           {/* Right Columns (4): 40 Questions Tracker & Passages Preview */}
-          {!embedded && <div className="space-y-6 lg:col-span-1">
+          {!embedded && <div className="contents">
 
             {/* Real 40 Questions Tracker Card */}
-            <Card className="relative overflow-hidden rounded-2xl border-gray-200 bg-white shadow-sm lg:sticky lg:top-4">
+            <Card className="relative order-1 overflow-hidden rounded-2xl border-gray-200 bg-white shadow-sm lg:col-span-3">
               <div className="absolute top-0 right-0 h-24 w-24 bg-indigo-50/40 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
               
               <CardHeader className="pb-3 border-b border-gray-100">
@@ -4053,7 +4223,7 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
                 </div>
 
                 {/* Collapsible Passages Summary & Questions list */}
-                <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-3">
                   
                   {([1, 2, 3] as const).slice(0, passageCount).map((passIdx) => {
                     const passQs = compiledQuestions.filter(q => q.passageIndex === passIdx)
@@ -4109,48 +4279,25 @@ function TeacherDashboardContent({ embedded = false, onExamReady }: ReadingCreat
 
                 </div>
 
-                {/* Final Mock Paper Submit */}
-                <div className="mt-5 space-y-2">
-                  <Button 
-                    onClick={handlePublishPaper}
-                    disabled={isPublishing}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold transition-all duration-200 shadow-md shadow-indigo-100 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm cursor-pointer"
-                  >
-                    {isPublishing ? (
-                      <IconLoader2 size={16} className="animate-spin" />
-                    ) : (
-                      <IconSparkles size={16} />
-                    )}
-                    {embedded ? "Use in Full Mock" : "Publish Complete Mock"}
-                  </Button>
-                </div>
-
-              </CardContent>
-            </Card>
-
-            {/* IELTS Reading Module Rules Panel */}
-            <Card className="bg-gradient-to-tr from-indigo-950 to-indigo-900 border-none shadow-md text-white">
-              <CardHeader className="pb-2">
-                <CardTitle className="font-bold text-sm tracking-wider uppercase text-indigo-300 flex items-center gap-1.5">
-                  Reading Exam Rules
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs space-y-3 leading-relaxed">
-                <div className="border-l-2 border-indigo-500 pl-3">
-                  <span className="font-bold text-indigo-200">Standard Sections:</span> An official Reading paper has precisely 3 sections corresponding to Passage 1, Passage 2, and Passage 3.
-                </div>
-                <div className="border-l-2 border-indigo-500 pl-3">
-                  <span className="font-bold text-indigo-200">Question Limits:</span> Passages typically divide the 40 questions as: Passage 1 (13), Passage 2 (13), Passage 3 (14).
-                </div>
-                <div className="border-l-2 border-indigo-500 pl-3">
-                  <span className="font-bold text-indigo-200">Authentic Uploads:</span> Attaching graphs or process diagrams is essential for academic information-matching and diagram-labeling questions.
-                </div>
               </CardContent>
             </Card>
 
           </div>}
 
         </div>
+        {!embedded && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={handlePublishPaper}
+              disabled={isPublishing}
+              className="w-full gap-2 bg-indigo-600 py-2.5 text-sm font-bold text-white shadow-md hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 sm:w-auto sm:px-8"
+            >
+              {isPublishing ? <IconLoader2 size={16} className="animate-spin" /> : <IconSparkles size={16} />}
+              {isPublishing ? (editId ? "Updating Exam..." : "Publishing Exam...") : (editId ? "Update Exam" : "Publish Mock Exam")}
+            </Button>
+          </div>
+        )}
       </div>
   )
 }
